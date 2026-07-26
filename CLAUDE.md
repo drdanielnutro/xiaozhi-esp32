@@ -1,6 +1,4 @@
-@AGENTS.md
-
-# AGENTS.md
+# Diretrizes do projeto XiaoZhi
 
 ## Project
 
@@ -94,6 +92,23 @@ The release script changes local `sdkconfig` and build state. Do not assume the 
 - CI matrix: `.github/workflows/build.yml`
 
 Keep detailed or fast-changing information in those files, not here. Add a nested `AGENTS.md` only when a subsystem needs specialized instructions.
+
+# Missão deste fork
+
+Este fork existe para criar, sobre a base XiaoZhi, o firmware do **Professor
+Virtual** — tutor de lição de casa por voz e câmera para crianças. O
+dispositivo embarcado entrega toda a experiência do usuário (preparação da
+lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
+
+- Especificação funcional: `DOCUMENTACAO-APP.md` (raiz deste repo). Consulte-a
+  antes de implementar ou alterar comportamento do cliente.
+- O backend em `/home/deniellmed/licao_casa/backend/` é **intocável**: fonte de
+  verdade pedagógica. O firmware se adapta ao contrato HTTP vigente (seção 7 da
+  especificação); nunca faça retry automático de `POST /api/turn`.
+- Placa alvo: Waveshare ESP32-P4-WIFI6-Touch-LCD-7B.
+- Upstream `78/xiaozhi-esp32`: sincronização pull-only; mantenha o trabalho do
+  Professor Virtual aditivo (placa própria, módulos novos, Kconfig próprio) em
+  vez de editar core compartilhado.
 
 # Instruções específicas para Claude Code
 

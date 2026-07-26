@@ -91,10 +91,36 @@ escale — os seguintes invariantes:
   comportamento físico (áudio, display, toque, energia) devem registrar na
   rationale que exigem teste em hardware pelo proprietário.
 
+### Missão Professor Virtual — regras duras
+
+A missão deste fork é o firmware do Professor Virtual (especificação em
+`DOCUMENTACAO-APP.md`; contexto completo em `AGENTS.md`, incluindo a
+hierarquia das fontes). Regras inegociáveis ao decidir:
+
+- Preserve o contrato HTTP da especificação (seção 7). Não invente
+  endpoints, campos, estados ou capacidades.
+- Nunca aprove retry automático de `POST /api/turn` — o contrato não tem
+  idempotência.
+- Nunca aprove mover regra pedagógica, contador ou decisão de avanço para o
+  dispositivo: o backend é a única fonte de verdade pedagógica.
+- Mudança no backend (`/home/deniellmed/licao_casa/backend/`) só pode ser
+  recomendada nas 5 condições de "Preservação do backend" do `AGENTS.md`;
+  sem elas, a resposta é adaptar o firmware. Mesmo com elas, `escalate: true`
+  — mexer no backend é decisão do proprietário.
+
+### Upstream
+
+- Prefira soluções aditivas (placa/variante própria em `main/boards/`,
+  módulos novos, opções próprias de Kconfig) a editar arquivos core
+  compartilhados com o upstream `78/xiaozhi-esp32` — o fork sincroniza
+  pull-only e conflitos de merge custam caro.
+- Em conflito de sincronização, arquivos próprios do fork (`AGENTS.md`,
+  `CLAUDE.md`, `.claude/`, `DOCUMENTACAO-APP.md`, código do Professor
+  Virtual) mantêm a nossa versão.
+
 ### Preferências finas do proprietário
 
 <!-- PENDENTE DE PERSONALIZAÇÃO PELO PROPRIETÁRIO.
-     O sistema funciona sem isto, mas decide de forma genérica. Acrescente aqui
-     preferências recorrentes: bibliotecas aprovadas, estratégias proibidas,
-     tolerância a migrações, convenções de nomenclatura, padrões de UX e
-     qualquer decisão que você normalmente confirma manualmente ao Codex. -->
+     Acrescentar com o uso: bibliotecas aprovadas, estratégias proibidas,
+     tolerância a migrações, convenções de nomenclatura e decisões
+     recorrentes confirmadas manualmente. -->
