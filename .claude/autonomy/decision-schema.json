@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decisions",
+    "escalate",
+    "escalationReason",
+    "decisionRecord"
+  ],
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question",
+          "selectedLabels",
+          "rationale",
+          "confidence"
+        ],
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "selectedLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    },
+    "escalate": {
+      "type": "boolean"
+    },
+    "escalationReason": {
+      "type": "string"
+    },
+    "decisionRecord": {
+      "type": "string"
+    }
+  }
+}

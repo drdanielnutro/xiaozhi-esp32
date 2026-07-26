@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": [
+      "mcp__codex-council__*"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(idf.py flash*)",
+      "Bash(idf.py *flash*)",
+      "Bash(esptool*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/codex-decision-proxy.mjs",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}
