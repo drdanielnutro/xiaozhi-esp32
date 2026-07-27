@@ -21,3 +21,6 @@ mmap_generate_*.h
 
 # Estado local do proxy autonomo de decisoes; nao versionar
 .claude/autonomy/mode.json
+
+# Estado local dos hooks de sessão/lembrete; não versionar
+.claude/state/

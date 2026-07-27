@@ -13,11 +13,15 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
 
 1. Leia `AGENTS.md`, `CLAUDE.md`, a arquitetura aprovada, o plano e as tasks.
 2. Valide que o escopo da fase é suficientemente definido.
-3. Execute:
+3. Estado por task: se `docs/professor-virtual/fases/fase-N.md` não existir
+   para esta fase, crie-o a partir de `docs/professor-virtual/fases/TEMPLATE.md`
+   como primeiro ato (quebra da fase em tasks com critérios); se existir,
+   retome do primeiro checkbox aberto.
+4. Execute:
 
    `node "$CLAUDE_PROJECT_DIR/.claude/hooks/codex-decision-proxy.mjs" --enable`
 
-4. Registre o estado inicial de Git. Não descarte alterações preexistentes.
+5. Registre o estado inicial de Git. Não descarte alterações preexistentes.
 
 ## Execução
 
@@ -45,7 +49,8 @@ Para cada task:
 2. verifique lint, tipos e build aplicáveis;
 3. confira o diff;
 4. corrija regressões antes de avançar;
-5. atualize o status da task.
+5. marque o checkbox da task em `docs/professor-virtual/fases/fase-N.md`
+   **no mesmo commit** que a conclui (o estado nunca diverge do código).
 
 ## Revisão independente
 
@@ -66,6 +71,12 @@ Ao concluir a fase:
 Execute sempre, inclusive após erro recuperável:
 
 `node "$CLAUDE_PROJECT_DIR/.claude/hooks/codex-decision-proxy.mjs" --disable`
+
+No commit final da fase, atualize a tabela "Status das fases" em
+`docs/professor-virtual/plano-firmware.md` — status, data, pendências
+físicas e, na coluna "Commit", o hash do **último commit de implementação
+da fase** (anterior ao commit de encerramento; um commit não pode conter o
+próprio hash) — junto com o fechamento do checklist em `fases/fase-N.md`.
 
 Apresente ao proprietário somente:
 

@@ -196,9 +196,12 @@ checklist final de validação física com o dono, tag de versão.
 
 ## Processo transversal
 
-- Cada fase: decisões operacionais via Codex Decision Proxy (registradas no
+- Cada fase: primeiro ato é criar `fases/fase-N.md` (do TEMPLATE) com o
+  checklist de tasks; cada task concluída marca o checkbox **no mesmo
+  commit**; decisões operacionais via Codex Decision Proxy (registradas no
   decision-log); revisão independente do Codex ao final (máx. 2 rodadas);
-  relatório com "o que ainda exige hardware físico".
+  relatório com "o que ainda exige hardware físico"; **atualização da
+  tabela "Status das fases"** no commit de encerramento.
 - Regressão obrigatória por fase: build da variante PV **e** da variante
   XiaoZhi 7b original + `python3 -m unittest discover -s scripts/tests`.
 - O backend jamais é alterado; necessidade de mudança vira adaptação no
@@ -212,6 +215,30 @@ checklist final de validação física com o dono, tag de versão.
    segurança da §7 — no mínimo firewall restringindo a porta).
 3. Primeiro flash da placa (revela a revisão do chip → variante `7b` vs
    `7b-p4x`).
+
+## Status das fases
+
+> Atualizado obrigatoriamente no encerramento de cada fase (junto com o
+> commit final dela). O estado fino, por task, vive em
+> `docs/professor-virtual/fases/fase-N.md` (checklist criado como primeiro
+> ato da fase a partir do `fases/TEMPLATE.md`; cada checkbox é marcado no
+> mesmo commit que conclui a task). Uma sessão nova retoma o projeto lendo:
+> `CLAUDE.md` (automático) → esta tabela → `fases/fase-N.md` da fase
+> corrente → `.claude/autonomy/decision-log.jsonl` (precedentes) → dossiê
+> da placa. O hook de SessionStart injeta esse estado automaticamente.
+
+| Fase | Status | Concluída em | Commit | Pendências físicas |
+|---|---|---|---|---|
+| F0 — Fundações | não iniciada | — | — | — |
+| F1 — Rede e hidratação | não iniciada | — | — | — |
+| F2 — Câmera | não iniciada | — | — | — |
+| F3 — Turno por foto | não iniciada | — | — | — |
+| F4 — Turno por áudio | não iniciada | — | — | — |
+| F5 — Máquina de fases | não iniciada | — | — | — |
+| F6 — Failsafe/adulto | não iniciada | — | — | — |
+| F7 — Preparação | não iniciada | — | — | — |
+| F8 — Robustez | não iniciada | — | — | — |
+| F9 — Entrega | não iniciada | — | — | — |
 
 ## Como iniciar
 
