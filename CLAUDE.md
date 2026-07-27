@@ -109,6 +109,13 @@ lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
 - Upstream `78/xiaozhi-esp32`: sincronização pull-only; mantenha o trabalho do
   Professor Virtual aditivo (placa própria, módulos novos, Kconfig próprio) em
   vez de editar core compartilhado.
+- Ambiente host: WSL2. A placa conecta pela USB-C **"USB TO UART"** (ponte
+  CH343 → **COM3** no Windows; chip confirmado: ESP32-P4 **v1.3** → variante
+  `7b`). O WSL não vê a porta: use interop
+  (`powershell.exe` + Python/esptool do Windows) para identificar/gravar, e
+  `usbipd` para logs no WSL a partir da F1. Detalhes:
+  `docs/professor-virtual/placa-esp32-p4-wifi6-touch-lcd-7b.md`, seção
+  "Conexão serial". Flash físico é sempre ação do proprietário.
 
 # Instruções específicas para Claude Code
 

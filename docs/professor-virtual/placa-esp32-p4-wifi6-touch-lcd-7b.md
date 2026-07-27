@@ -126,6 +126,26 @@ Avisos:
   (`scripts/release.py:467-470`, "Skipping ... already exists"): confirme
   no log que o build realmente executou; para rebuildar, remova antes o
   ZIP correspondente.
+
+### Conexão serial neste ambiente de desenvolvimento (verificado 26/07/2026)
+
+- Porta física: USB-C rotulada **"USB TO UART"** (ponte serial **CH343**).
+  No Windows do proprietário aparece como **COM3**
+  ("USB-Enhanced-SERIAL CH343 (COM3)").
+- O desenvolvimento roda em **WSL2**, que não enxerga a porta nativamente.
+  Caminho validado na prática, de dentro do WSL, via interop:
+  `powershell.exe -NoProfile -Command "python -m esptool --port COM3 <cmd>"`
+  (Python 3.13 do Windows; esptool instalado com
+  `python -m pip install --user esptool`). Foi assim que a revisão v1.3
+  foi lida (seção 7, item 1).
+- **Logs/monitor serial**: 115200 baud. Opções: (a) monitor no Windows
+  (PuTTY/`python -m serial.tools.miniterm COM3 115200`); (b) **usbipd**
+  para expor a porta ao WSL (`winget install usbipd`; `usbipd bind` uma
+  vez em PowerShell admin; `usbipd attach --wsl` a cada replug) e usar
+  `idf.py monitor`/esptool nativos — **plano combinado: configurar no
+  início da F1**, quando houver firmware nosso rodando.
+- Gravação de firmware é ação exclusiva do proprietário: os binários são
+  preparados no WSL e o comando de flash é executado por ele.
 - **Gravar a placa (`idf.py flash`, `esptool`) é ação exclusiva do
   proprietário** — os denies de `.claude/settings.json` refletem isso.
 - Build que compila **não** é validação de hardware.
@@ -177,17 +197,25 @@ Documentação interna do repo: `docs/custom-board.md`,
 
 ## 7. Perguntas abertas de bring-up (exigem a placa em mãos / o proprietário)
 
-1. **Revisão do chip P4 da unidade** → decide `7b` vs `7b-p4x`
-   (ver seção 1). Como: log de boot ou `esptool.py chip_id`.
-2. **O módulo de câmera OV5647 veio incluso e está conectado?** O módulo é
-   opcional por SKU (o 32511 inclui; a versão standard não); o conector
-   MIPI-CSI existe em todas. Sem o módulo não há preparação de lição nem
-   turnos por foto.
-3. **Alto-falante conectado ao PH2.0?** Não é onboard; sem ele não há voz
-   do tutor. O conector é não polarizado (fonte: doc Waveshare); conferir
-   impedância/potência recomendadas.
+1. ~~Revisão do chip P4 da unidade~~ **RESOLVIDO (26/07/2026):** lido via
+   `esptool chip-id` na porta "USB TO UART" (COM3, ponte CH343):
+   **ESP32-P4 revisão v1.3**, Dual Core + LP Core 400 MHz, MAC
+   `80:f1:b2:d3:29:16`. Conclusão: **usar a variante `7b`**
+   (`esp32-p4-wifi6-touch-lcd-7b`; para o PV, `professor-virtual-7b`) —
+   a `-p4x` não se aplica a esta unidade.
+2. ~~O módulo de câmera OV5647 veio incluso e está conectado?~~
+   **RESOLVIDO (26/07/2026):** a unidade do proprietário é a versão com
+   câmera — caixa rotulada "ESP32-P4-WIFI6-Touch-LCD-7B-C", **SKU 32511**,
+   com o módulo OV5647 já conectado ao MIPI-CSI.
+3. ~~Alto-falante conectado ao PH2.0?~~ **RESOLVIDO (26/07/2026):** o
+   alto-falante veio incluso na caixa; falta apenas plugá-lo no conector
+   PH2.0 (não polarizado).
 4. **Teste físico dos dois microfones + AEC** (captura física a 24 kHz;
    AFE/AEC processa a 16 kHz — a validação é física, não de build).
+   **Parcial (26/07/2026), com o firmware de demonstração de fábrica:**
+   display, touch e câmera funcionando ✓; alto-falante e microfones ainda
+   pendentes (alto-falante precisa ser plugado no PH2.0; se a demo não
+   tiver recurso de áudio, testar com bipe+gravação no início da F1).
 5. **Fonte de alimentação adequada** (display 7" + P4 + C6 + câmera juntos)
    e comportamento da chave ON/OFF durante uso prolongado.
 6. Divergência menor a observar no bring-up: o código configura o sensor em
