@@ -37,7 +37,7 @@ testes (sem dependências novas), git como fonte de verdade.
 - Mudanças restritas a `docs/professor-virtual/` e `.claude/` — nenhum
   arquivo de firmware é tocado.
 - Testes em `.claude/hooks/tests/`, executados com
-  `node --test .claude/hooks/tests/`.
+  `node --test ".claude/hooks/tests/*.test.mjs"`.
 - Commits pequenos, um por task deste plano. Sem `git push` (regra do repo).
 - `.claude/state/` já está no `.gitignore`; não versionar nada dali.
 
@@ -226,7 +226,7 @@ test("não imprime a seção quando está vazia", () => {
 
 - [ ] **Passo 2: Rodar e confirmar a falha**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: o primeiro teste FALHA (o hook ainda não imprime a seção); o
 segundo passa por vacuidade.
 
@@ -284,7 +284,7 @@ e ainda **dentro** do `if (faseFile)`, inserir:
 
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 2 testes PASSAM.
 
 - [ ] **Passo 5: Commit**
@@ -440,7 +440,7 @@ test("acusa checkbox marcado no worktree sem commit", () => {
 
 - [ ] **Passo 2: Rodar e confirmar a falha**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: os 6 testes novos FALHAM ("Cannot find module ...
 pv-state-validate.mjs"); os da Task 2 continuam passando.
 
@@ -617,7 +617,7 @@ process.exit(1);
 
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 8 testes PASSAM (6 do validador + 2 da Task 2). Rodar também
 `node .claude/hooks/pv-state-validate.mjs` na raiz do repo real e conferir
 saída `OK` (ou investigar problemas reais apontados).
@@ -670,7 +670,7 @@ test("reporta problemas de integridade na abertura da sessão", () => {
 
 - [ ] **Passo 2: Rodar e confirmar a falha**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: o teste novo FALHA (o hook ainda não chama o validador).
 
 - [ ] **Passo 3: Implementar a chamada no hook**
@@ -712,7 +712,7 @@ if (validate.status !== 0 && validate.stdout) {
 
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
-Rodar: `node --test .claude/hooks/tests/`
+Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 9 testes PASSAM. Atenção ao teste "não imprime a seção quando está
 vazia": como o validador é resolvido via `import.meta.url`, ele RODA também
 nesse fixture (que não tem git) — todos os comandos `sh()` retornam `""`,
@@ -791,7 +791,7 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
 
 ## Critérios de aceite do plano
 
-- [ ] `node --test .claude/hooks/tests/` passa com 9 testes verdes.
+- [ ] `node --test ".claude/hooks/tests/*.test.mjs"` passa com 9 testes verdes.
 - [ ] `node .claude/hooks/pv-state-validate.mjs` na raiz do repo responde
       `Integridade estado ↔ git: OK` (ou os problemas apontados são reais e
       foram tratados).
