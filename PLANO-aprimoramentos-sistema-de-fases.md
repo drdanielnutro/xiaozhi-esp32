@@ -61,7 +61,7 @@ para esse registro.
   `(vazio)` também aparece dentro do blockquote de instrução, portanto a
   detecção **nunca** pode ser por simples presença da string na seção.
 
-- [ ] **Passo 1: Acrescentar a seção ao template**
+- [x] **Passo 1: Acrescentar a seção ao template**
 
 Em `docs/professor-virtual/fases/TEMPLATE.md`, inserir imediatamente antes
 de `## Notas da fase`:
@@ -85,7 +85,7 @@ de `## Notas da fase`:
 -->
 ```
 
-- [ ] **Passo 2: Ensinar a skill a usar a seção**
+- [x] **Passo 2: Ensinar a skill a usar a seção**
 
 Em `.claude/skills/autonomous-phase/SKILL.md`, no item 3 de "Ativação",
 substituir:
@@ -120,13 +120,13 @@ E, ao final da lista de "Execução" (após o item 8), acrescentar:
    sessão seguinte.
 ```
 
-- [ ] **Passo 3: Verificar**
+- [x] **Passo 3: Verificar**
 
 Releia os dois arquivos e confirme: o template tem a nova seção antes de
 "Notas da fase" com o literal `(vazio)`; a skill referencia a seção na
 ativação (retomada) e na execução (pausa), com os mesmos nomes exatos.
 
-- [ ] **Passo 4: Commit**
+- [x] **Passo 4: Commit**
 
 ```bash
 git add docs/professor-virtual/fases/TEMPLATE.md .claude/skills/autonomous-phase/SKILL.md
@@ -153,7 +153,7 @@ seção de retomada seja sempre injetada por inteiro.
   hook, apenas quando a seção está preenchida (corpo útil, sem blockquote
   nem comentários).
 
-- [ ] **Passo 1: Escrever os testes (devem falhar)**
+- [x] **Passo 1: Escrever os testes (devem falhar)**
 
 Criar `.claude/hooks/tests/pv-session-context.test.mjs`:
 
@@ -224,13 +224,13 @@ test("não imprime a seção quando está vazia", () => {
 });
 ```
 
-- [ ] **Passo 2: Rodar e confirmar a falha**
+- [x] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: o primeiro teste FALHA (o hook ainda não imprime a seção); o
 segundo passa por vacuidade.
 
-- [ ] **Passo 3: Implementar no hook**
+- [x] **Passo 3: Implementar no hook**
 
 Em `.claude/hooks/pv-session-context.mjs`, duas edições dentro do bloco
 `if (faseFile) { ... }` (comentário "2. Checklist da fase corrente"):
@@ -282,12 +282,12 @@ e ainda **dentro** do `if (faseFile)`, inserir:
   }
 ```
 
-- [ ] **Passo 4: Rodar os testes e confirmar que passam**
+- [x] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 2 testes PASSAM.
 
-- [ ] **Passo 5: Commit**
+- [x] **Passo 5: Commit**
 
 ```bash
 git add .claude/hooks/pv-session-context.mjs .claude/hooks/tests/pv-session-context.test.mjs
@@ -320,7 +320,7 @@ checkbox marcado no worktree ⇒ aviso para commitar junto.
   `Integridade estado ↔ git: PROBLEMAS` + lista e código 1 quando não.
   A Task 4 depende exatamente desse contrato.
 
-- [ ] **Passo 1: Escrever os testes (devem falhar)**
+- [x] **Passo 1: Escrever os testes (devem falhar)**
 
 Criar `.claude/hooks/tests/pv-state-validate.test.mjs`:
 
@@ -438,13 +438,13 @@ test("acusa checkbox marcado no worktree sem commit", () => {
 });
 ```
 
-- [ ] **Passo 2: Rodar e confirmar a falha**
+- [x] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: os 6 testes novos FALHAM ("Cannot find module ...
 pv-state-validate.mjs"); os da Task 2 continuam passando.
 
-- [ ] **Passo 3: Implementar o validador**
+- [x] **Passo 3: Implementar o validador**
 
 Criar `.claude/hooks/pv-state-validate.mjs`:
 
@@ -615,14 +615,14 @@ process.stdout.write(
 process.exit(1);
 ```
 
-- [ ] **Passo 4: Rodar os testes e confirmar que passam**
+- [x] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 8 testes PASSAM (6 do validador + 2 da Task 2). Rodar também
 `node .claude/hooks/pv-state-validate.mjs` na raiz do repo real e conferir
 saída `OK` (ou investigar problemas reais apontados).
 
-- [ ] **Passo 5: Commit**
+- [x] **Passo 5: Commit**
 
 ```bash
 git add .claude/hooks/pv-state-validate.mjs .claude/hooks/tests/pv-state-validate.test.mjs
@@ -645,7 +645,7 @@ documentado bate com o git — mas sem ruído quando está tudo certo.
 - Consome: o contrato CLI da Task 3 (`--quiet`: silêncio + código 0 quando
   OK; relatório + código 1 quando não).
 
-- [ ] **Passo 1: Escrever o teste (deve falhar)**
+- [x] **Passo 1: Escrever o teste (deve falhar)**
 
 Acrescentar ao final de `.claude/hooks/tests/pv-session-context.test.mjs`
 (reutilizando `makeProject` e `run` já definidos; o fixture precisa de git
@@ -668,12 +668,12 @@ test("reporta problemas de integridade na abertura da sessão", () => {
 });
 ```
 
-- [ ] **Passo 2: Rodar e confirmar a falha**
+- [x] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: o teste novo FALHA (o hook ainda não chama o validador).
 
-- [ ] **Passo 3: Implementar a chamada no hook**
+- [x] **Passo 3: Implementar a chamada no hook**
 
 Em `.claude/hooks/pv-session-context.mjs`, trocar o import:
 
@@ -710,7 +710,7 @@ if (validate.status !== 0 && validate.stdout) {
 }
 ```
 
-- [ ] **Passo 4: Rodar os testes e confirmar que passam**
+- [x] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
 Esperado: 9 testes PASSAM. Atenção ao teste "não imprime a seção quando está
@@ -719,7 +719,7 @@ nesse fixture (que não tem git) — todos os comandos `sh()` retornam `""`,
 nenhum problema é acumulado, ele sai com 0 e, em modo `--quiet`, sem saída;
 o hook não acrescenta nada. Se esse teste quebrar, é regressão real.
 
-- [ ] **Passo 5: Commit**
+- [x] **Passo 5: Commit**
 
 ```bash
 git add .claude/hooks/pv-session-context.mjs .claude/hooks/tests/pv-session-context.test.mjs
@@ -743,7 +743,7 @@ e verificação.
 - Consome: o fluxo de decisão via `mcp__codex-council__codex` já descrito na
   skill (as dúvidas dos subagentes voltam por esse caminho).
 
-- [ ] **Passo 1: Acrescentar a subseção à skill**
+- [x] **Passo 1: Acrescentar a subseção à skill**
 
 Em `.claude/skills/autonomous-phase/SKILL.md`, inserir entre as seções
 "## Execução" e "## Validação":
@@ -774,13 +774,13 @@ mudança previstas).
    que toquem os mesmos arquivos.
 ```
 
-- [ ] **Passo 2: Verificar a coerência da skill**
+- [x] **Passo 2: Verificar a coerência da skill**
 
 Releia a skill inteira e confirme: a numeração das seções continua íntegra;
 a subseção nova não contradiz "Execução" (decisões continuam passando pelo
 Codex) nem "Validação" (checkbox no mesmo commit, feito pelo orquestrador).
 
-- [ ] **Passo 3: Commit**
+- [x] **Passo 3: Commit**
 
 ```bash
 git add .claude/skills/autonomous-phase/SKILL.md
@@ -791,13 +791,13 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
 
 ## Critérios de aceite do plano
 
-- [ ] `node --test ".claude/hooks/tests/*.test.mjs"` passa com 9 testes verdes.
-- [ ] `node .claude/hooks/pv-state-validate.mjs` na raiz do repo responde
+- [x] `node --test ".claude/hooks/tests/*.test.mjs"` passa com 9 testes verdes.
+- [x] `node .claude/hooks/pv-state-validate.mjs` na raiz do repo responde
       `Integridade estado ↔ git: OK` (ou os problemas apontados são reais e
       foram tratados).
-- [ ] `node .claude/hooks/pv-session-context.mjs` continua imprimindo o
+- [x] `node .claude/hooks/pv-session-context.mjs` continua imprimindo o
       bloco de estado normal, sem erro, em repo limpo.
-- [ ] `TEMPLATE.md` e `SKILL.md` referenciam os mesmos literais
+- [x] `TEMPLATE.md` e `SKILL.md` referenciam os mesmos literais
       (`## Contexto de retomada`, `(vazio)`).
-- [ ] Cinco commits pequenos, um por task; push feito somente pelo
+- [x] Cinco commits pequenos, um por task; push feito somente pelo
       proprietário.
