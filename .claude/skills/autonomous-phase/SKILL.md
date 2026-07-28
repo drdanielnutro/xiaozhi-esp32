@@ -16,7 +16,10 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
 3. Estado por task: se `docs/professor-virtual/fases/fase-N.md` não existir
    para esta fase, crie-o a partir de `docs/professor-virtual/fases/TEMPLATE.md`
    como primeiro ato (quebra da fase em tasks com critérios); se existir,
-   retome do primeiro checkbox aberto.
+   leia primeiro a seção "Contexto de retomada" (quando preenchida) para se
+   reancorar no ponto exato da pausa, e então retome do primeiro checkbox
+   aberto. Volte a seção para "(vazio)" no commit que concluir a task
+   retomada.
 4. Execute:
 
    `node "$CLAUDE_PROJECT_DIR/.claude/hooks/codex-decision-proxy.mjs" --enable`
@@ -40,6 +43,12 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
    `updatedInput.answers` como resposta do usuário.
 8. Não faça push, deploy, comunicação externa, alteração de produção ou
    operação destrutiva.
+9. Ao interromper no meio de uma task (fim de sessão, pausa, bloqueio
+   temporário), preencha a seção "Contexto de retomada" da `fase-N.md`
+   antes de encerrar: task em andamento, último passo concluído, próximo
+   passo exato e decisões já tomadas. Não é preciso commitar a pausa — o
+   arquivo no worktree basta; o hook de SessionStart injeta a seção na
+   sessão seguinte.
 
 ## Validação
 
