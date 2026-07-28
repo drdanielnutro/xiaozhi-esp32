@@ -163,7 +163,7 @@ seções 7–9 e Apêndice B) e o que o repo já oferece:
 | Tocar a voz do tutor (MP3 base64, dezenas–centenas de KB) | Componente `espressif/esp_audio_codec ~2.5.0` no manifest (`main/idf_component.yml:25`) — fornece decoders de áudio, incluindo MP3, conforme documentação do componente (seção 6) | **Nenhum uso de MP3 no código hoje** (grep sem resultados em `main/`): decodificação MP3→PCM e reamostragem p/ 24 kHz são trabalho novo; watchdog de 10 s do lado da UI (spec §9.3) |
 | Exibir imagem PNG do tutor (o campo base64 no JSON pode passar de 1 MB — spec §8.1) | LVGL com `CONFIG_LV_USE_LODEPNG=y` (`sdkconfig.defaults:56`); display RGB565 1024×600 | Orçamento de RAM: JSON bruto + base64 + PNG decodificado simultâneos (spec §8.1); o tamanho decodificado depende das dimensões/formato de cor. **O contrato não limita o tamanho da resposta** (o backend devolve os bytes gerados sem redimensionar; a evolução de contrato da spec §8 que resolveria isso não existe hoje): exigir medição real no hardware e tratamento seguro de resposta excessiva/falha de alocação |
 | Base64 decode (MP3 e PNG chegam embutidos no JSON) | mbedTLS no ESP-IDF fornece base64 | Streaming/parse do JSON grande do turno sem duplicações desnecessárias |
-| Telas de preparação/tutoria/failsafe + toque | LVGL 9 (`esp_lvgl_port ~2.8.0`) + GT911 5 pontos + fontes/emoji já configurados no CMake | UI inteira do PV é nova (máquina de fases da spec §9.2); assets de som locais devem ser copiados de `/home/deniellmed/licao_casa/frontend/public/sounds/` (spec §9.3) |
+| Telas de preparação/tutoria/failsafe + toque | LVGL 9 (`esp_lvgl_port ~2.8.0`) + GT911 5 pontos + fontes/emoji já configurados no CMake | UI inteira do PV é nova (máquina de fases da spec §9.2); assets de som locais devem ser copiados de `/Users/institutorecriare/VSCodeProjects/licao_casa/frontend/public/sounds/` (spec §9.3) |
 | Rede local com o backend (`http://IP:8000`) | Wi-Fi 6 via C6 (`esp_hosted`/`esp_wifi_remote`), provisão de Wi-Fi pelo botão BOOT (`.cc:429-439`) | Configurar/persistir endereço do backend (NVS própria do PV); health-check periódico de 10 s (spec §9.3) |
 | Persistência mínima no dispositivo (rede + endereço do backend) | NVS disponível; partições `nvs` 840K + `nvsfactory` 200K (`partitions/v2/32m.csv`) | Chaves NVS novas do PV são API persistente — planejar nomes/migração desde o início (regra do repo) |
 | Espaço p/ app e assets | OTA dupla de 4 MB + partição de assets de 16 MB (`partitions/v2/32m.csv`) | Sons locais do PV cabem com folga na partição de assets |
@@ -176,11 +176,11 @@ Waveshare (7B):
 - Produto: https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-7b.htm
   (SKU com câmera OV5647 inclusa: 32511)
 - **Cópia local da documentação** (offline, usada nesta revisão):
-  `/home/deniellmed/projetos/jarvis/documentos/ESP32-P4-7-inch-LCD-Display-TouchScreen-WIFI6-ESP32-C6.md`
+  `/Users/institutorecriare/VSCodeProjects/jarvis/jarvis/documentos/ESP32-P4-7-inch-LCD-Display-TouchScreen-WIFI6-ESP32-C6.md`
   (confirma: módulo **ESP32-P4NRW32** com 32 MB PSRAM no encapsulamento +
   32 MB NOR flash; alto-falante PH2.0 "polarity independent"; porta
   MIPI-CSI onboard com ISP e encoder H.264/JPEG 1080p) e
-  `/home/deniellmed/projetos/jarvis/documentos/Development-Environment-Setup-IDF.md`
+  `/Users/institutorecriare/VSCodeProjects/jarvis/jarvis/documentos/Development-Environment-Setup-IDF.md`
 
 Espressif (já citadas na spec, Apêndice B.3, mais as específicas daqui):
 - Driver de câmera (esp32p4): https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/api-reference/peripherals/camera_driver.html

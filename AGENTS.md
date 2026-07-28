@@ -36,9 +36,9 @@ periféricos da placa.
 
 ## Mapa de repositórios e fontes
 
-- **Este repositório** (`/home/deniellmed/projetos/xiaozhi-esp32`): base do
+- **Este repositório** (`/Users/institutorecriare/VSCodeProjects/xiaozhi-esp32`): base do
   firmware; fork do `78/xiaozhi-esp32`.
-- **`/home/deniellmed/licao_casa`**: o Professor Virtual existente.
+- **`/Users/institutorecriare/VSCodeProjects/licao_casa`**: o Professor Virtual existente.
   O `backend/` (Python + FastAPI) é a fonte de verdade pedagógica e
   persistente e permanece **intocável**; o `frontend/` (React) é a
   implementação de referência do comportamento do cliente.
@@ -59,7 +59,7 @@ Fundamente toda decisão ou revisão nesta ordem:
    experiência (incluindo as premissas abaixo).
 2. **`DOCUMENTACAO-APP.md`** — comportamento esperado, fluxos, estados,
    API HTTP, mídia e experiência.
-3. **Código real do backend** em `/home/deniellmed/licao_casa/backend/` —
+3. **Código real do backend** em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` —
    o contrato efetivamente implementado.
 4. **Código e documentação reais do firmware** neste repositório —
    arquitetura, padrões, recursos da placa, build e limitações.

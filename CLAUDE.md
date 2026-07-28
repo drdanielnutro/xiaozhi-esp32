@@ -102,7 +102,7 @@ lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
 
 - Especificação funcional: `DOCUMENTACAO-APP.md` (raiz deste repo). Consulte-a
   antes de implementar ou alterar comportamento do cliente.
-- O backend em `/home/deniellmed/licao_casa/backend/` é **intocável**: fonte de
+- O backend em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` é **intocável**: fonte de
   verdade pedagógica. O firmware se adapta ao contrato HTTP vigente (seção 7 da
   especificação); nunca faça retry automático de `POST /api/turn`.
 - Placa alvo: Waveshare ESP32-P4-WIFI6-Touch-LCD-7B.

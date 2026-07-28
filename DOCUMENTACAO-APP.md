@@ -26,7 +26,7 @@ Este documento é **autossuficiente**: descreve o comportamento completo do sist
 **Caminhos de arquivo:** este documento é a especificação completa — nenhuma leitura adicional é obrigatória. Quando ele cita arquivos do repositório (para inspeção opcional ou cópia de assets), usa caminhos absolutos da máquina do desktop, onde o repositório reside em:
 
 ```text
-/home/deniellmed/projetos/licao_casa
+/Users/institutorecriare/VSCodeProjects/licao_casa
 ```
 
 Notas de portabilidade para hardware embarcado estão no **Apêndice B**.
@@ -84,7 +84,7 @@ Consequências práticas:
 |---|---|---|
 | **Backend** | Python | FastAPI (monolito assíncrono), Pydantic (validação), aiofiles (I/O assíncrono), uvicorn |
 | **Cliente atual** | TypeScript | React 19 + Vite, zustand (estado), react-webcam (câmera), axios (HTTP) |
-| **Persistência** | — | Arquivos JSON locais em `/home/deniellmed/projetos/licao_casa/data/` (no desktop) |
+| **Persistência** | — | Arquivos JSON locais em `/Users/institutorecriare/VSCodeProjects/licao_casa/data/` (no desktop) |
 
 O backend consome **três APIs externas de IA**, cada uma atrás de um módulo adaptador próprio (o resto do código nunca fala com a API diretamente):
 
@@ -430,7 +430,7 @@ Comandos de gravação e foto ficam **desabilitados** fora de `idle`.
 | Inatividade em `idle` | toca som de lembrete local | **120 s**, no máximo **1× por tarefa**, **desativado durante failsafe** |
 | Conectividade | `GET /api/health` periódico; indicador de conexão | a cada **10 s** |
 
-Assets de som locais do cliente (nenhum vem de API; os arquivos MP3 estão em `/home/deniellmed/projetos/licao_casa/frontend/public/sounds/` e **devem ser copiados** para qualquer reimplementação):
+Assets de som locais do cliente (nenhum vem de API; os arquivos MP3 estão em `/Users/institutorecriare/VSCodeProjects/licao_casa/frontend/public/sounds/` e **devem ser copiados** para qualquer reimplementação):
 
 | Arquivo | Gatilho |
 |---|---|
@@ -529,7 +529,7 @@ Modo debug opcional grava em `data/debug/` o último turno completo (JSON, entra
 ## 11. Organização do código
 
 ```text
-/home/deniellmed/projetos/licao_casa/
+/Users/institutorecriare/VSCodeProjects/licao_casa/
 ├── backend/                 # Python + FastAPI — o cérebro
 │   ├── main.py              # endpoints, orquestração do turno, lock, persistência
 │   ├── session_engine.py    # máquina de estados: funções puras, sem I/O
@@ -556,7 +556,7 @@ Modo debug opcional grava em `data/debug/` o último turno completo (JSON, entra
 └── documentos_canonicos/    # especificações de produto e da máquina de estados
 ```
 
-**Regra de ouro para quem for reimplementar o cliente:** a pasta `/home/deniellmed/projetos/licao_casa/frontend/` é a referência de comportamento (§9 resume o essencial), `/home/deniellmed/projetos/licao_casa/backend/` permanece intocado como fonte de verdade, e o contrato entre os dois é exclusivamente o da §7 — qualquer cliente que o respeite (navegador, firmware ou script de teste) recebe exatamente a mesma tutoria.
+**Regra de ouro para quem for reimplementar o cliente:** a pasta `/Users/institutorecriare/VSCodeProjects/licao_casa/frontend/` é a referência de comportamento (§9 resume o essencial), `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` permanece intocado como fonte de verdade, e o contrato entre os dois é exclusivamente o da §7 — qualquer cliente que o respeite (navegador, firmware ou script de teste) recebe exatamente a mesma tutoria.
 
 ---
 

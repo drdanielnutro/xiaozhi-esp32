@@ -103,7 +103,7 @@ hierarquia das fontes). Regras inegociáveis ao decidir:
   idempotência.
 - Nunca aprove mover regra pedagógica, contador ou decisão de avanço para o
   dispositivo: o backend é a única fonte de verdade pedagógica.
-- Mudança no backend (`/home/deniellmed/licao_casa/backend/`) só pode ser
+- Mudança no backend (`/Users/institutorecriare/VSCodeProjects/licao_casa/backend/`) só pode ser
   recomendada nas 5 condições de "Preservação do backend" do `AGENTS.md`;
   sem elas, a resposta é adaptar o firmware. Mesmo com elas, `escalate: true`
   — mexer no backend é decisão do proprietário.
