@@ -1,8 +1,10 @@
 # Plano — Aprimoramentos do sistema de fases e estado
 
-> **Para agentes executores:** use a skill `superpowers:subagent-driven-development`
-> (recomendada) ou `superpowers:executing-plans` para implementar este plano
-> task a task. Os passos usam checkboxes (`- [ ]`) para rastreamento.
+> **Para agentes executores:** implemente este plano task a task. Se as skills
+> `superpowers:subagent-driven-development` ou `superpowers:executing-plans`
+> existirem no ambiente, use-as; caso contrário, execute diretamente (com
+> subagentes padrão quando útil). Os passos usam checkboxes (`- [ ]`) para
+> rastreamento.
 
 **Objetivo:** fortalecer o sistema atual de fases/tasks do Professor Virtual em
 três pontos: retomada precisa após pausas no meio de uma fase, proteção da
@@ -52,9 +54,12 @@ para esse registro.
 - Modificar: `.claude/skills/autonomous-phase/SKILL.md`
 
 **Interfaces:**
-- Produz: a seção `## Contexto de retomada` com marcador literal `(vazio)`
-  quando não preenchida — as Tasks 2 e o hook dependem desses dois textos
-  exatos (`## Contexto de retomada` e `(vazio)`).
+- Produz: a seção `## Contexto de retomada`. Contrato de "vazia": o **corpo
+  útil** da seção — o que sobra fora do blockquote de instrução e dos
+  comentários HTML — é exatamente `(vazio)`. A Task 2 depende desse contrato
+  e dos literais `## Contexto de retomada` e `(vazio)`. Atenção: o literal
+  `(vazio)` também aparece dentro do blockquote de instrução, portanto a
+  detecção **nunca** pode ser por simples presença da string na seção.
 
 - [ ] **Passo 1: Acrescentar a seção ao template**
 
@@ -142,9 +147,11 @@ seção de retomada seja sempre injetada por inteiro.
 - Criar: `.claude/hooks/tests/pv-session-context.test.mjs`
 
 **Interfaces:**
-- Consome: a seção `## Contexto de retomada` e o literal `(vazio)` da Task 1.
+- Consome: a seção `## Contexto de retomada` da Task 1, pelo contrato de
+  corpo útil (fora de blockquote/comentário HTML) igual a `(vazio)` = vazia.
 - Produz: bloco `--- Contexto de retomada (pausa anterior) ---` no stdout do
-  hook, apenas quando a seção está preenchida.
+  hook, apenas quando a seção está preenchida (corpo útil, sem blockquote
+  nem comentários).
 
 - [ ] **Passo 1: Escrever os testes (devem falhar)**
 
@@ -176,19 +183,31 @@ function run(dir) {
   });
 }
 
+// Formato real do template: o blockquote de instrução contém o literal
+// "(vazio)" — os fixtures precisam incluí-lo para que os testes guardem a
+// detecção por corpo útil (e não por simples presença da string).
+const INSTRUCAO =
+  `> Preencha ao interromper o trabalho no meio de uma task. Substitua todo\n` +
+  `> o conteúdo por "(vazio)" no commit que concluir a task retomada.\n`;
+const COMENTARIO =
+  `<!-- Formato sugerido ao preencher:\n- Task em andamento: TN\n-->\n`;
+
 test("imprime o contexto de retomada mesmo com checklist além do corte", () => {
   const dir = makeProject();
   const recheio = Array.from({ length: 80 }, (_, i) => `linha ${i}`).join("\n");
   writeFileSync(
     join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
     `# Fase F1\n\n## Tasks\n\n- [ ] T1 — parser\n\n${recheio}\n\n` +
-      `## Contexto de retomada\n\n- Task em andamento: T1\n` +
-      `- Próximo passo exato: implementar o parser\n\n## Notas da fase\n`
+      `## Contexto de retomada\n\n${INSTRUCAO}\n` +
+      `- Task em andamento: T1\n` +
+      `- Próximo passo exato: implementar o parser\n\n` +
+      `${COMENTARIO}\n## Notas da fase\n`
   );
   const r = run(dir);
   assert.equal(r.status, 0);
   assert.match(r.stdout, /Contexto de retomada \(pausa anterior\)/);
   assert.match(r.stdout, /Próximo passo exato: implementar o parser/);
+  assert.doesNotMatch(r.stdout, /Preencha ao interromper/);
 });
 
 test("não imprime a seção quando está vazia", () => {
@@ -196,7 +215,8 @@ test("não imprime a seção quando está vazia", () => {
   writeFileSync(
     join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
     `# Fase F1\n\n## Tasks\n\n- [ ] T1 — parser\n\n` +
-      `## Contexto de retomada\n\n(vazio)\n\n## Notas da fase\n`
+      `## Contexto de retomada\n\n${INSTRUCAO}\n(vazio)\n\n` +
+      `${COMENTARIO}\n## Notas da fase\n`
   );
   const r = run(dir);
   assert.equal(r.status, 0);
@@ -240,13 +260,25 @@ e ainda **dentro** do `if (faseFile)`, inserir:
 
 ```javascript
   // A retomada sai sempre integral: o corte de 60 linhas acima não pode
-  // engolir justamente o registro de onde o trabalho parou.
+  // engolir justamente o registro de onde o trabalho parou. A decisão usa o
+  // CORPO ÚTIL da seção (sem blockquote e sem comentários HTML): o literal
+  // "(vazio)" também existe dentro da instrução do template e não pode
+  // contar como conteúdo.
   const retomada = faseText.match(
     /## Contexto de retomada[\s\S]*?(?=\n## |$)/
   );
-  if (retomada && !retomada[0].includes("(vazio)")) {
-    out.push("--- Contexto de retomada (pausa anterior) ---");
-    out.push(retomada[0].trim());
+  if (retomada) {
+    const corpo = retomada[0]
+      .replace(/^## Contexto de retomada\s*/, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .split("\n")
+      .filter((l) => !l.trim().startsWith(">"))
+      .join("\n")
+      .trim();
+    if (corpo && corpo !== "(vazio)") {
+      out.push("--- Contexto de retomada (pausa anterior) ---");
+      out.push(corpo);
+    }
   }
 ```
 
@@ -269,8 +301,10 @@ git commit -m "SessionStart injeta contexto de retomada integralmente"
 O hook de Stop lembra de atualizar o estado, mas nada *verifica* depois que a
 regra foi cumprida. Este script audita as invariantes do sistema: fase
 concluída na tabela ⇒ checklist fechado e hash real; checklist fechado ⇒
-tabela atualizada; commit que marca checkbox ⇒ toca código (ou é o commit de
-encerramento); checkbox marcado no worktree ⇒ aviso para commitar junto.
+tabela atualizada; commit que marca checkbox (contagem **líquida** — reescrever
+uma linha já marcada não conta) ⇒ inclui outro arquivo de trabalho no mesmo
+commit, seja código, doc entregue ou tooling (ou é o commit de encerramento);
+checkbox marcado no worktree ⇒ aviso para commitar junto.
 
 **Arquivos:**
 - Criar: `.claude/hooks/pv-state-validate.mjs`
@@ -364,17 +398,32 @@ test("acusa fase concluída na tabela com checkbox aberto", () => {
   assert.match(r.stdout, /checkbox\(es\) aberto\(s\)/);
 });
 
-test("acusa commit que marca checkbox sem tocar código", () => {
+test("acusa commit que só marca checkbox, sem arquivo de trabalho", () => {
   const { dir, g } = makeRepo();
   const fase = join(dir, "docs", "professor-virtual", "fases", "fase-1.md");
   writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [ ] T1 — parser\n");
   writeFileSync(join(dir, "modulo.c"), "int x;\n");
   g('git add -A && git commit -qm "inicial"');
   writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n");
-  g('git add -A && git commit -qm "marca T1 sem codigo"');
+  g('git add -A && git commit -qm "marca T1 sem trabalho junto"');
   const r = runValidator(dir);
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /marca checkbox sem tocar código/);
+  assert.match(r.stdout, /sem nenhum outro arquivo de trabalho/);
+});
+
+test("não acusa reformulação de linha já marcada (líquido zero)", () => {
+  const { dir, g } = makeRepo();
+  const fase = join(dir, "docs", "professor-virtual", "fases", "fase-1.md");
+  writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n");
+  writeFileSync(join(dir, "modulo.c"), "int x;\n");
+  g('git add -A && git commit -qm "inicial"');
+  writeFileSync(
+    fase,
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser de linhas\n"
+  );
+  g('git add -A && git commit -qm "reformula texto de task concluida"');
+  const r = runValidator(dir);
+  assert.equal(r.status, 0);
 });
 
 test("acusa checkbox marcado no worktree sem commit", () => {
@@ -392,7 +441,7 @@ test("acusa checkbox marcado no worktree sem commit", () => {
 - [ ] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test .claude/hooks/tests/`
-Esperado: os 5 testes novos FALHAM ("Cannot find module ...
+Esperado: os 6 testes novos FALHAM ("Cannot find module ...
 pv-state-validate.mjs"); os da Task 2 continuam passando.
 
 - [ ] **Passo 3: Implementar o validador**
@@ -509,8 +558,11 @@ for (const fase of fases) {
   }
 }
 
-// Invariante 3 (regra de ouro): commit que marca [x] deve tocar código no
-// mesmo commit — exceto o commit de encerramento da fase, que toca o plano.
+// Invariante 3 (regra de ouro): commit que marca [x] — em contagem LÍQUIDA,
+// para não acusar reescrita de linha já marcada — deve incluir outro arquivo
+// de trabalho no mesmo commit (código, doc entregue ou tooling). A violação
+// real é o commit que só mexe no checklist. Exceção: o commit de
+// encerramento da fase, que toca o plano.
 for (const fase of fases) {
   const rel = `docs/professor-virtual/fases/${fase.file}`;
   const hashes = sh(`git log --format=%H -n ${MAX_COMMITS} -- "${rel}"`)
@@ -518,20 +570,23 @@ for (const fase of fases) {
     .filter(Boolean);
   for (const hash of hashes) {
     const diff = sh(`git show --format= --unified=0 ${hash} -- "${rel}"`);
-    const marks = (diff.match(/^\+- \[[xX]\]/gm) || []).length;
-    if (marks === 0) continue;
+    const added = (diff.match(/^\+- \[[xX]\]/gm) || []).length;
+    const removed = (diff.match(/^-- \[[xX]\]/gm) || []).length;
+    if (added - removed <= 0) continue;
     const files = sh(`git show --format= --name-only ${hash}`)
       .split("\n")
       .filter(Boolean);
-    const touchesCode = files.some(
-      (f) => !f.startsWith("docs/") && !f.startsWith(".claude/")
+    const touchesWork = files.some(
+      (f) =>
+        !f.startsWith("docs/professor-virtual/fases/") &&
+        f !== "docs/professor-virtual/plano-firmware.md"
     );
     const isClosure = files.includes(
       "docs/professor-virtual/plano-firmware.md"
     );
-    if (!touchesCode && !isClosure) {
+    if (!touchesWork && !isClosure) {
       problems.push(
-        `F${fase.n}: commit ${hash.slice(0, 7)} marca checkbox sem tocar código nem encerrar a fase.`
+        `F${fase.n}: commit ${hash.slice(0, 7)} marca checkbox sem nenhum outro arquivo de trabalho no commit.`
       );
     }
   }
@@ -563,7 +618,7 @@ process.exit(1);
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test .claude/hooks/tests/`
-Esperado: 7 testes PASSAM (5 do validador + 2 da Task 2). Rodar também
+Esperado: 8 testes PASSAM (6 do validador + 2 da Task 2). Rodar também
 `node .claude/hooks/pv-state-validate.mjs` na raiz do repo real e conferir
 saída `OK` (ou investigar problemas reais apontados).
 
@@ -636,10 +691,13 @@ e inserir, entre o bloco "3. Git em uma linha" e o bloco
 "4. Ponteiros permanentes":
 
 ```javascript
-// 3b. Integridade estado ↔ git: só aparece quando há problemas.
+// 3b. Integridade estado ↔ git: só aparece quando há problemas. O caminho
+// do validador é resolvido relativo a ESTE arquivo (import.meta.url), não a
+// CLAUDE_PROJECT_DIR — nos testes, o project dir é um fixture temporário
+// que não contém .claude/hooks/.
 const validate = spawnSync(
   process.execPath,
-  [join(root, ".claude", "hooks", "pv-state-validate.mjs"), "--quiet"],
+  [new URL("./pv-state-validate.mjs", import.meta.url).pathname, "--quiet"],
   {
     cwd: root,
     encoding: "utf8",
@@ -655,11 +713,11 @@ if (validate.status !== 0 && validate.stdout) {
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test .claude/hooks/tests/`
-Esperado: 8 testes PASSAM. Atenção ao teste "não imprime a seção quando está
-vazia": o fixture dele não tem git, o validador retorna problemas vazios?
-Não — sem git, todos os comandos `sh()` do validador retornam `""`, nenhum
-problema é acumulado e ele sai com 0; o hook não acrescenta nada. Se esse
-teste quebrar, é regressão real.
+Esperado: 9 testes PASSAM. Atenção ao teste "não imprime a seção quando está
+vazia": como o validador é resolvido via `import.meta.url`, ele RODA também
+nesse fixture (que não tem git) — todos os comandos `sh()` retornam `""`,
+nenhum problema é acumulado, ele sai com 0 e, em modo `--quiet`, sem saída;
+o hook não acrescenta nada. Se esse teste quebrar, é regressão real.
 
 - [ ] **Passo 5: Commit**
 
@@ -733,7 +791,7 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
 
 ## Critérios de aceite do plano
 
-- [ ] `node --test .claude/hooks/tests/` passa com 8 testes verdes.
+- [ ] `node --test .claude/hooks/tests/` passa com 9 testes verdes.
 - [ ] `node .claude/hooks/pv-state-validate.mjs` na raiz do repo responde
       `Integridade estado ↔ git: OK` (ou os problemas apontados são reais e
       foram tratados).
