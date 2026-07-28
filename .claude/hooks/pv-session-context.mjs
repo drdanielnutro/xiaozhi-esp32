@@ -4,7 +4,7 @@
 // Saída curta por design: tabela de fases + checklist da fase corrente + git.
 
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { resolve, join } from "node:path";
 
 const root = resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());
@@ -98,6 +98,24 @@ const lastCommit = sh("git log --oneline -1") || "sem commits";
 const porcelain = sh("git status --porcelain");
 const pending = porcelain ? porcelain.split("\n").length : 0;
 out.push(`--- Git: ${lastCommit} | mudanças não commitadas: ${pending} ---`);
+
+// 3b. Integridade estado ↔ git: só aparece quando há problemas. O caminho
+// do validador é resolvido relativo a ESTE arquivo (import.meta.url), não a
+// CLAUDE_PROJECT_DIR — nos testes, o project dir é um fixture temporário
+// que não contém .claude/hooks/.
+const validate = spawnSync(
+  process.execPath,
+  [new URL("./pv-state-validate.mjs", import.meta.url).pathname, "--quiet"],
+  {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 10000,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+  }
+);
+if (validate.status !== 0 && validate.stdout) {
+  out.push(validate.stdout.trim());
+}
 
 // 4. Ponteiros permanentes
 out.push(

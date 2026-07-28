@@ -62,3 +62,18 @@ test("não imprime a seção quando está vazia", () => {
   assert.equal(r.status, 0);
   assert.doesNotMatch(r.stdout, /pausa anterior/);
 });
+
+test("reporta problemas de integridade na abertura da sessão", () => {
+  const dir = makeProject();
+  const g = (cmd) =>
+    spawnSync("sh", ["-c", cmd], { cwd: dir, encoding: "utf8" });
+  g("git init -q");
+  g('git config user.email "t@t" && git config user.name "t"');
+  const fase = join(dir, "docs", "professor-virtual", "fases", "fase-1.md");
+  writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [ ] T1 — parser\n");
+  g('git add -A && git commit -qm "abre fase 1"');
+  writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n");
+  const r = run(dir);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /Integridade estado ↔ git: PROBLEMAS/);
+});
