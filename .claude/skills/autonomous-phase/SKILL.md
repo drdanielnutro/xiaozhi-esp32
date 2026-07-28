@@ -50,6 +50,30 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
    arquivo no worktree basta; o hook de SessionStart injeta a seção na
    sessão seguinte.
 
+### Tasks pesadas em contexto limpo
+
+Para proteger a janela de contexto do orquestrador em fases longas, execute
+em um subagente (ferramenta de agente, tipo `general-purpose`) toda task que
+provavelmente exigir ler muitos arquivos do firmware ou produzir um diff
+grande (heurística: mais de ~5 arquivos tocados ou mais de ~300 linhas de
+mudança previstas).
+
+1. O prompt do subagente deve ser autossuficiente: texto da task e critério
+   "pronto quando" copiados da `fase-N.md`; arquivos e diretórios de
+   partida; invariantes aplicáveis do `AGENTS.md`; e as proibições — não
+   commitar, não fazer push, não editar arquivos gerados/vendor, não gravar
+   em hardware.
+2. O subagente implementa e testa, mas NÃO decide dúvidas materiais
+   (arquitetura, biblioteca, contrato, nomenclatura pública): ao encontrar
+   uma, deve parar e retornar a dúvida com as opções e consequências. O
+   orquestrador então decide pelo fluxo normal (`mcp__codex-council__codex`)
+   e redespacha o subagente com a decisão tomada.
+3. Ao receber o resultado, o orquestrador confere o diff, roda os testes
+   relevantes e só então marca o checkbox e commita (seção "Validação").
+   O commit é sempre do orquestrador — nunca do subagente.
+4. Uma task por subagente. Não paralelize tasks com dependência entre si ou
+   que toquem os mesmos arquivos.
+
 ## Validação
 
 Para cada task:
