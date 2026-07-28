@@ -61,11 +61,33 @@ if (existsSync(fasesDir)) {
   }
 }
 if (faseFile) {
-  const lines = readFileSync(join(fasesDir, faseFile), "utf8").split("\n");
+  const faseText = readFileSync(join(fasesDir, faseFile), "utf8");
+  const lines = faseText.split("\n");
   out.push(`--- Checklist da fase corrente (${faseFile}) ---`);
   out.push(lines.slice(0, MAX_FASE_LINES).join("\n"));
   if (lines.length > MAX_FASE_LINES) {
     out.push(`(... truncado; leia docs/professor-virtual/fases/${faseFile})`);
+  }
+  // A retomada sai sempre integral: o corte de 60 linhas acima não pode
+  // engolir justamente o registro de onde o trabalho parou. A decisão usa o
+  // CORPO ÚTIL da seção (sem blockquote e sem comentários HTML): o literal
+  // "(vazio)" também existe dentro da instrução do template e não pode
+  // contar como conteúdo.
+  const retomada = faseText.match(
+    /## Contexto de retomada[\s\S]*?(?=\n## |$)/
+  );
+  if (retomada) {
+    const corpo = retomada[0]
+      .replace(/^## Contexto de retomada\s*/, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .split("\n")
+      .filter((l) => !l.trim().startsWith(">"))
+      .join("\n")
+      .trim();
+    if (corpo && corpo !== "(vazio)") {
+      out.push("--- Contexto de retomada (pausa anterior) ---");
+      out.push(corpo);
+    }
   }
 } else {
   out.push("Nenhuma fase iniciada (sem fase-N.md em docs/professor-virtual/fases/).");
