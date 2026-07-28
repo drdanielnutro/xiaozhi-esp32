@@ -63,6 +63,16 @@ function parseStatusTable() {
     .filter(Boolean);
 }
 
+// Invariante 0: sem git não há auditoria — reportar em vez de fingir OK
+// (sh() devolve "" tanto para "sem histórico" quanto para "git falhou").
+if (sh("git rev-parse --is-inside-work-tree") !== "true") {
+  process.stdout.write(
+    "Integridade estado ↔ git: PROBLEMAS\n" +
+      "- Diretório não é um repositório git (ou git indisponível); auditoria impossível.\n"
+  );
+  process.exit(1);
+}
+
 const fases = listFases();
 const rows = parseStatusTable();
 
@@ -100,7 +110,11 @@ for (const fase of fases) {
   );
   if (done === 0 || open > 0) continue;
   const row = rows.find((r) => r.n === fase.n);
-  if (row && !/conclu/i.test(row.status)) {
+  if (!row) {
+    problems.push(
+      `F${fase.n}: checklist 100% fechado, mas não há linha F${fase.n} na tabela "Status das fases" do plano-firmware.md.`
+    );
+  } else if (!/conclu/i.test(row.status)) {
     problems.push(
       `F${fase.n}: checklist 100% fechado, mas tabela diz "${row.status}" — atualizar plano-firmware.md.`
     );
@@ -150,6 +164,26 @@ if (wtMarks > 0) {
   problems.push(
     `Há ${wtMarks} checkbox(es) marcado(s) no worktree sem commit — commitar junto com o código da task.`
   );
+}
+
+// Invariante 4b: git diff HEAD ignora arquivos não rastreados — uma fase
+// nova, ainda fora do índice, pode conter [x] sem aparecer em nenhum diff.
+const untracked = sh(
+  "git ls-files --others --exclude-standard -- docs/professor-virtual/fases/"
+)
+  .split("\n")
+  .filter((f) => /fase-\d+\.md$/.test(f));
+for (const f of untracked) {
+  try {
+    const { done } = checkboxes(readFileSync(join(root, f), "utf8"));
+    if (done > 0) {
+      problems.push(
+        `${f}: ${done} checkbox(es) marcado(s) em arquivo não rastreado — commitar junto com o código da task.`
+      );
+    }
+  } catch {
+    problems.push(`${f}: arquivo não rastreado ilegível.`);
+  }
 }
 
 if (problems.length === 0) {

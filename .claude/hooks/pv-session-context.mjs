@@ -6,6 +6,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { resolve, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = resolve(process.env.CLAUDE_PROJECT_DIR || process.cwd());
 const planoPath = join(root, "docs", "professor-virtual", "plano-firmware.md");
@@ -62,20 +63,26 @@ if (existsSync(fasesDir)) {
 }
 if (faseFile) {
   const faseText = readFileSync(join(fasesDir, faseFile), "utf8");
-  const lines = faseText.split("\n");
+  // A seção de retomada sai do dump do checklist: ela é tratada no bloco
+  // dedicado abaixo — assim nem as instruções/"(vazio)" poluem o stdout,
+  // nem o conteúdo preenchido aparece duas vezes.
+  const retomada = faseText.match(
+    /## Contexto de retomada[\s\S]*?(?=\n## |$)/
+  );
+  const checklistText = retomada
+    ? faseText.replace(retomada[0], "")
+    : faseText;
+  const lines = checklistText.split("\n");
   out.push(`--- Checklist da fase corrente (${faseFile}) ---`);
   out.push(lines.slice(0, MAX_FASE_LINES).join("\n"));
   if (lines.length > MAX_FASE_LINES) {
     out.push(`(... truncado; leia docs/professor-virtual/fases/${faseFile})`);
   }
-  // A retomada sai sempre integral: o corte de 60 linhas acima não pode
-  // engolir justamente o registro de onde o trabalho parou. A decisão usa o
-  // CORPO ÚTIL da seção (sem blockquote e sem comentários HTML): o literal
-  // "(vazio)" também existe dentro da instrução do template e não pode
-  // contar como conteúdo.
-  const retomada = faseText.match(
-    /## Contexto de retomada[\s\S]*?(?=\n## |$)/
-  );
+  // A retomada sai sempre integral e sanitizada: o corte de 60 linhas acima
+  // não pode engolir justamente o registro de onde o trabalho parou. A
+  // decisão usa o CORPO ÚTIL da seção (sem blockquote e sem comentários
+  // HTML): o literal "(vazio)" também existe dentro da instrução do
+  // template e não pode contar como conteúdo.
   if (retomada) {
     const corpo = retomada[0]
       .replace(/^## Contexto de retomada\s*/, "")
@@ -105,7 +112,10 @@ out.push(`--- Git: ${lastCommit} | mudanças não commitadas: ${pending} ---`);
 // que não contém .claude/hooks/.
 const validate = spawnSync(
   process.execPath,
-  [new URL("./pv-state-validate.mjs", import.meta.url).pathname, "--quiet"],
+  [
+    fileURLToPath(new URL("./pv-state-validate.mjs", import.meta.url)),
+    "--quiet",
+  ],
   {
     cwd: root,
     encoding: "utf8",
@@ -113,8 +123,16 @@ const validate = spawnSync(
     env: { ...process.env, CLAUDE_PROJECT_DIR: root },
   }
 );
-if (validate.status !== 0 && validate.stdout) {
-  out.push(validate.stdout.trim());
+if (validate.status !== 0) {
+  if (validate.stdout) {
+    out.push(validate.stdout.trim());
+  } else {
+    // Timeout, módulo ausente ou crash: status ≠ 0 (ou null) sem stdout.
+    // Avisar em vez de sumir com a auditoria silenciosamente.
+    out.push(
+      "(integridade estado ↔ git não verificada: o validador falhou ou excedeu o tempo)"
+    );
+  }
 }
 
 // 4. Ponteiros permanentes

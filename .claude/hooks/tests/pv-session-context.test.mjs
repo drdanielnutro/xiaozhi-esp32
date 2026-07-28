@@ -4,8 +4,11 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
-const HOOK = new URL("../pv-session-context.mjs", import.meta.url).pathname;
+const HOOK = fileURLToPath(
+  new URL("../pv-session-context.mjs", import.meta.url)
+);
 
 function makeProject() {
   const dir = mkdtempSync(join(tmpdir(), "pv-context-"));
@@ -61,6 +64,10 @@ test("não imprime a seção quando está vazia", () => {
   const r = run(dir);
   assert.equal(r.status, 0);
   assert.doesNotMatch(r.stdout, /pausa anterior/);
+  // A seção é excisada do dump do checklist: nem o título, nem a instrução,
+  // nem "(vazio)" devem aparecer no stdout quando está vazia.
+  assert.doesNotMatch(r.stdout, /Contexto de retomada/);
+  assert.doesNotMatch(r.stdout, /Preencha ao interromper/);
 });
 
 test("reporta problemas de integridade na abertura da sessão", () => {

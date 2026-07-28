@@ -801,3 +801,29 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
       (`## Contexto de retomada`, `(vazio)`).
 - [x] Cinco commits pequenos, um por task; push feito somente pelo
       proprietário.
+
+---
+
+## Pós-revisão independente (Codex)
+
+A revisão apontou 2 findings P1 e 4 P2, todos corrigidos em commit próprio.
+Onde os snippets das tasks acima divergirem, **o código commitado é a fonte
+de verdade**. Correções aplicadas:
+
+1. (P1) Validador acusa ausência de git em vez de sair `OK` — `sh()` devolve
+   `""` tanto para "vazio" quanto para "falhou", então há checagem inicial de
+   `git rev-parse --is-inside-work-tree`.
+2. (P1) Invariante 2 também acusa checklist 100% fechado **sem linha
+   correspondente** na tabela (antes só comparava quando a linha existia).
+3. (P2) Invariante 4b: checkboxes marcados em `fase-N.md` não rastreada
+   (fora de `git diff HEAD`) agora são detectados via
+   `git ls-files --others`.
+4. (P2) SessionStart avisa quando o validador falha sem stdout (timeout,
+   crash), em vez de sumir com a auditoria.
+5. (P2) `URL(...).pathname` → `fileURLToPath(...)` no hook e nos testes
+   (caminhos com espaço/percent-encoding).
+6. (P2) A seção de retomada é excisada do dump do checklist e sai apenas no
+   bloco dedicado, sanitizada — sem duplicação nem instruções/"(vazio)" no
+   stdout.
+
+Suíte final: **12 testes** (3 do hook de sessão + 9 do validador).

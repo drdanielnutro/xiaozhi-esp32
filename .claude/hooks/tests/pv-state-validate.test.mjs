@@ -4,9 +4,11 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
-const VALIDATOR = new URL("../pv-state-validate.mjs", import.meta.url)
-  .pathname;
+const VALIDATOR = fileURLToPath(
+  new URL("../pv-state-validate.mjs", import.meta.url)
+);
 
 function makeRepo() {
   const dir = mkdtempSync(join(tmpdir(), "pv-validate-"));
@@ -87,16 +89,55 @@ test("acusa commit que só marca checkbox, sem arquivo de trabalho", () => {
 test("não acusa reformulação de linha já marcada (líquido zero)", () => {
   const { dir, g } = makeRepo();
   const fase = join(dir, "docs", "professor-virtual", "fases", "fase-1.md");
-  writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n");
+  writeFileSync(
+    fase,
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n- [ ] T2 — leitor\n"
+  );
   writeFileSync(join(dir, "modulo.c"), "int x;\n");
   g('git add -A && git commit -qm "inicial"');
   writeFileSync(
     fase,
-    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser de linhas\n"
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser de linhas\n- [ ] T2 — leitor\n"
   );
   g('git add -A && git commit -qm "reformula texto de task concluida"');
   const r = runValidator(dir);
   assert.equal(r.status, 0);
+});
+
+test("acusa ausência de git em vez de fingir OK", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pv-validate-"));
+  mkdirSync(join(dir, "docs", "professor-virtual", "fases"), {
+    recursive: true,
+  });
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /não é um repositório git/);
+});
+
+test("acusa checklist fechado sem linha na tabela", () => {
+  const { dir, g } = makeRepo();
+  writeFileSync(
+    join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n"
+  );
+  writeFileSync(join(dir, "modulo.c"), "int x;\n");
+  g('git add -A && git commit -qm "inicial"');
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /não há linha F1 na tabela/);
+});
+
+test("acusa checkbox marcado em fase não rastreada", () => {
+  const { dir, g } = makeRepo();
+  writeFileSync(join(dir, "README.md"), "x\n");
+  g('git add -A && git commit -qm "inicial"');
+  writeFileSync(
+    join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n- [ ] T2 — leitor\n"
+  );
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /arquivo não rastreado/);
 });
 
 test("acusa checkbox marcado no worktree sem commit", () => {
