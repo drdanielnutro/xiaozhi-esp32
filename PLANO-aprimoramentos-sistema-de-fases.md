@@ -164,8 +164,11 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
-const HOOK = new URL("../pv-session-context.mjs", import.meta.url).pathname;
+const HOOK = fileURLToPath(
+  new URL("../pv-session-context.mjs", import.meta.url)
+);
 
 function makeProject() {
   const dir = mkdtempSync(join(tmpdir(), "pv-context-"));
@@ -221,52 +224,48 @@ test("não imprime a seção quando está vazia", () => {
   const r = run(dir);
   assert.equal(r.status, 0);
   assert.doesNotMatch(r.stdout, /pausa anterior/);
+  // A seção é excisada do dump do checklist: nem o título, nem a instrução,
+  // nem "(vazio)" devem aparecer no stdout quando está vazia.
+  assert.doesNotMatch(r.stdout, /Contexto de retomada/);
+  assert.doesNotMatch(r.stdout, /Preencha ao interromper/);
 });
 ```
 
 - [x] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
-Esperado: o primeiro teste FALHA (o hook ainda não imprime a seção); o
-segundo passa por vacuidade.
+Esperado: os dois testes FALHAM — o hook ainda despeja a seção de retomada
+(título e instrução) no dump do checklist e não imprime o bloco dedicado.
 
 - [x] **Passo 3: Implementar no hook**
 
-Em `.claude/hooks/pv-session-context.mjs`, duas edições dentro do bloco
-`if (faseFile) { ... }` (comentário "2. Checklist da fase corrente"):
-
-**(a)** Substituir a linha:
-
-```javascript
-  const lines = readFileSync(join(fasesDir, faseFile), "utf8").split("\n");
-```
-
-por:
+Em `.claude/hooks/pv-session-context.mjs`, substituir o bloco
+`if (faseFile) { ... }` (comentário "2. Checklist da fase corrente") pelo
+bloco abaixo, **preservando o `else` que o segue**:
 
 ```javascript
+if (faseFile) {
   const faseText = readFileSync(join(fasesDir, faseFile), "utf8");
-  const lines = faseText.split("\n");
-```
-
-**(b)** Logo após o bloco de truncamento:
-
-```javascript
-  if (lines.length > MAX_FASE_LINES) {
-    out.push(`(... truncado; leia docs/professor-virtual/fases/${faseFile})`);
-  }
-```
-
-e ainda **dentro** do `if (faseFile)`, inserir:
-
-```javascript
-  // A retomada sai sempre integral: o corte de 60 linhas acima não pode
-  // engolir justamente o registro de onde o trabalho parou. A decisão usa o
-  // CORPO ÚTIL da seção (sem blockquote e sem comentários HTML): o literal
-  // "(vazio)" também existe dentro da instrução do template e não pode
-  // contar como conteúdo.
+  // A seção de retomada sai do dump do checklist: ela é tratada no bloco
+  // dedicado abaixo — assim nem as instruções/"(vazio)" poluem o stdout,
+  // nem o conteúdo preenchido aparece duas vezes.
   const retomada = faseText.match(
     /## Contexto de retomada[\s\S]*?(?=\n## |$)/
   );
+  const checklistText = retomada
+    ? faseText.replace(retomada[0], "")
+    : faseText;
+  const lines = checklistText.split("\n");
+  out.push(`--- Checklist da fase corrente (${faseFile}) ---`);
+  out.push(lines.slice(0, MAX_FASE_LINES).join("\n"));
+  if (lines.length > MAX_FASE_LINES) {
+    out.push(`(... truncado; leia docs/professor-virtual/fases/${faseFile})`);
+  }
+  // A retomada sai sempre integral e sanitizada: o corte de 60 linhas acima
+  // não pode engolir justamente o registro de onde o trabalho parou. A
+  // decisão usa o CORPO ÚTIL da seção (sem blockquote e sem comentários
+  // HTML): o literal "(vazio)" também existe dentro da instrução do
+  // template e não pode contar como conteúdo.
   if (retomada) {
     const corpo = retomada[0]
       .replace(/^## Contexto de retomada\s*/, "")
@@ -280,6 +279,7 @@ e ainda **dentro** do `if (faseFile)`, inserir:
       out.push(corpo);
     }
   }
+}
 ```
 
 - [x] **Passo 4: Rodar os testes e confirmar que passam**
@@ -299,12 +299,14 @@ git commit -m "SessionStart injeta contexto de retomada integralmente"
 ### Task 3: Validador de integridade estado ↔ git
 
 O hook de Stop lembra de atualizar o estado, mas nada *verifica* depois que a
-regra foi cumprida. Este script audita as invariantes do sistema: fase
-concluída na tabela ⇒ checklist fechado e hash real; checklist fechado ⇒
-tabela atualizada; commit que marca checkbox (contagem **líquida** — reescrever
+regra foi cumprida. Este script audita as invariantes do sistema: sem git ⇒
+acusa em vez de fingir OK; fase concluída na tabela ⇒ checklist fechado e
+hash real; checklist fechado ⇒ tabela atualizada (inclusive quando a linha da
+fase nem existe); commit que marca checkbox (contagem **líquida** — reescrever
 uma linha já marcada não conta) ⇒ inclui outro arquivo de trabalho no mesmo
 commit, seja código, doc entregue ou tooling (ou é o commit de encerramento);
-checkbox marcado no worktree ⇒ aviso para commitar junto.
+checkbox marcado no worktree ou em fase não rastreada ⇒ aviso para commitar
+junto.
 
 **Arquivos:**
 - Criar: `.claude/hooks/pv-state-validate.mjs`
@@ -331,9 +333,11 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
-const VALIDATOR = new URL("../pv-state-validate.mjs", import.meta.url)
-  .pathname;
+const VALIDATOR = fileURLToPath(
+  new URL("../pv-state-validate.mjs", import.meta.url)
+);
 
 function makeRepo() {
   const dir = mkdtempSync(join(tmpdir(), "pv-validate-"));
@@ -414,16 +418,55 @@ test("acusa commit que só marca checkbox, sem arquivo de trabalho", () => {
 test("não acusa reformulação de linha já marcada (líquido zero)", () => {
   const { dir, g } = makeRepo();
   const fase = join(dir, "docs", "professor-virtual", "fases", "fase-1.md");
-  writeFileSync(fase, "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n");
+  writeFileSync(
+    fase,
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n- [ ] T2 — leitor\n"
+  );
   writeFileSync(join(dir, "modulo.c"), "int x;\n");
   g('git add -A && git commit -qm "inicial"');
   writeFileSync(
     fase,
-    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser de linhas\n"
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser de linhas\n- [ ] T2 — leitor\n"
   );
   g('git add -A && git commit -qm "reformula texto de task concluida"');
   const r = runValidator(dir);
   assert.equal(r.status, 0);
+});
+
+test("acusa ausência de git em vez de fingir OK", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pv-validate-"));
+  mkdirSync(join(dir, "docs", "professor-virtual", "fases"), {
+    recursive: true,
+  });
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /não é um repositório git/);
+});
+
+test("acusa checklist fechado sem linha na tabela", () => {
+  const { dir, g } = makeRepo();
+  writeFileSync(
+    join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n"
+  );
+  writeFileSync(join(dir, "modulo.c"), "int x;\n");
+  g('git add -A && git commit -qm "inicial"');
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /não há linha F1 na tabela/);
+});
+
+test("acusa checkbox marcado em fase não rastreada", () => {
+  const { dir, g } = makeRepo();
+  writeFileSync(join(dir, "README.md"), "x\n");
+  g('git add -A && git commit -qm "inicial"');
+  writeFileSync(
+    join(dir, "docs", "professor-virtual", "fases", "fase-1.md"),
+    "# Fase F1\n\n## Tasks\n\n- [x] T1 — parser\n- [ ] T2 — leitor\n"
+  );
+  const r = runValidator(dir);
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /arquivo não rastreado/);
 });
 
 test("acusa checkbox marcado no worktree sem commit", () => {
@@ -441,7 +484,7 @@ test("acusa checkbox marcado no worktree sem commit", () => {
 - [x] **Passo 2: Rodar e confirmar a falha**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
-Esperado: os 6 testes novos FALHAM ("Cannot find module ...
+Esperado: os 9 testes novos FALHAM ("Cannot find module ...
 pv-state-validate.mjs"); os da Task 2 continuam passando.
 
 - [x] **Passo 3: Implementar o validador**
@@ -514,6 +557,16 @@ function parseStatusTable() {
     .filter(Boolean);
 }
 
+// Invariante 0: sem git não há auditoria — reportar em vez de fingir OK
+// (sh() devolve "" tanto para "sem histórico" quanto para "git falhou").
+if (sh("git rev-parse --is-inside-work-tree") !== "true") {
+  process.stdout.write(
+    "Integridade estado ↔ git: PROBLEMAS\n" +
+      "- Diretório não é um repositório git (ou git indisponível); auditoria impossível.\n"
+  );
+  process.exit(1);
+}
+
 const fases = listFases();
 const rows = parseStatusTable();
 
@@ -551,7 +604,11 @@ for (const fase of fases) {
   );
   if (done === 0 || open > 0) continue;
   const row = rows.find((r) => r.n === fase.n);
-  if (row && !/conclu/i.test(row.status)) {
+  if (!row) {
+    problems.push(
+      `F${fase.n}: checklist 100% fechado, mas não há linha F${fase.n} na tabela "Status das fases" do plano-firmware.md.`
+    );
+  } else if (!/conclu/i.test(row.status)) {
     problems.push(
       `F${fase.n}: checklist 100% fechado, mas tabela diz "${row.status}" — atualizar plano-firmware.md.`
     );
@@ -603,6 +660,26 @@ if (wtMarks > 0) {
   );
 }
 
+// Invariante 4b: git diff HEAD ignora arquivos não rastreados — uma fase
+// nova, ainda fora do índice, pode conter [x] sem aparecer em nenhum diff.
+const untracked = sh(
+  "git ls-files --others --exclude-standard -- docs/professor-virtual/fases/"
+)
+  .split("\n")
+  .filter((f) => /fase-\d+\.md$/.test(f));
+for (const f of untracked) {
+  try {
+    const { done } = checkboxes(readFileSync(join(root, f), "utf8"));
+    if (done > 0) {
+      problems.push(
+        `${f}: ${done} checkbox(es) marcado(s) em arquivo não rastreado — commitar junto com o código da task.`
+      );
+    }
+  } catch {
+    problems.push(`${f}: arquivo não rastreado ilegível.`);
+  }
+}
+
 if (problems.length === 0) {
   if (!quiet) process.stdout.write("Integridade estado ↔ git: OK\n");
   process.exit(0);
@@ -618,7 +695,7 @@ process.exit(1);
 - [x] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
-Esperado: 8 testes PASSAM (6 do validador + 2 da Task 2). Rodar também
+Esperado: 11 testes PASSAM (9 do validador + 2 da Task 2). Rodar também
 `node .claude/hooks/pv-state-validate.mjs` na raiz do repo real e conferir
 saída `OK` (ou investigar problemas reais apontados).
 
@@ -687,6 +764,12 @@ por:
 import { execSync, spawnSync } from "node:child_process";
 ```
 
+e acrescentar (para resolver o caminho do validador sem percent-encoding):
+
+```javascript
+import { fileURLToPath } from "node:url";
+```
+
 e inserir, entre o bloco "3. Git em uma linha" e o bloco
 "4. Ponteiros permanentes":
 
@@ -697,7 +780,10 @@ e inserir, entre o bloco "3. Git em uma linha" e o bloco
 // que não contém .claude/hooks/.
 const validate = spawnSync(
   process.execPath,
-  [new URL("./pv-state-validate.mjs", import.meta.url).pathname, "--quiet"],
+  [
+    fileURLToPath(new URL("./pv-state-validate.mjs", import.meta.url)),
+    "--quiet",
+  ],
   {
     cwd: root,
     encoding: "utf8",
@@ -705,19 +791,27 @@ const validate = spawnSync(
     env: { ...process.env, CLAUDE_PROJECT_DIR: root },
   }
 );
-if (validate.status !== 0 && validate.stdout) {
-  out.push(validate.stdout.trim());
+if (validate.status !== 0) {
+  if (validate.stdout) {
+    out.push(validate.stdout.trim());
+  } else {
+    // Timeout, módulo ausente ou crash: status ≠ 0 (ou null) sem stdout.
+    // Avisar em vez de sumir com a auditoria silenciosamente.
+    out.push(
+      "(integridade estado ↔ git não verificada: o validador falhou ou excedeu o tempo)"
+    );
+  }
 }
 ```
 
 - [x] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `node --test ".claude/hooks/tests/*.test.mjs"`
-Esperado: 9 testes PASSAM. Atenção ao teste "não imprime a seção quando está
-vazia": como o validador é resolvido via `import.meta.url`, ele RODA também
-nesse fixture (que não tem git) — todos os comandos `sh()` retornam `""`,
-nenhum problema é acumulado, ele sai com 0 e, em modo `--quiet`, sem saída;
-o hook não acrescenta nada. Se esse teste quebrar, é regressão real.
+Esperado: 12 testes PASSAM. Atenção aos dois primeiros testes da Task 2
+(fixtures sem git): como o validador é resolvido via `import.meta.url`, ele
+RODA também nesses fixtures e, pela invariante 0, sai com 1 — a linha
+"não é um repositório git" aparece no stdout do hook, e os asserts desses
+testes não conflitam com ela. Se algum deles quebrar, é regressão real.
 
 - [x] **Passo 5: Commit**
 
@@ -791,7 +885,7 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
 
 ## Critérios de aceite do plano
 
-- [x] `node --test ".claude/hooks/tests/*.test.mjs"` passa com 9 testes verdes.
+- [x] `node --test ".claude/hooks/tests/*.test.mjs"` passa com 12 testes verdes.
 - [x] `node .claude/hooks/pv-state-validate.mjs` na raiz do repo responde
       `Integridade estado ↔ git: OK` (ou os problemas apontados são reais e
       foram tratados).
@@ -804,26 +898,15 @@ git commit -m "Skill de fase autonoma despacha tasks pesadas a subagentes"
 
 ---
 
-## Pós-revisão independente (Codex)
+## Pós-revisão independente (Codex) — nota histórica
 
-A revisão apontou 2 findings P1 e 4 P2, todos corrigidos em commit próprio.
-Onde os snippets das tasks acima divergirem, **o código commitado é a fonte
-de verdade**. Correções aplicadas:
+A revisão independente da execução apontou 2 findings P1 e 4 P2 (validador
+fingindo OK sem git; checklist fechado sem linha na tabela; fases não
+rastreadas invisíveis ao diff; falha silenciosa do validador; percent-encoding
+em caminhos; retomada duplicada no stdout), corrigidos no commit `d2192fd`.
 
-1. (P1) Validador acusa ausência de git em vez de sair `OK` — `sh()` devolve
-   `""` tanto para "vazio" quanto para "falhou", então há checagem inicial de
-   `git rev-parse --is-inside-work-tree`.
-2. (P1) Invariante 2 também acusa checklist 100% fechado **sem linha
-   correspondente** na tabela (antes só comparava quando a linha existia).
-3. (P2) Invariante 4b: checkboxes marcados em `fase-N.md` não rastreada
-   (fora de `git diff HEAD`) agora são detectados via
-   `git ls-files --others`.
-4. (P2) SessionStart avisa quando o validador falha sem stdout (timeout,
-   crash), em vez de sumir com a auditoria.
-5. (P2) `URL(...).pathname` → `fileURLToPath(...)` no hook e nos testes
-   (caminhos com espaço/percent-encoding).
-6. (P2) A seção de retomada é excisada do dump do checklist e sai apenas no
-   bloco dedicado, sanitizada — sem duplicação nem instruções/"(vazio)" no
-   stdout.
-
-Suíte final: **12 testes** (3 do hook de sessão + 9 do validador).
+Em 28/07/2026, os snippets das tasks acima foram **retrofitados** com essas
+correções (C1–C6 de `CORRECOES-E-ANALISE-planos-pre-unificacao.md`): plano e
+código commitado agora coincidem — os snippets são cópia fiel dos arquivos
+finais testados. Suíte final: **12 testes** (3 do hook de sessão + 9 do
+validador).
