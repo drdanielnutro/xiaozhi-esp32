@@ -102,9 +102,19 @@ lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
 
 - Especificação funcional: `DOCUMENTACAO-APP.md` (raiz deste repo). Consulte-a
   antes de implementar ou alterar comportamento do cliente.
-- O backend em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` é **intocável**: fonte de
-  verdade pedagógica. O firmware se adapta ao contrato HTTP vigente (seção 7 da
-  especificação); nunca faça retry automático de `POST /api/turn`.
+- Contrato do dispositivo: `docs/professor-virtual/contrato-dispositivo.md`
+  (perfil v1.1 aditivo — mídia por URL, WAV, imagem redimensionada,
+  idempotência, prepare paginado, token). O firmware implementa o cliente
+  desse contrato.
+- O backend em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` tem duas zonas: o **miolo
+  pedagógico é intocável** (prompts, vereditos, máquina de estados da sessão,
+  failsafe — `gemini.py`, `session_engine.py` e as transições de estado de
+  `main.py`); a **borda de transporte aceita mudanças aditivas** definidas no
+  contrato do dispositivo, sempre preservando o comportamento v1 (frontend web
+  e testes existentes intactos).
+- Retry de `POST /api/turn`: proibido sem `request_id`; com `request_id`
+  (contrato v1.1), reenviar o MESMO `request_id` após timeout é seguro — o
+  backend devolve a resposta armazenada sem criar novo turno.
 - Placa alvo: Waveshare ESP32-P4-WIFI6-Touch-LCD-7B.
 - Upstream `78/xiaozhi-esp32`: sincronização pull-only; mantenha o trabalho do
   Professor Virtual aditivo (placa própria, módulos novos, Kconfig próprio) em
