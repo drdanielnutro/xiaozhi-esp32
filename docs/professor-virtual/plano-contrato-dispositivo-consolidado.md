@@ -4,27 +4,30 @@
 
 **Data da consolidação:** 30/07/2026
 **Este documento consolida:** `plano-contrato-dispositivo.md`
-+ `emenda-01-plano-contrato-dispositivo.md` + `emenda-02-plano-contrato-dispositivo.md`
-(versão corrigida pelo auditor, commit `64f0ba3`) e as correções documentais da
-auditoria final. **Para execução, este documento prevalece sobre os três**;
++ `emenda-01-plano-contrato-dispositivo.md`
++ `emenda-02-plano-contrato-dispositivo.md` (versão corrigida pelo auditor,
+commit `64f0ba3`) + `emenda-03-fish-audio.md` e as correções documentais da
+auditoria final. **Para execução, este documento prevalece sobre os quatro**;
 eles permanecem como histórico. O conteúdo técnico das tasks foi preservado;
-as correções posteriores tornaram preflight, governança e sequência operacional
-autocontidos e executáveis.
+as correções posteriores tornaram preflight, governança e sequência
+operacional autocontidos e executáveis.
 
 **Goal:** Adicionar ao backend `licao_casa` um perfil de contrato para o
 dispositivo embarcado (mídia por URL, áudio WAV/PCM, imagem redimensionada,
 idempotência fail-safe por `request_id`, preparação página a página e token de
-autenticação fail-closed), preservando **literalmente** o comportamento v1 do
-frontend web — e alinhar contrato, governança e plano do firmware nos
-documentos do repositório `xiaozhi-esp32`.
+autenticação fail-closed), preservando literalmente o contrato e o fluxo
+pedagógico v1 do frontend web. Na versão v1.1, a única mudança intencional no
+comportamento percebido do web é a voz: Fish Audio/Itachi substitui
+Polly/Camila. A V1 exata permanece recuperável pela tag `baseline-v1.0`.
 
 **Architecture:** Mudanças aditivas na borda de transporte (campos opcionais,
 endpoints novos, campos novos de resposta que só aparecem no perfil v1.1). O
 miolo pedagógico (`gemini.py`, `session_engine.py`, transições de veredito) não
 é tocado. Requisições sem campos v1.1 recebem exatamente o payload v1 atual.
 
-**Tech Stack:** FastAPI + pydantic v2 + aiofiles, boto3/Polly, Pillow (novo),
-pytest + pytest-asyncio + httpx ASGITransport.
+**Tech Stack:** FastAPI + pydantic v2 + aiofiles, httpx/Fish Audio, Pillow
+(novo), pytest + pytest-asyncio + httpx ASGITransport. boto3/Polly permanece
+somente como legado inativo da V1.
 
 ## Decisões do proprietário (registradas)
 
@@ -37,10 +40,13 @@ pytest + pytest-asyncio + httpx ASGITransport.
 - **D3:** `5588b3e` é a baseline do código V1, condicionada à reconciliação e
   arquivamento corretos do GSD antes de tag/branch; arquivos não rastreados
   ficam fora da tag.
-- **D4 — preflight Polly:** qualquer falha do engine `generative` com PCM
-  interrompe a execução antes da Task 4 para uma emenda, mesmo que uma chamada
-  diagnóstica com `Engine="neural"` funcione. O diagnóstico não muda
-  silenciosamente o engine da V1.
+- **D4 — Fish Audio na v1.1:** Fish Audio substitui Polly como provedor ativo
+  de todo TTS da v1.1. O web recebe MP3 44,1 kHz/128 kbps e o dispositivo
+  recebe WAV PCM s16le mono/16 kHz, ambos com a voz Itachi
+  (`c5a6cb585b094dedb241365e7e271973`) e modelo configurável
+  `s2.1-pro-free`. A integração é HTTP bloqueante até o áudio completo, sem
+  WebSocket, tags emocionais, retry ou fallback para Polly. Qualquer falha ou
+  reprovação do preflight interrompe antes da Task 4.
 - **D5 — duas tags:** `baseline-v1.0` aponta exatamente para `5588b3e` e marca
   a baseline funcional do código; a tag automática `v1.0` do GSD marca o
   encerramento documental do milestone. `git.create_tag` permanece `true`.
@@ -51,6 +57,7 @@ pytest + pytest-asyncio + httpx ASGITransport.
 |---|---|
 | Contrato canônico (`contrato-dispositivo.md`) criado | FEITO (commit `caa3ba8`) — emendas da Parte 1 abaixo PENDENTES |
 | CLAUDE.md (zonas + retry) | FEITO (commit `3873025`) — ajuste de redação na Parte 1 PENDENTE |
+| Emenda 03 Fish Audio incorporada ao consolidado | FEITO — revisão independente pré-código aprovada em 30/07/2026 |
 | `AGENTS.md` / decision-policy / decision-log | PENDENTE (Parte 1) |
 | Reconciliação GSD, baseline, branch | PENDENTE (Parte 2) |
 | Tasks 3–11 (backend `licao_casa`) | PENDENTES (Parte 3) |
@@ -77,15 +84,22 @@ firmware.
 ## Global Constraints
 
 - **v1 literal (D1):** requisições sem campos v1.1 retornam exatamente as
-  chaves v1 de hoje, com semântica e valores inalterados. A suíte existente
-  (152 testes) não pode ser editada nem removida — apenas ADICIONAR testes.
-  `python -m pytest tests/ -q` verde ao fim de CADA task.
+  chaves v1 de hoje e preservam sua semântica. A mudança intencional da v1.1 é
+  o provedor/voz e, portanto, os bytes do MP3; a V1 exata está preservada em
+  `baseline-v1.0`. A suíte existente (152 testes) não pode ser editada nem
+  removida — apenas ADICIONAR testes. `python -m pytest tests/ -q` verde ao
+  fim de CADA task.
 - **Miolo pedagógico intocável:** zero edições em `gemini.py`,
   `session_engine.py`, `celebration.py`, `image_gen.py` e nas transições de
   veredito do `/api/turn` (passos 1–9 e 11–13b, exceto os pontos de
   supersessão/marcador explicitamente definidos na Task 8).
 - Todos os campos novos são opcionais; ausentes ⇒ caminho v1 exato.
 - Token e PIN jamais em corpo de resposta ou log.
+- **Gate documental da Emenda 03:** antes da Task 3 e de qualquer código da
+  Parte 3, submeter o diff documental da
+  `emenda-03-fish-audio.md` e deste consolidado a revisão independente. A
+  execução só prossegue após aprovação; findings bloqueantes exigem correção
+  documental antes do preflight.
 - Ambiente: `cd /Users/institutorecriare/VSCodeProjects/licao_casa/backend && source venv/bin/activate`.
 - Commits no `licao_casa`: um por task, mensagem curta em português.
 - Estilo: seguir o código existente (async + aiofiles, docstrings/comentários
@@ -359,8 +373,11 @@ anteriores são apagados quando um novo turno gera mídia." por:
 
 - [ ] **Step 7: Neutralidade de TTS** — na tabela de `audio_format` e na seção
 "Formato WAV", remover as menções a "Polly" da interface normativa (descrever
-apenas: WAV = PCM s16le mono 16 kHz com header de 44 bytes; MP3 24 kHz mono).
-Polly permanece citada SOMENTE na seção "Validações empíricas pendentes".
+apenas: WAV = PCM s16le mono 16 kHz com header RIFF/WAVE; MP3 = mono 44,1 kHz,
+128 kbps). Na seção "Validações empíricas pendentes", substituir o preflight
+Polly por Fish Audio: modelo configurado, voz Itachi
+(`c5a6cb585b094dedb241365e7e271973`), MP3 e WAV, tempos observados e aprovação
+humana. O provedor não aparece como requisito do firmware.
 
 - [ ] **Step 8: Commit**
 
@@ -563,10 +580,19 @@ Expected: FAIL — `AttributeError`/`ImportError` (settings sem
 
 - [ ] **Step 3: Implementar**
 
-Em `backend/config.py`, dentro de `Settings`, após `adult_pin: str = ""`:
+Em `backend/config.py`, dentro de `Settings`, após `adult_pin: str = ""`,
+adicionar a autenticação do dispositivo e a configuração não secreta do TTS.
+`FISH_API_KEY` fica vazio no código e só é preenchido no `.env` local:
 
 ```python
     device_api_token: str = ""
+    fish_api_key: str = ""
+    fish_voice_id: str = "c5a6cb585b094dedb241365e7e271973"
+    fish_tts_model: str = "s2.1-pro-free"
+    fish_tts_api_url: str = "https://api.fish.audio/v1/tts"
+    fish_tts_timeout_seconds: float = Field(default=120.0, gt=0)
+    fish_tts_latency: str = "normal"
+    fish_tts_speed: float = Field(default=1.0, gt=0)
 ```
 
 Em `backend/main.py`: adicionar `import secrets` ao topo; na linha do fastapi,
@@ -630,296 +656,364 @@ ASGITransport).
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
 git add backend/config.py backend/main.py backend/tests/test_device_auth.py
-git commit -m "Token de dispositivo fail-closed: 401 credencial, 503 sem token, loopback isento"
+git commit -m "Configura token do dispositivo e Fish Audio para a v1.1"
 ```
 
-## Task 3.9 (preflight): Validação real do Polly PCM — ANTES da Task 4
+## Task 3.9 (preflight): Validação real do Fish MP3 + WAV — ANTES da Task 4
 
 **Files:**
-- Create: `backend/scripts/check_polly_pcm.py`
+- Create: `backend/scripts/check_fish_tts.py`
 
-**Gate:** requer autorização do proprietário para uma chamada real de custo
-mínimo; uma segunda chamada diagnóstica só ocorre se `generative` falhar. O
-resultado técnico e a confirmação humana da audição são registrados
-separadamente no contrato canônico ANTES da Task 4.
+**Gate:** requer autorização do proprietário para duas chamadas reais de
+volume mínimo. Antes de rodar, o proprietário configura `FISH_API_KEY` apenas
+no `.env` local. O segredo nunca aparece no script, documento, commit ou log.
+Resultado técnico e audição humana são registrados separadamente no contrato
+canônico antes da Task 4.
 
-- [ ] **Step 1: Criar o script**
-
-Criar `backend/scripts/check_polly_pcm.py`:
+- [ ] **Step 1: Criar o script standalone**
 
 ```python
-"""Manual check: Polly generative voice + pcm 16k (contrato v1.1, preflight).
+"""Manual Fish Audio check for the v1.1 MP3/WAV contract.
 
-Run from backend/ with the venv active:  python scripts/check_polly_pcm.py
-Writes the listening WAV to the system temporary directory.
+Run from backend/ with the venv active: python scripts/check_fish_tts.py
+Writes both listening files to the system temporary directory.
 """
 
 import io
-import struct
 import sys
 import tempfile
+import time
 import wave
 from pathlib import Path
 
-import boto3
+import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import settings  # noqa: E402
 
 
-def _wav_from_pcm(pcm: bytes, sample_rate: int = 16000) -> bytes:
-    """Wrap raw PCM s16le mono in a canonical 44-byte WAV header."""
-    channels, bits = 1, 16
-    byte_rate = sample_rate * channels * bits // 8
-    block_align = channels * bits // 8
-    header = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVE"
-    header += b"fmt " + struct.pack(
-        "<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits
+TEST_TEXT = """Certo... vamos de novo, mas desta vez preste atenção ao ritmo.
+
+Você não precisa correr. A pressa faz até uma ideia simples parecer difícil.
+
+Observe apenas três movimentos. Permanece igual: criacionismo fixista. Muda em linha reta: Lamarck. Forma ramificações: Darwin.
+
+É isso. Três desenhos, três maneiras de explicar a mudança.
+
+Heh, não foi tão complicado, foi? Agora explique do seu jeito. Se conseguir fazer isso, você realmente entendeu."""
+
+
+def _payload(output_format: str) -> dict:
+    payload = {
+        "text": TEST_TEXT,
+        "reference_id": settings.fish_voice_id,
+        "format": output_format,
+        "sample_rate": 44100 if output_format == "mp3" else 16000,
+        "latency": settings.fish_tts_latency,
+        "normalize": True,
+        "prosody": {
+            "speed": settings.fish_tts_speed,
+            "volume": 0,
+            "normalize_loudness": True,
+        },
+    }
+    if output_format == "mp3":
+        payload["mp3_bitrate"] = 128
+    return payload
+
+
+def _synthesize(client: httpx.Client, output_format: str) -> tuple[bytes, float]:
+    started = time.perf_counter()
+    response = client.post(
+        settings.fish_tts_api_url,
+        headers={
+            "Authorization": f"Bearer {settings.fish_api_key}",
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg" if output_format == "mp3" else "audio/wav",
+            "model": settings.fish_tts_model,
+        },
+        json=_payload(output_format),
     )
-    header += b"data" + struct.pack("<I", len(pcm))
-    return header + pcm
+    elapsed = time.perf_counter() - started
+    if not 200 <= response.status_code < 300:
+        raise RuntimeError(f"Fish Audio HTTP {response.status_code}")
+    content_type = response.headers.get("content-type", "").split(";", 1)[0]
+    if not response.content or content_type == "application/json":
+        raise RuntimeError("Fish Audio retornou áudio vazio ou JSON")
+    return bytes(response.content), elapsed
 
 
-def _synthesize_pcm(client, engine: str) -> bytes:
-    response = client.synthesize_speech(
-        Engine=engine,
-        LanguageCode="pt-BR",
-        OutputFormat="pcm",
-        SampleRate="16000",
-        Text="Oi! Vamos fazer a lição de casa juntos?",
-        TextType="text",
-        VoiceId=settings.polly_voice_id,
-    )
-    return response["AudioStream"].read()
-
-
-def _validate_and_write(pcm: bytes, engine: str) -> Path:
-    data = _wav_from_pcm(pcm)
-    out = Path(tempfile.gettempdir()) / f"polly_pcm_check_{engine}.wav"
-    out.write_bytes(data)
-    with wave.open(io.BytesIO(data), "rb") as wav_file:
-        channels = wav_file.getnchannels()
-        rate = wav_file.getframerate()
-        sample_width = wav_file.getsampwidth()
-        frames = wav_file.getnframes()
-    if (channels, rate, sample_width) != (1, 16000, 2):
+def _validate_wav(data: bytes) -> None:
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise RuntimeError("WAV sem RIFF/WAVE válido")
+    try:
+        with wave.open(io.BytesIO(data), "rb") as wav_file:
+            values = (
+                wav_file.getnchannels(),
+                wav_file.getframerate(),
+                wav_file.getsampwidth(),
+            )
+    except (EOFError, wave.Error) as exc:
+        raise RuntimeError("WAV inválido") from exc
+    if values != (1, 16000, 2):
         raise RuntimeError(
-            "WAV inesperado: "
-            f"channels={channels} rate={rate} sampwidth={sample_width}"
+            f"WAV inesperado: channels={values[0]} rate={values[1]} "
+            f"sampwidth={values[2]}"
         )
-    print(
-        f"engine={engine} channels={channels} rate={rate} "
-        f"bits={sample_width * 8} frames={frames}"
-    )
-    print(f"OK técnico — ouça {out}")
-    return out
+
+
+def _validate_mp3(data: bytes) -> None:
+    has_id3 = data[:3] == b"ID3"
+    has_frame_sync = len(data) >= 2 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0
+    if not (has_id3 or has_frame_sync):
+        raise RuntimeError("MP3 sem ID3/frame sync válido")
 
 
 def main() -> None:
-    client = boto3.client(
-        "polly",
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        region_name=settings.aws_region,
-    )
+    if not settings.fish_api_key.strip():
+        raise SystemExit("BLOCKER: configure FISH_API_KEY apenas no .env local")
 
-    try:
-        pcm = _synthesize_pcm(client, "generative")
-    except Exception as generative_error:
-        print(f"generative FALHOU: {generative_error}", file=sys.stderr)
-        try:
-            neural_pcm = _synthesize_pcm(client, "neural")
-            _validate_and_write(neural_pcm, "neural")
-        except Exception as neural_error:
-            print(f"neural também FALHOU: {neural_error}", file=sys.stderr)
-        raise SystemExit(
-            "BLOCKER: generative não aceitou PCM. Registre os resultados e "
-            "produza uma emenda; não inicie a Task 4."
+    outputs: list[tuple[str, Path, float]] = []
+    with httpx.Client(timeout=settings.fish_tts_timeout_seconds) as client:
+        for output_format in ("mp3", "wav"):
+            data, elapsed = _synthesize(client, output_format)
+            if output_format == "wav":
+                _validate_wav(data)
+            else:
+                _validate_mp3(data)
+            path = (
+                Path(tempfile.gettempdir())
+                / f"fish_itachi_preflight.{output_format}"
+            )
+            path.write_bytes(data)
+            outputs.append((output_format, path, elapsed))
+
+    for output_format, path, elapsed in outputs:
+        print(
+            f"OK técnico format={output_format} model={settings.fish_tts_model} "
+            f"voice={settings.fish_voice_id} time={elapsed:.2f}s file={path}"
         )
-
-    _validate_and_write(pcm, "generative")
+    print("PAUSA OBRIGATÓRIA: ouça MP3 e WAV e aprove voz/qualidade.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (httpx.HTTPError, OSError, RuntimeError) as exc:
+        print(f"BLOCKER Fish Audio: {exc}", file=sys.stderr)
+        raise SystemExit(1) from None
 ```
 
-O script é standalone em relação à Task 4: usa boto3 diretamente, constrói o
-próprio header WAV e conclui integralmente antes de qualquer implementação de
-`output_format`.
+O texto é plain e não contém marcadores emocionais. O script usa HTTP
+diretamente, não importa `fish_audio.py` e termina antes de a Task 4 começar.
 
-- [ ] **Step 2: Rodar (com autorização do proprietário e `.env` real)**
+- [ ] **Step 2: Rodar com autorização e audição humana**
 
-Run: `python scripts/check_polly_pcm.py`
-Expected para aprovação: `engine=generative channels=1 rate=16000 bits=16 ...`
-e WAV audível no diretório temporário.
+Run: `python scripts/check_fish_tts.py`
 
-**Contingência fechada (D4):** se `generative` rejeitar PCM, o script faz no
-máximo uma chamada diagnóstica com `Engine="neural"`. Registrar os resultados
-das duas tentativas, mas **INTERROMPER antes da Task 4 mesmo que `neural`
-funcione**. Produzir uma emenda que ajuste explicitamente código, testes,
-contrato e Tasks 4, 7, 10, 11 e 12. Não existe caminho MP3-only
-pré-roteirizado nem troca silenciosa do engine da V1.
+Expected: dois `OK técnico`, MP3 Itachi reproduzível, WAV Itachi reproduzível
+e WAV validado como RIFF/WAVE mono/16-bit/16 kHz.
+
+**Condição de parada (D4):** qualquer falha técnica, voz incorreta ou qualidade
+reprovada interrompe antes da Task 4 e exige nova emenda. Não há retry
+automático nem fallback para Polly.
 
 - [ ] **Step 3: Rodar a suíte completa**
 
 Run: `python -m pytest tests/ -q`
 Expected: tudo PASS.
 
-- [ ] **Step 4: Registrar o resultado no contrato canônico e commitar**
+- [ ] **Step 4: Registrar resultado e commitar por repositório**
+
+Registrar no contrato: data, endpoint, modelo, voice id, formatos, parâmetros,
+tempos observados e aprovação humana — nunca a chave.
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
-git add backend/scripts/check_polly_pcm.py
-git commit -m "Preflight: script de validação do Polly PCM 16 kHz"
+git add backend/scripts/check_fish_tts.py
+git commit -m "Preflight: valida Fish Audio Itachi em MP3 e WAV 16 kHz"
 cd /Users/institutorecriare/VSCodeProjects/xiaozhi-esp32
 git add docs/professor-virtual/contrato-dispositivo.md
-git commit -m "Contrato v1.1: resultado do preflight Polly PCM"
+git commit -m "Contrato v1.1: registra preflight Fish MP3 e WAV"
 ```
 
-## Task 4: Polly em WAV (PCM 16 kHz + header WAV)
+## Task 4: Fish Audio para web MP3 e dispositivo WAV
 
-Só começa se a Task 3.9 confirmar `generative` + PCM 16 kHz e a audição humana
-for aprovada. Qualquer falha de `generative` bloqueia esta task até uma emenda
-aprovada.
+Só começa depois de o preflight Fish MP3+WAV e a audição humana serem
+aprovados.
 
 **Files:**
-- Modify: `backend/polly.py`
-- Test: `backend/tests/test_polly.py` (APENAS adicionar testes)
+- Create: `backend/fish_audio.py`
+- Modify: `backend/main.py` (somente import do TTS nesta task)
+- Test: `backend/tests/test_fish_audio.py` (novo)
 
-**Interfaces:**
-- Produces: `synthesize_speech(text, voice_id=None, engine=None, output_format="mp3") -> bytes`;
-  `output_format="wav"` ⇒ WAV (RIFF 44 bytes + PCM s16le mono 16 kHz); default
-  ⇒ MP3 24 kHz (v1 intacto). Helper `_wav_from_pcm(pcm, sample_rate=16000) -> bytes`.
+`backend/polly.py`, `backend/tests/test_polly.py`, a fixture `mock_polly`
+existente e boto3 permanecem sem edição como legado inativo da V1.
 
-- [ ] **Step 1: Escrever os testes que falham**
-
-Adicionar ao FINAL de `backend/tests/test_polly.py`:
+**Interface:**
 
 ```python
-import struct
-
-from polly import _wav_from_pcm
-
-
-class TestPollyWav:
-    """WAV output for the device profile (contrato v1.1)."""
-
-    def test_wav_header_layout(self):
-        pcm = b"\x01\x02\x03\x04"
-        wav = _wav_from_pcm(pcm, sample_rate=16000)
-        assert wav[0:4] == b"RIFF"
-        assert wav[8:12] == b"WAVE"
-        assert struct.unpack("<H", wav[20:22])[0] == 1       # PCM
-        assert struct.unpack("<H", wav[22:24])[0] == 1       # mono
-        assert struct.unpack("<I", wav[24:28])[0] == 16000   # sample rate
-        assert struct.unpack("<H", wav[34:36])[0] == 16      # bits
-        assert struct.unpack("<I", wav[40:44])[0] == len(pcm)
-        assert wav[44:] == pcm
-
-    @pytest.mark.asyncio
-    async def test_synthesize_wav_calls_polly_pcm_16k(self, mock_polly):
-        result = await synthesize_speech("Ola", output_format="wav")
-        kwargs = mock_polly.synthesize_speech.call_args.kwargs
-        assert kwargs["OutputFormat"] == "pcm"
-        assert kwargs["SampleRate"] == "16000"
-        assert result[0:4] == b"RIFF"
-        assert result[44:] == b"fake-mp3-data"  # mock stream passes through as pcm
-
-    @pytest.mark.asyncio
-    async def test_synthesize_default_still_mp3(self, mock_polly):
-        await synthesize_speech("Ola")
-        kwargs = mock_polly.synthesize_speech.call_args.kwargs
-        assert kwargs["OutputFormat"] == "mp3"
-        assert kwargs["SampleRate"] == "24000"
+async def synthesize_speech(
+    text: str,
+    output_format: Literal["mp3", "wav"] = "mp3",
+    voice_id: str | None = None,
+    model: str | None = None,
+) -> bytes
 ```
+
+- [ ] **Step 1: Escrever os testes novos que falham**
+
+Criar `backend/tests/test_fish_audio.py` cobrindo:
+
+- headers Bearer/model e voice id Itachi;
+- texto recebido sem alteração ou tags;
+- MP3 44,1 kHz/128 kbps;
+- WAV RIFF/WAVE mono/16-bit/16 kHz;
+- formato inválido;
+- chave ausente;
+- timeout/falha de transporte;
+- HTTP 401, 402, 422, 429 e 5xx;
+- resposta vazia/JSON e WAV inválido;
+- erro sanitizado sem chave, texto integral ou corpo remoto;
+- `main.synthesize_speech is fish_audio.synthesize_speech`, provando que o
+  runtime v1.1 não chama Polly.
+
+Usar uma fixture local que substitui `httpx.AsyncClient`; nenhum teste faz rede
+real.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `python -m pytest tests/test_polly.py -v`
-Expected: FAIL — `ImportError: cannot import name '_wav_from_pcm'`.
+Run: `python -m pytest tests/test_fish_audio.py -v`
+Expected: FAIL — módulo `fish_audio` ainda não existe.
 
-- [ ] **Step 3: Implementar**
-
-Em `backend/polly.py`, adicionar `import struct` ao topo e substituir
-`_synthesize` e `synthesize_speech` por:
+- [ ] **Step 3: Implementar `backend/fish_audio.py`**
 
 ```python
-def _wav_from_pcm(pcm: bytes, sample_rate: int = 16000) -> bytes:
-    """Wrap raw PCM s16le mono in a canonical 44-byte WAV header."""
-    channels, bits = 1, 16
-    byte_rate = sample_rate * channels * bits // 8
-    block_align = channels * bits // 8
-    header = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVE"
-    header += b"fmt " + struct.pack(
-        "<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits
-    )
-    header += b"data" + struct.pack("<I", len(pcm))
-    return header + pcm
+"""Fish Audio TTS adapter for complete-response MP3/WAV synthesis."""
+
+import io
+from typing import Literal
+import wave
+
+import httpx
+
+from config import settings
 
 
-def _synthesize(text: str, voice_id: str, engine: str, output_format: str) -> bytes:
-    """Synchronous Polly synthesis (runs in executor thread).
+AudioFormat = Literal["mp3", "wav"]
 
-    output_format "mp3" keeps the v1 behavior (MP3 24 kHz). "wav" asks Polly
-    for raw PCM s16le mono 16 kHz and wraps it in a WAV header for the device.
-    """
-    client = boto3.client(
-        "polly",
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        region_name=settings.aws_region,
-    )
-    if output_format == "wav":
-        response = client.synthesize_speech(
-            Engine=engine,
-            LanguageCode="pt-BR",
-            OutputFormat="pcm",
-            SampleRate="16000",
-            Text=text,
-            TextType="text",
-            VoiceId=voice_id,
-        )
-        return _wav_from_pcm(response["AudioStream"].read())
-    response = client.synthesize_speech(
-        Engine=engine,
-        LanguageCode="pt-BR",
-        OutputFormat="mp3",
-        SampleRate="24000",
-        Text=text,
-        TextType="text",
-        VoiceId=voice_id,
-    )
-    return response["AudioStream"].read()
+
+class FishAudioError(RuntimeError):
+    """Sanitized Fish Audio failure safe to surface in internal debug."""
+
+
+def _validate_wav(data: bytes) -> None:
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise FishAudioError("Fish Audio returned an invalid WAV")
+    try:
+        with wave.open(io.BytesIO(data), "rb") as wav_file:
+            values = (
+                wav_file.getnchannels(),
+                wav_file.getframerate(),
+                wav_file.getsampwidth(),
+            )
+    except (EOFError, wave.Error) as exc:
+        raise FishAudioError("Fish Audio returned an invalid WAV") from exc
+    if values != (1, 16000, 2):
+        raise FishAudioError("Fish Audio returned an unexpected WAV layout")
 
 
 async def synthesize_speech(
     text: str,
+    output_format: AudioFormat = "mp3",
     voice_id: str | None = None,
-    engine: str | None = None,
-    output_format: str = "mp3",
+    model: str | None = None,
 ) -> bytes:
-    """Synthesize speech via AWS Polly. output_format: "mp3" (v1) or "wav"."""
-    voice_id = voice_id or settings.polly_voice_id
-    engine = engine or settings.polly_engine
+    """Synthesize complete MP3 or WAV audio without retry or fallback."""
+    if output_format not in ("mp3", "wav"):
+        raise ValueError("output_format must be 'mp3' or 'wav'")
+    if not text.strip():
+        raise ValueError("text must not be blank")
+    api_key = settings.fish_api_key.strip()
+    if not api_key:
+        raise FishAudioError("FISH_API_KEY is not configured")
 
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, partial(_synthesize, text, voice_id, engine, output_format)
-    )
+    payload = {
+        "text": text,
+        "reference_id": voice_id or settings.fish_voice_id,
+        "format": output_format,
+        "sample_rate": 44100 if output_format == "mp3" else 16000,
+        "latency": settings.fish_tts_latency,
+        "normalize": True,
+        "prosody": {
+            "speed": settings.fish_tts_speed,
+            "volume": 0,
+            "normalize_loudness": True,
+        },
+    }
+    if output_format == "mp3":
+        payload["mp3_bitrate"] = 128
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg" if output_format == "mp3" else "audio/wav",
+        "model": model or settings.fish_tts_model,
+    }
+    try:
+        async with httpx.AsyncClient(
+            timeout=settings.fish_tts_timeout_seconds
+        ) as client:
+            response = await client.post(
+                settings.fish_tts_api_url,
+                headers=headers,
+                json=payload,
+            )
+    except httpx.TimeoutException as exc:
+        raise FishAudioError("Fish Audio request timed out") from exc
+    except httpx.HTTPError as exc:
+        raise FishAudioError("Fish Audio transport failed") from exc
+
+    if not 200 <= response.status_code < 300:
+        raise FishAudioError(f"Fish Audio HTTP {response.status_code}")
+    content_type = response.headers.get("content-type", "").split(";", 1)[0]
+    if not response.content or content_type == "application/json":
+        raise FishAudioError("Fish Audio returned no audio")
+
+    audio = bytes(response.content)
+    if output_format == "wav":
+        _validate_wav(audio)
+    return audio
 ```
 
-- [ ] **Step 4: Rodar testes + suíte**
+Não incluir corpo remoto, chave ou texto nos erros. Não adicionar retry.
 
-Run: `python -m pytest tests/test_polly.py -v && python -m pytest tests/ -q`
+Em `backend/main.py`, substituir somente:
+
+```python
+from polly import synthesize_speech
+```
+
+por:
+
+```python
+from fish_audio import synthesize_speech
+```
+
+- [ ] **Step 4: Rodar testes novos, regressão Polly e suíte**
+
+Run:
+`python -m pytest tests/test_fish_audio.py tests/test_polly.py -v && python -m pytest tests/ -q`
+
+Expected: tudo PASS; testes Polly continuam verdes cobrindo apenas o legado.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
-git add backend/polly.py backend/tests/test_polly.py
-git commit -m "Polly: saída WAV opcional (PCM 16 kHz mono + header) para o dispositivo"
+git add backend/fish_audio.py backend/main.py backend/tests/test_fish_audio.py
+git commit -m "Fish Audio: voz Itachi em MP3 para web e WAV para dispositivo"
 ```
 
 ## Task 5: Redimensionamento de imagem (Pillow)
@@ -1277,6 +1371,7 @@ Criar `backend/tests/test_turn_device.py`:
 ```python
 import io
 import json
+import wave
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -1310,10 +1405,30 @@ def _turn_files():
     return {"audio": ("rec.wav", b"fake-wav-bytes", "audio/wav")}
 
 
+def _wav_16k():
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(16000)
+        wav_file.writeframes(b"\x00\x00" * 80)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def mock_tts():
+    async def fake_synthesize(text, output_format="mp3", **kwargs):
+        return _wav_16k() if output_format == "wav" else b"fake-mp3-data"
+
+    mock = AsyncMock(side_effect=fake_synthesize)
+    with patch("main.synthesize_speech", new=mock):
+        yield mock
+
+
 class TestTurnDeviceProfile:
     @pytest.mark.asyncio
     async def test_media_url_returns_urls_and_empty_base64(
-        self, client, setup_session, mock_polly
+        self, client, setup_session, mock_tts
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())), \
              patch("main.generate_image", new=AsyncMock(return_value=_png(1600, 1000))):
@@ -1384,7 +1499,7 @@ class TestTurnDeviceProfile:
 class TestV1Parity:
     @pytest.mark.asyncio
     async def test_v1_request_returns_exactly_v1_keys(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             resp = await client.post(
@@ -1398,7 +1513,7 @@ class TestV1Parity:
 
     @pytest.mark.asyncio
     async def test_any_v11_field_enables_device_profile_keys(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             resp = await client.post(
@@ -1415,7 +1530,7 @@ class TestV1Parity:
 
     @pytest.mark.asyncio
     async def test_empty_request_id_is_v1_omission(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             resp = await client.post(
@@ -1571,6 +1686,18 @@ e encerrar o handler com:
         return JSONResponse(content=response.model_dump(exclude=_V11_RESPONSE_KEYS))
     return response
 ```
+
+(g) Tornar o artefato de debug coerente com o formato sintetizado, sem alterar
+o conteúdo pedagógico. Adicionar
+`output_audio_format: Literal["mp3", "wav"] = "mp3"` a `_write_debug_turn`,
+salvar em `last_output.{output_audio_format}` e, no passo 14, passar
+`output_audio_format="wav" if wants_wav else "mp3"`. Nunca salvar chave,
+headers ou payload da Fish.
+
+(h) Atualizar somente a terminologia dos três comentários/docstrings legados
+de `main.py`: “Polly MP3” → “TTS audio”, “Polly TTS + Nano Banana 2 image” →
+“TTS audio + Nano Banana 2 image” e “Polly/image” → “TTS/image”. Isso não
+altera fluxo, assinatura ou lógica pedagógica.
 
 (Starlette serializa `JSONResponse` com `ensure_ascii=False`, compacto — o
 mesmo render do caminho padrão do FastAPI; o payload v1 permanece literal.)
@@ -1977,13 +2104,13 @@ completa (o arquivo já tem `import json`):
 class TestTurnIdempotency:
     @pytest.mark.asyncio
     async def test_same_request_id_replays_without_processing(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         data = {"session_id": "s1", "request_id": "req-abc-1"}
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post("/api/turn", data=data, files=_turn_files())
         assert first.status_code == 200
-        assert mock_polly.synthesize_speech.call_count == 1
+        assert mock_tts.call_count == 1
         gen_calls = mock_image_gen.aio.models.generate_content.call_count
 
         must_not_run = AsyncMock(side_effect=AssertionError("evaluate_turn on replay"))
@@ -1991,8 +2118,8 @@ class TestTurnIdempotency:
             second = await client.post("/api/turn", data=data, files=_turn_files())
         assert second.status_code == 200
         assert second.json() == first.json()
-        # Exactly-once: no second Polly/image call, no counter double-apply.
-        assert mock_polly.synthesize_speech.call_count == 1
+        # Exactly-once: no second TTS/image call, no counter double-apply.
+        assert mock_tts.call_count == 1
         assert mock_image_gen.aio.models.generate_content.call_count == gen_calls
         state = json.loads((setup_session / "state.json").read_text())
         assert state["usage_counters"] == {
@@ -2008,7 +2135,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_concurrent_same_request_id_processes_once(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         import asyncio
         data = {"session_id": "s1", "request_id": "req-conc"}
@@ -2049,7 +2176,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_corrupt_cache_fails_safe_and_quarantines(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         (setup_session / "last_turn_response.json").write_text("{{{not json")
         must_not_run = AsyncMock(side_effect=AssertionError("must not process"))
@@ -2075,7 +2202,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_new_request_id_processes_normally(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -2093,7 +2220,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_failed_turn_is_not_stored_for_replay(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         data = {"session_id": "s1", "request_id": "req-fail"}
         with patch("main.evaluate_turn", new=AsyncMock(side_effect=RuntimeError("boom"))):
@@ -2107,7 +2234,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_v1_turn_supersedes_previous_replay(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -2130,7 +2257,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_v1_supersession_failure_precedes_state_changes(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -2164,7 +2291,7 @@ class TestTurnIdempotency:
     @pytest.mark.parametrize("failure_stage", ["llm", "media"])
     @pytest.mark.asyncio
     async def test_pre_marker_502_supersedes_old_replay_but_keeps_id_retryable(
-        self, client, setup_session, mock_polly, mock_image_gen, failure_stage
+        self, client, setup_session, mock_tts, mock_image_gen, failure_stage
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -2305,7 +2432,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_done_response_request_id_mismatch_quarantines_409(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         from persistence import write_json_atomic
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
@@ -2350,7 +2477,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_corruption_found_by_v1_forces_device_rehydration(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         (setup_session / "last_turn_response.json").write_text("{{{not json")
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
@@ -2381,7 +2508,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_adult_resolve_supersedes_previous_replay(
-        self, client, setup_session, mock_polly, mock_image_gen, monkeypatch
+        self, client, setup_session, mock_tts, mock_image_gen, monkeypatch
     ):
         import main
         from persistence import write_json
@@ -2412,7 +2539,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_adult_resolve_cache_failure_precedes_state_write(
-        self, client, setup_session, mock_polly, mock_image_gen, monkeypatch
+        self, client, setup_session, mock_tts, mock_image_gen, monkeypatch
     ):
         import main
         from persistence import write_json
@@ -2446,7 +2573,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_persisted_expiration_supersedes_previous_replay(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         from persistence import write_json
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
@@ -2473,7 +2600,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_expiration_cache_failure_precedes_state_write(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         from persistence import write_json
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
@@ -2502,7 +2629,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_ledger_does_not_evict_old_request_ids(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         from persistence import write_json_atomic
         old_ids = [f"req-old-{i}" for i in range(201)]
@@ -2535,7 +2662,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_failure_before_consolidation_keeps_previous_replay(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())), \
              patch("main.generate_image", new=AsyncMock(return_value=_png(800, 600))):
@@ -2570,7 +2697,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_media_url_without_request_id_supersedes_and_cleans(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())), \
              patch("main.generate_image", new=AsyncMock(return_value=_png(800, 600))):
@@ -2600,7 +2727,7 @@ class TestTurnIdempotency:
 
     @pytest.mark.asyncio
     async def test_media_cleanup_runs_while_turn_lock_is_held(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         import main
         observations = []
@@ -2726,6 +2853,14 @@ def _teach_eval():
         texto_explicacao="Vamos entender juntos.",
         prompt_visual="A simple educational diagram",
     )
+
+
+@pytest.fixture
+def mock_tts():
+    """Local fixture: fixtures from test_turn_device.py are not cross-module."""
+    mock = AsyncMock(return_value=b"fake-mp3-data")
+    with patch("main.synthesize_speech", new=mock):
+        yield mock
 
 
 @pytest_asyncio.fixture
@@ -2905,7 +3040,7 @@ class TestPrepareStaged:
 class TestPrepareCacheSupersession:
     @pytest.mark.asyncio
     async def test_new_lesson_supersedes_previous_replay(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -2932,7 +3067,7 @@ class TestPrepareCacheSupersession:
 
     @pytest.mark.asyncio
     async def test_cache_failure_precedes_new_lesson_publication(
-        self, client, setup_session, mock_polly, mock_image_gen
+        self, client, setup_session, mock_tts, mock_image_gen
     ):
         with patch("main.evaluate_turn", new=AsyncMock(return_value=_teach_eval())):
             first = await client.post(
@@ -3266,7 +3401,22 @@ Adicionar ao final:
 # Fail-closed (D2): sem este token configurado, conexões remotas recebem 503;
 # apenas loopback funciona. Configure antes de conectar o dispositivo.
 DEVICE_API_TOKEN=
+
+# Fish Audio TTS da v1.1. Nunca commite a chave real.
+FISH_API_KEY=
+FISH_VOICE_ID=c5a6cb585b094dedb241365e7e271973
+FISH_TTS_MODEL=s2.1-pro-free
+FISH_TTS_API_URL=https://api.fish.audio/v1/tts
+FISH_TTS_TIMEOUT_SECONDS=120
+FISH_TTS_LATENCY=normal
+FISH_TTS_SPEED=1.0
 ```
+
+Acrescentar comentário: `s2.1-pro-free` é configuração inicial de
+desenvolvimento, sem SLA e sujeita a mudança; modelo/endpoint podem ser
+trocados por ambiente sem alterar o contrato. As variáveis AWS permanecem
+documentadas enquanto `polly.py` e seus testes legados existirem, mas o runtime
+v1.1 não as usa para TTS.
 
 - [ ] **Step 3: Nota na doc de migração**
 
@@ -3279,8 +3429,9 @@ As adaptações discutidas neste documento foram consolidadas no perfil v1.1 do
 backend (ver `CONTRATO-DISPOSITIVO.md` na raiz): mídia por URL em vez de
 base64, WAV/PCM 16 kHz opcional no lugar do MP3, imagem já redimensionada para
 a tela, idempotência fail-safe por `request_id`, preparação página a página e
-token de dispositivo fail-closed. O firmware consome esse perfil; o fluxo v1
-do frontend web segue inalterado.
+token de dispositivo fail-closed. Fish Audio gera MP3 para o web e WAV para o
+dispositivo; o firmware permanece neutro ao provedor. O contrato e o fluxo
+pedagógico v1 seguem inalterados, com mudança intencional apenas da voz/TTS.
 ```
 
 - [ ] **Step 4: Rodar a suíte completa**
@@ -3296,13 +3447,15 @@ git add CONTRATO-DISPOSITIVO.md .env.example MIGRACAO-ESP32-P4.md
 git commit -m "Docs: ponteiro do contrato v1.1, DEVICE_API_TOKEN fail-closed, adendo na migração"
 ```
 
-## Task 11: Validação E2E com serviços reais (Gemini WAV) e fechamento
+## Task 11: Validação E2E com Fish MP3/WAV, Gemini WAV e fechamento
 
-(O preflight do Polly já ocorreu na Task 3.9.)
+(O preflight Fish MP3+WAV e a aprovação humana já ocorreram na Task 3.9.)
 
-Pré-requisito: `.env` com credenciais reais. Chamadas pagas em volume mínimo.
+Pré-requisito: `.env` local com `FISH_API_KEY` e credenciais Gemini reais.
+Segredos não são enviados ao chat, registrados no contrato nem commitados.
+Fazer chamadas reais em volume mínimo.
 
-- [ ] **Step 1: Validação end-to-end com WAV no turno (Gemini)**
+- [ ] **Step 1: Validação end-to-end do perfil de dispositivo**
 
 Com o backend rodando (`uvicorn main:app --reload`) e uma lição preparada:
 
@@ -3317,15 +3470,18 @@ curl -s -X POST http://127.0.0.1:8000/api/turn \
 ```
 
 Expected: 200 com `veredicto` coerente; `audio_url`/`image_url` preenchidos;
-baixar ambos (`curl -O http://127.0.0.1:8000<url>`) e conferir (WAV audível;
-JPEG ≤1280 px). **Pausar e chamar o proprietário** para a audição e o
-acompanhamento do turno real.
+baixar ambos (`curl -O http://127.0.0.1:8000<url>`) e conferir: Fish WAV com a
+voz Itachi, RIFF/WAVE PCM s16le mono/16 kHz e audível; JPEG ≤1280 px. A
+entrada WAV também comprova o caminho Gemini. **Pausar e chamar o
+proprietário** para a audição e o acompanhamento do turno real.
 
 - [ ] **Step 2: Registrar resultados no contrato canônico**
 
 Em `/Users/institutorecriare/VSCodeProjects/xiaozhi-esp32/docs/professor-virtual/contrato-dispositivo.md`,
 marcar os checkboxes de "Validações empíricas pendentes" com o resultado real
-(data, engine usado, observações de qualidade da avaliação do Gemini).
+(data, endpoint, modelo Fish, voice id Itachi, formatos, parâmetros, tempos
+observados, aprovação humana da voz/qualidade e observações da avaliação do
+Gemini). Nunca registrar a chave.
 
 Este step é um checkpoint/handoff humano e deve permanecer
 `autonomous: false` no artefato importado pelo GSD. O executor do
@@ -3337,22 +3493,26 @@ outro repositório.
 
 ```bash
 python -m pytest tests/ -v
-ruff check main.py models.py polly.py config.py persistence.py media_store.py media_utils.py tests/test_device_auth.py tests/test_turn_device.py tests/test_media_endpoint.py tests/test_media_utils.py tests/test_prepare_staged.py
+ruff check main.py models.py fish_audio.py polly.py config.py persistence.py media_store.py media_utils.py tests/test_fish_audio.py tests/test_device_auth.py tests/test_turn_device.py tests/test_media_endpoint.py tests/test_media_utils.py tests/test_prepare_staged.py
 ```
-Expected: pytest 100% PASS; ruff sem erros novos nos arquivos listados.
+Expected: pytest 100% PASS; ruff sem erros novos nos arquivos listados; os
+testes de regressão de `polly.py` continuam verdes, mas nenhuma chamada
+runtime da v1.1 usa Polly.
 
 - [ ] **Step 4: Smoke manual do frontend web (regressão v1)**
 
 Subir backend + frontend (`npm run dev` em `frontend/`) e executar um turno de
-áudio pelo navegador: resposta com áudio MP3 tocando e imagem exibida, como
-hoje.
+áudio pelo navegador: resposta v1 com exatamente as chaves atuais, Fish MP3
+44,1 kHz/128 kbps com voz Itachi tocando e imagem exibida no mesmo fluxo
+acoplado de hoje. **Pausar e chamar o proprietário** para ouvir e aprovar o
+MP3.
 
 - [ ] **Step 5: Commits finais**
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/xiaozhi-esp32
 git add docs/professor-virtual/contrato-dispositivo.md
-git commit -m "Contrato v1.1: registra resultado da validação Gemini WAV"
+git commit -m "Contrato v1.1: registra validação Fish e Gemini WAV"
 ```
 
 Este commit pertence ao handoff do Step 2 e ocorre no branch correto do
@@ -3379,7 +3539,9 @@ fase do firmware que toque rede/mídia (F1, F3, F4, F7):
 - [ ] 1. **Q3(a) (voz do tutor)**: marcar a decisão "decodificação MP3" do
   áudio do tutor como **superseded** pelo WAV/PCM validado do contrato v1.1.
   A Task 12 só é alcançada depois que um caminho WAV foi validado; não manter
-  fallback MP3 acionável pelo preflight.
+  fallback MP3 acionável pelo preflight. Registrar Fish Audio/Itachi apenas
+  como implementação empírica do backend; o requisito do firmware continua
+  neutro ao provedor.
 - [ ] 2. **F3**: substituir "base64→PNG" / "base64→MP3" por download via
   `audio_url`/`image_url` (+ `request_id`, `image_max_px=1280`, `audio_format`
   conforme validação); manter o fluxo 502/409/re-hidratação.
@@ -3410,8 +3572,10 @@ fase do firmware que toque rede/mídia (F1, F3, F4, F7):
   cada ocorrência antes de editar: referências ao MP3 do áudio do tutor podem
   ser obsoletas, mas referências válidas a MP3/OGG de sons locais não são
   substituídas cegamente.
-- [ ] 9. Registrar somente fallbacks que sobreviveram à validação empírica e
-  são compatíveis com o contrato aprovado.
+- [ ] 9. Registrar a validação empírica Fish MP3/WAV (modelo, voice id,
+  formatos, tempos e aprovação humana), sem transformar o provedor em
+  requisito do firmware. Registrar somente fallbacks que sobreviveram à
+  validação e são compatíveis com o contrato aprovado.
 - [ ] 10. Commit:
 
 ```bash
@@ -3427,7 +3591,9 @@ git commit -m "plano-firmware: consome o contrato v1.1 (URLs, WAV, request_id, p
 - Qualquer mudança no firmware além da Task 12 (as fases F0–F9 consomem o
   contrato depois).
 - Qualquer mudança no frontend web do `licao_casa`.
-- Streaming do Gemini, TTS por WebSocket e troca do provedor de TTS ficam
-  deliberadamente ADIADOS para milestone posterior; este plano não toma
-  decisão definitiva sobre eles. TLS, multiusuário e quotas de uso: adiados, a
-  decidir caso a caso em milestone próprio.
+- Streaming do Gemini, TTS por WebSocket, desacoplamento de áudio/imagem,
+  cache de áudio, tags emocionais automáticas e remoção de Polly/boto3 legado
+  ficam deliberadamente ADIADOS para milestone posterior. A troca do provedor
+  ativo para Fish Audio por HTTP com resposta completa está dentro deste
+  plano. TLS, multiusuário e quotas de uso: adiados, a decidir caso a caso em
+  milestone próprio.
