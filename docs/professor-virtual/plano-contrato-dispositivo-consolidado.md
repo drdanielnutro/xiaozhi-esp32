@@ -3,11 +3,13 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Data da consolidação:** 30/07/2026
-**Este documento é a consolidação mecânica de:** `plano-contrato-dispositivo.md`
+**Este documento consolida:** `plano-contrato-dispositivo.md`
 + `emenda-01-plano-contrato-dispositivo.md` + `emenda-02-plano-contrato-dispositivo.md`
-(versão corrigida pelo auditor, commit `64f0ba3`). **Para execução, este
-documento prevalece sobre os três**; eles permanecem como histórico. Nenhum
-conteúdo novo foi projetado aqui — apenas fusão.
+(versão corrigida pelo auditor, commit `64f0ba3`) e as correções documentais da
+auditoria final. **Para execução, este documento prevalece sobre os três**;
+eles permanecem como histórico. O conteúdo técnico das tasks foi preservado;
+as correções posteriores tornaram preflight, governança e sequência operacional
+autocontidos e executáveis.
 
 **Goal:** Adicionar ao backend `licao_casa` um perfil de contrato para o
 dispositivo embarcado (mídia por URL, áudio WAV/PCM, imagem redimensionada,
@@ -35,6 +37,13 @@ pytest + pytest-asyncio + httpx ASGITransport.
 - **D3:** `5588b3e` é a baseline do código V1, condicionada à reconciliação e
   arquivamento corretos do GSD antes de tag/branch; arquivos não rastreados
   ficam fora da tag.
+- **D4 — preflight Polly:** qualquer falha do engine `generative` com PCM
+  interrompe a execução antes da Task 4 para uma emenda, mesmo que uma chamada
+  diagnóstica com `Engine="neural"` funcione. O diagnóstico não muda
+  silenciosamente o engine da V1.
+- **D5 — duas tags:** `baseline-v1.0` aponta exatamente para `5588b3e` e marca
+  a baseline funcional do código; a tag automática `v1.0` do GSD marca o
+  encerramento documental do milestone. `git.create_tag` permanece `true`.
 
 ## Estado atual
 
@@ -54,6 +63,11 @@ pytest + pytest-asyncio + httpx ASGITransport.
 | Parte 1 (governança + contrato) e Parte 4 (Task 12) | `xiaozhi-esp32` |
 | Parte 2 (pré-condições GSD/Git — operacional, com o proprietário) | `licao_casa` |
 | Parte 3 (Tasks 3–11) | `licao_casa` (`backend/`) |
+
+Atualizações do contrato canônico exigidas durante as Tasks 3.9 e 11 são
+checkpoints/handoffs para commit separado no `xiaozhi-esp32`. O executor GSD
+do `licao_casa` não faz commits autônomos no outro repositório nem fora do
+branch/worktree sob seu controle.
 
 **Ordem de execução:** Parte 1 → Parte 2 → conversão mecânica das tasks da
 Parte 3 em `PLAN.md` do GSD (sem redesenho) → Tasks 3 → 3.9 → 4 → 5 → 6 → 7 →
@@ -106,9 +120,14 @@ substituir o bullet do `licao_casa` (que declara o backend "intocável") por:
 Em "Restrições obrigatórias", substituir `sem retry automático de turno` por:
 
 ```markdown
-  retry de `POST /api/turn` proibido sem `request_id`; com `request_id`
-  (contrato v1.1), a retransmissão do mesmo turno devolve replay 200 ou 409
-  fail-safe — nunca aplica o turno duas vezes;
+  retry automático de `POST /api/turn` proibido sem `request_id`; com cliente
+  único/serial, cache íntegro e o MESMO `request_id` (contrato v1.1), uma
+  retransmissão pode processar se a falha anterior ocorreu antes de
+  `processing`, devolver replay 200 quando há resposta `done` válida e
+  replayável, ou 409 fail-safe quando o resultado é indeterminado,
+  supersedido ou não replayável. Status HTTP isolado, inclusive 502, não
+  autoriza retry automático; a garantia é não haver dupla aplicação
+  silenciosa dentro dessas premissas;
 ```
 
 Em "Fora de escopo", substituir o bullet correspondente por:
@@ -134,10 +153,13 @@ retry automático de `POST /api/turn` ..." por:
 
 ```markdown
 - Retry de `POST /api/turn` sem `request_id`: **nunca** (pode virar outro
-  turno). Com `request_id` (v1.1): a retransmissão devolve replay 200 quando a
-  última resposta está disponível, ou 409 quando o resultado é
-  indeterminado/supersedido; após 409, descartar ids pendentes, re-hidratar
-  `GET /api/state` + `GET /api/lesson` e iniciar turno novo com UUID novo.
+  turno). Com cliente único/serial, cache íntegro e o MESMO `request_id`
+  (v1.1), a retransmissão pode processar se a falha anterior ocorreu antes de
+  `processing`, devolver replay 200 se há resposta `done` válida e replayável,
+  ou 409 fail-safe se o resultado é indeterminado, supersedido ou não
+  replayável. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático. Após 409, descartar ids pendentes, re-hidratar `GET /api/state`
+  + `GET /api/lesson` e iniciar turno lógico novo com UUID novo.
 ```
 
 - [ ] **Step 2: `.claude/autonomy/decision-policy.md`** — na seção "Missão
@@ -149,8 +171,11 @@ HTTP…", "Nunca aprove retry…" e "Mudança no backend…" por:
   `docs/professor-virtual/contrato-dispositivo.md`. Não invente endpoints,
   campos, estados ou capacidades fora deles.
 - Retry de `POST /api/turn`: nunca aprove retry sem `request_id`. Com
-  `request_id` (v1.1), a retransmissão do mesmo turno é segura: replay 200 ou
-  409 fail-safe. Após 409: re-hidratar e novo `request_id`.
+  cliente único/serial, cache íntegro e o MESMO `request_id` (v1.1), uma
+  retransmissão pode processar após falha pré-`processing`, devolver replay
+  200 ou 409 fail-safe. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático. A garantia é não haver dupla aplicação silenciosa dentro dessas
+  premissas. Após 409: descartar ids pendentes, re-hidratar e usar UUID novo.
 - Nunca aprove mover regra pedagógica, contador ou decisão de avanço para o
   dispositivo: o backend é a única fonte de verdade pedagógica.
 - Mudança no backend: as mudanças aditivas de transporte do contrato v1.1
@@ -168,9 +193,11 @@ o reenvio "devolve a resposta armazenada sem criar novo turno") por:
 
 ```markdown
 - Retry de `POST /api/turn`: proibido sem `request_id`; com `request_id`
-  (contrato v1.1), a retransmissão do MESMO turno é segura — devolve replay
-  200 ou 409 fail-safe, nunca aplica o turno duas vezes. Após 409:
-  re-hidratar e usar `request_id` novo.
+  (contrato v1.1), cliente único/serial e cache íntegro, a retransmissão do
+  MESMO turno pode processar após falha pré-`processing`, devolver replay 200
+  ou 409 fail-safe. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático; a garantia é não haver dupla aplicação silenciosa dentro dessas
+  premissas. Após 409: descartar ids pendentes, re-hidratar e usar UUID novo.
 ```
 
 - [ ] **Step 5: Commit**
@@ -188,14 +215,18 @@ por, literalmente:
 
 > 3. **Retry de turno:** retry de `POST /api/turn` continua PROIBIDO sem
 > `request_id`. Com cache íntegro e cliente serial conforme este contrato,
-> uma retransmissão do mesmo turno não é aplicada silenciosamente duas vezes:
-> ela devolve o replay 200 quando a última resposta ainda está disponível, ou
-> 409 quando o resultado é indeterminado/supersedido. Após 409, o dispositivo
-> descarta todos os ids pendentes anteriores, re-hidrata `GET /api/state` +
+> uma retransmissão do mesmo turno pode processar quando a falha anterior
+> ocorreu antes do marcador `processing`, devolver replay 200 quando existe
+> resposta `done` válida e replayável, ou devolver 409 quando o resultado é
+> indeterminado, supersedido ou não replayável. A garantia é não haver dupla
+> aplicação silenciosa dentro dessas premissas. Status HTTP isolado, inclusive
+> 502, não autoriza retry automático. Após 409, o dispositivo descarta todos
+> os ids pendentes anteriores, re-hidrata `GET /api/state` +
 > `GET /api/lesson` e só então inicia um turno lógico novo com UUID novo.
 
-- [ ] **Step 2: Resposta v1 literal (D1)** — substituir "Clientes v1 ignoram
-os campos extras" e adjacências por:
+- [ ] **Step 2: Resposta v1 literal (D1)** — substituir **somente** a sentença
+`Clientes v1 ignoram os campos extras.` pela garantia abaixo. Preservar todo o
+restante da seção, inclusive URLs relativas, formatos e semântica de `null`:
 
 > Requisições **sem** nenhum campo v1.1 recebem **exatamente** o payload v1
 > atual (mesmo conjunto de chaves; nenhuma chave nova). Os campos
@@ -222,14 +253,80 @@ e adicionar logo abaixo da tabela:
 > perfil v1.1.
 
 - [ ] **Step 4: Seção "Idempotência (`request_id`)"** — substituir a seção
-inteira pelo texto normativo completo do E02.3(c) da Emenda 02 (o bloco
-"### Idempotência (`request_id`)" com: schema
-`seen_request_ids`/`rehydration_required`/`last`; ledger sem truncamento;
-regras de replay/409; marcador `processing`→`done` e o que ele NÃO cobre;
-supersessão antes de toda mutação externa — turno v1, nova lição,
-`adult/resolve`, expiração, 502 pré-marcador; quarentena copy-before-replace;
-limite sob corrupção integral; semântica do 409). Copiar verbatim de
-`emenda-02-plano-contrato-dispositivo.md`, seção E02.3(c).
+inteira pelo texto normativo autocontido abaixo:
+
+```markdown
+### Idempotência (`request_id`)
+
+O cache `data/last_turn_response.json` contém:
+
+- `seen_request_ids`: ledger dos ids já reservados/aplicados;
+- `rehydration_required`: sentinela de recuperação após corrupção descoberta
+  sem um id corrente;
+- `last`: o único registro cuja resposta ainda pode ser replayada
+  (`processing`, `done`, `indeterminate` ou `null`).
+
+O ledger íntegro não é truncado na v1.1. Remover um id antigo permitiria que
+ele fosse aplicado novamente. Compactação futura só pode ocorrer com mecanismo
+durável equivalente e mudança explícita de protocolo.
+
+Para uma requisição com `request_id`, antes de LLM/TTS/geração de imagem e de
+qualquer mutação de estado:
+
+- se `last` tem o mesmo id e status `done`, o backend devolve exatamente a
+  resposta armazenada (200), sem LLM, TTS, imagem, contador ou transição, desde
+  que ela valide e seu campo `request_id` ecoe o mesmo id; divergência é cache
+  inválido e segue o fluxo 409;
+- se o id consta em `seen_request_ids`, mas não existe resposta replayável, ou
+  se `last` tem status `processing`/`indeterminate`, o backend devolve 409;
+- se `rehydration_required=true`, a primeira tentativa futura é registrada
+  como `indeterminate` e recebe 409; somente outro id, criado depois da
+  re-hidratação, pode prosseguir;
+- somente um id ainda não visto entra no pipeline.
+
+Depois que LLM e mídia terminam, mas antes dos efeitos persistentes do caminho
+de sucesso, o backend grava atomicamente `processing`. Em seguida persiste
+transições/contadores em `state.json` e o append em `conversation.json`; ao
+final grava atomicamente `done` + resposta.
+
+O marcador não cobre os arquivos de mídia já escritos (inertes até serem
+referenciados por um `done`) nem os incrementos de falha técnica dos caminhos
+502, que mantêm a semântica por tentativa da v1. Antes de persistir esse
+incremento técnico, o backend supersede qualquer replay anterior, mas não
+reserva o id da tentativa que falhou. Falha antes de `processing` deixa esse
+mesmo id elegível para processamento; falha depois de `processing` deixa o id
+em 409 fail-safe. Portanto, o status HTTP isolado não autoriza retry
+automático.
+
+Qualquer mutação de estado que não pertence à própria resposta armazenada
+grava a supersessão (`last: null`) **antes** de persistir o novo estado. Isso
+inclui: turno v1 sem `request_id`, publicação de nova lição,
+`POST /api/adult/resolve` bem-sucedido e expiração persistida por
+`GET /api/state`, além dos incrementos técnicos dos caminhos 502 anteriores ao
+marcador. Os ids conhecidos permanecem no ledger e retornam 409; a resposta
+anterior deixa de ser replayável. Falha ao gravar a supersessão impede a
+mutação subsequente.
+
+Cache ilegível ou semanticamente inválido nunca faz o backend assumir que o id
+corrente (ou o primeiro id futuro) é novo. O arquivo é copiado para
+`last_turn_response.corrupt.json` e substituído atomicamente. Quando existe um
+id corrente, ele fica `indeterminate` e recebe 409; quando a corrupção é
+descoberta por uma mutação que não reserva o id corrente (turno v1, nova lição,
+`adult/resolve`, expiração ou caminho 502 pré-marcador),
+`rehydration_required=true` força 409 na primeira tentativa futura. Depois do
+409, o dispositivo re-hidrata e usa id novo.
+
+**Limite sob corrupção integral:** ids que existiam somente no arquivo
+ilegível não podem ser reconstruídos. Por isso, a garantia nesse cenário
+depende do cliente único/serial obedecer ao 409: descartar qualquer id anterior
+e gerar UUID novo após re-hidratar. Um cliente fora do protocolo que, depois
+do 409, envie outro id histórico perdido pode fazê-lo parecer novo. Eliminar
+esse limite exigiria ledger separado com durabilidade independente e fica fora
+da v1.1.
+
+O 409 significa “a resposta não está disponível e o turno pode já ter sido
+aplicado”; não é resposta pedagógica e não deve ser reproduzido como turno.
+```
 
 - [ ] **Step 5: Ciclo de vida da mídia** — substituir "Arquivos de turnos
 anteriores são apagados quando um novo turno gera mídia." por:
@@ -240,14 +337,25 @@ anteriores são apagados quando um novo turno gera mídia." por:
 > turno, em limpeza best-effort (órfãos tolerados; mídia ainda referenciada
 > por resposta replayável nunca é apagada).
 
-- [ ] **Step 6: Autenticação (D2)** — substituir as regras da seção por:
+- [ ] **Step 6: Autenticação (D2)** — substituir a seção inteira por:
 
-> Não-loopback com `DEVICE_API_TOKEN` configurado e credencial
-> ausente/incorreta ⇒ `401`. Não-loopback com token NÃO configurado ⇒
-> `503 {"detail": "DEVICE_API_TOKEN não configurado no servidor"}`
-> (fail-closed; falha de configuração do servidor). Loopback sempre isento;
-> origem ausente/desconhecida NÃO é loopback. Não existe modo remoto sem
-> token.
+```markdown
+## Autenticação (token de dispositivo)
+
+- Config: variável de ambiente `DEVICE_API_TOKEN` no backend (`.env`).
+- Toda requisição HTTP cuja origem não é loopback exige
+  `Authorization: Bearer <token>` ou, alternativamente,
+  `X-Api-Token: <token>`. Isso inclui `/api/health`, `/api/media/...` e todos
+  os demais endpoints.
+- Com token configurado, credencial ausente ou incorreta retorna
+  `401 {"detail":"Token inválido ou ausente"}`.
+- Com token não configurado, origem não-loopback retorna
+  `503 {"detail":"DEVICE_API_TOKEN não configurado no servidor"}`.
+- `127.0.0.1`, `::1` e `localhost` são loopback e permanecem isentos.
+- Origem ausente ou desconhecida não é loopback.
+- Não existe modo remoto sem token.
+- Token e PIN nunca aparecem em corpo de resposta ou log.
+```
 
 - [ ] **Step 7: Neutralidade de TTS** — na tabela de `audio_format` e na seção
 "Formato WAV", remover as menções a "Polly" da interface normativa (descrever
@@ -266,23 +374,86 @@ git commit -m "Contrato v1.1: idempotência fail-safe completa, v1 literal, toke
 
 # Parte 2 — Pré-condições operacionais GSD/Git no `licao_casa`
 
-Executar ANTES de abrir o milestone (sessão local do `licao_casa`, com o
-proprietário):
+Executar ANTES de abrir o milestone, numa sessão local do `licao_casa` com o
+proprietário. Preservar todos os arquivos não rastreados existentes
+(auditorias, respostas e notas).
 
-1. Reconciliar `STATE.md` × `ROADMAP.md` × summaries/UATs da V1 (fase 5 consta
-   "executing" num e "completa" no outro).
-2. Auditar/arquivar o milestone V1 no GSD.
-3. Baseline: `5588b3e` confirmada (D3) — a tag só é criada após a
-   reconciliação; arquivos não rastreados ficam fora.
-4. Criar branch dedicada (ex.: `milestone/device-contract-v1.1`) — a config
-   atual (`branching_strategy: "none"`) commitaria em `main`.
-5. Verificar/instalar as definições de agentes GSD (`agents_installed=false`
-   reportado) ou escolher modo de execução suportado.
-6. Converter MECANICAMENTE as Tasks 3–11 desta Parte 3 em artefatos `PLAN.md`
-   válidos do GSD — sem redesenho por planner/roadmapper; o conteúdo técnico é
-   o deste documento, verbatim.
-7. Preservar todos os arquivos não rastreados existentes (auditoria, resposta,
-   notas).
+## Gate A — confirmar e auditar a V1
+
+1. Confirmar em modo somente leitura o estado de Git e que `5588b3e` continua
+   sendo a baseline funcional aprovada.
+2. Executar `/gsd:audit-milestone`.
+3. Tratar o resultado como diagnóstico. Esse comando não reconcilia nem
+   corrige automaticamente `STATE.md`, `ROADMAP.md`, summaries, verificações,
+   UATs, requisitos ou quick tasks.
+4. Confrontar todos esses artefatos e reconciliar as divergências encontradas
+   (incluindo a fase 5 como "executing" em um lugar e concluída em outro).
+5. Qualquer gap que dependa de julgamento humano deve ser apresentado ao
+   proprietário para resolução ou aceite explícito e documentado.
+6. Repetir a auditoria. Não executar `complete-milestone` enquanto ela não
+   estiver aprovada ou enquanto os gaps não tiverem sido explicitamente
+   aceitos e registrados.
+
+## Gate B — preservar os dois marcos Git
+
+1. Verificar se a tag `baseline-v1.0` já existe.
+2. Se não existir, e somente após autorização explícita do proprietário,
+   criá-la apontando exatamente para `5588b3e`:
+
+   ```bash
+   git tag -a baseline-v1.0 5588b3e \
+     -m "Baseline funcional da V1 antes do contrato de dispositivo v1.1"
+   ```
+
+3. Se já existir, verificar que `baseline-v1.0^{}` resolve exatamente para
+   `5588b3e`; qualquer divergência interrompe o fluxo.
+4. Manter `git.create_tag: true`.
+5. Executar `/gsd:complete-milestone 1.0`.
+6. Quando o GSD perguntar pelos diretórios das fases, escolher arquivá-los em
+   `.planning/milestones/`; não deixá-los para remoção posterior por
+   `phases.clear`.
+7. Permitir que o GSD crie sua tag automática `v1.0`. Ela representa o
+   fechamento documental do milestone e é deliberadamente distinta da
+   `baseline-v1.0`, que representa o código V1 funcional.
+8. Somente depois que o fechamento e todos os commits de arquivamento
+   terminarem, criar, com autorização explícita do proprietário, a branch
+   `milestone/device-contract-v1.1` a partir do HEAD final da `main`.
+
+## Gate C — registrar o novo milestone sem redesenhar
+
+1. Na branch dedicada, executar:
+
+   ```text
+   /gsd:new-milestone "Contrato de dispositivo v1.1"
+   ```
+
+2. Usar versão `v1.1`, pular a pesquisa e registrar uma única fase.
+3. Requisitos e roadmap são representação mecânica do contrato e das Tasks
+   3–11 já aprovadas. O roadmapper não está autorizado a acrescentar, remover,
+   dividir, fundir ou redesenhar conteúdo técnico.
+4. Se a estrutura produzida divergir, interromper e pedir correção mecânica;
+   não aceitar a divergência por conveniência.
+
+## Gate D — importar somente a Parte 3
+
+Não executar `/gsd:import` diretamente sobre este consolidado: o comando não
+possui seletor de seção e o documento contém tarefas dos dois repositórios.
+
+Depois que o milestone informar o número real da fase:
+
+1. criar no `licao_casa` um artefato de importação mecanicamente derivado,
+   contendo somente esta Parte 3 (Tasks 3–11);
+2. usar frontmatter GSD com `phase: N`, número do plano, `type` adequado e
+   `autonomous: false`;
+3. preservar verbatim o conteúdo técnico das Tasks 3–10;
+4. representar as escritas da Task 11 no `xiaozhi-esp32` como checkpoint/handoff
+   humano, mantendo o texto exato a registrar e exigindo commit separado no
+   repositório correto;
+5. usar o caminho absoluto do artefato no `/gsd:import --from ...`;
+6. validar paridade 1:1 entre o artefato, esta Parte 3 e o `PLAN.md` resultante;
+7. resolver conflitos de decisões antigas atualizando somente o contexto e as
+   decisões do milestone v1.1; não reescrever conteúdo técnico;
+8. somente depois da aprovação da paridade executar `/gsd:execute-phase N`.
 
 ---
 
@@ -467,8 +638,10 @@ git commit -m "Token de dispositivo fail-closed: 401 credencial, 503 sem token, 
 **Files:**
 - Create: `backend/scripts/check_polly_pcm.py`
 
-**Gate:** requer autorização do proprietário para 1 chamada real de custo
-mínimo. O resultado é registrado no contrato canônico ANTES da Task 4.
+**Gate:** requer autorização do proprietário para uma chamada real de custo
+mínimo; uma segunda chamada diagnóstica só ocorre se `generative` falhar. O
+resultado técnico e a confirmação humana da audição são registrados
+separadamente no contrato canônico ANTES da Task 4.
 
 - [ ] **Step 1: Criar o script**
 
@@ -478,53 +651,123 @@ Criar `backend/scripts/check_polly_pcm.py`:
 """Manual check: Polly generative voice + pcm 16k (contrato v1.1, preflight).
 
 Run from backend/ with the venv active:  python scripts/check_polly_pcm.py
-Writes polly_pcm_check.wav next to this script for a listening check.
+Writes the listening WAV to the system temporary directory.
 """
 
-import asyncio
 import io
+import struct
 import sys
+import tempfile
 import wave
 from pathlib import Path
 
+import boto3
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from polly import synthesize_speech  # noqa: E402
+from config import settings  # noqa: E402
 
 
-async def main() -> None:
-    data = await synthesize_speech(
-        "Oi! Vamos fazer a lição de casa juntos?", output_format="wav"
+def _wav_from_pcm(pcm: bytes, sample_rate: int = 16000) -> bytes:
+    """Wrap raw PCM s16le mono in a canonical 44-byte WAV header."""
+    channels, bits = 1, 16
+    byte_rate = sample_rate * channels * bits // 8
+    block_align = channels * bits // 8
+    header = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVE"
+    header += b"fmt " + struct.pack(
+        "<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits
     )
-    with wave.open(io.BytesIO(data)) as w:
-        print(
-            f"channels={w.getnchannels()} rate={w.getframerate()} "
-            f"bits={w.getsampwidth() * 8} frames={w.getnframes()}"
-        )
-    out = Path(__file__).parent / "polly_pcm_check.wav"
+    header += b"data" + struct.pack("<I", len(pcm))
+    return header + pcm
+
+
+def _synthesize_pcm(client, engine: str) -> bytes:
+    response = client.synthesize_speech(
+        Engine=engine,
+        LanguageCode="pt-BR",
+        OutputFormat="pcm",
+        SampleRate="16000",
+        Text="Oi! Vamos fazer a lição de casa juntos?",
+        TextType="text",
+        VoiceId=settings.polly_voice_id,
+    )
+    return response["AudioStream"].read()
+
+
+def _validate_and_write(pcm: bytes, engine: str) -> Path:
+    data = _wav_from_pcm(pcm)
+    out = Path(tempfile.gettempdir()) / f"polly_pcm_check_{engine}.wav"
     out.write_bytes(data)
-    print(f"OK — ouça {out}")
+    with wave.open(io.BytesIO(data), "rb") as wav_file:
+        channels = wav_file.getnchannels()
+        rate = wav_file.getframerate()
+        sample_width = wav_file.getsampwidth()
+        frames = wav_file.getnframes()
+    if (channels, rate, sample_width) != (1, 16000, 2):
+        raise RuntimeError(
+            "WAV inesperado: "
+            f"channels={channels} rate={rate} sampwidth={sample_width}"
+        )
+    print(
+        f"engine={engine} channels={channels} rate={rate} "
+        f"bits={sample_width * 8} frames={frames}"
+    )
+    print(f"OK técnico — ouça {out}")
+    return out
 
 
-asyncio.run(main())
+def main() -> None:
+    client = boto3.client(
+        "polly",
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+        region_name=settings.aws_region,
+    )
+
+    try:
+        pcm = _synthesize_pcm(client, "generative")
+    except Exception as generative_error:
+        print(f"generative FALHOU: {generative_error}", file=sys.stderr)
+        try:
+            neural_pcm = _synthesize_pcm(client, "neural")
+            _validate_and_write(neural_pcm, "neural")
+        except Exception as neural_error:
+            print(f"neural também FALHOU: {neural_error}", file=sys.stderr)
+        raise SystemExit(
+            "BLOCKER: generative não aceitou PCM. Registre os resultados e "
+            "produza uma emenda; não inicie a Task 4."
+        )
+
+    _validate_and_write(pcm, "generative")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-Nota: o script depende da Task 4 (`output_format`). Ordem prática: criar o
-script agora; implementar a Task 4 no branch; rodar o preflight ANTES do
-commit da Task 4 e registrar o resultado no contrato. Se o preflight reprovar,
-aplicar a contingência ANTES de commitar a Task 4.
+O script é standalone em relação à Task 4: usa boto3 diretamente, constrói o
+próprio header WAV e conclui integralmente antes de qualquer implementação de
+`output_format`.
 
 - [ ] **Step 2: Rodar (com autorização do proprietário e `.env` real)**
 
 Run: `python scripts/check_polly_pcm.py`
-Expected: `channels=1 rate=16000 bits=16 ...` e WAV audível.
-**Contingência se o engine `generative` rejeitar `pcm`:** repetir com
-`engine="neural"`; se funcionar, registrar no contrato que WAV usa engine
-`neural`; se nada de PCM funcionar, registrar que o dispositivo usa MP3
-(decoder `esp_audio_codec` no firmware) e remover a opção `wav` do contrato —
-decisão documentada, não silenciosa.
+Expected para aprovação: `engine=generative channels=1 rate=16000 bits=16 ...`
+e WAV audível no diretório temporário.
 
-- [ ] **Step 3: Registrar o resultado no contrato canônico e commitar**
+**Contingência fechada (D4):** se `generative` rejeitar PCM, o script faz no
+máximo uma chamada diagnóstica com `Engine="neural"`. Registrar os resultados
+das duas tentativas, mas **INTERROMPER antes da Task 4 mesmo que `neural`
+funcione**. Produzir uma emenda que ajuste explicitamente código, testes,
+contrato e Tasks 4, 7, 10, 11 e 12. Não existe caminho MP3-only
+pré-roteirizado nem troca silenciosa do engine da V1.
+
+- [ ] **Step 3: Rodar a suíte completa**
+
+Run: `python -m pytest tests/ -q`
+Expected: tudo PASS.
+
+- [ ] **Step 4: Registrar o resultado no contrato canônico e commitar**
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
@@ -537,8 +780,9 @@ git commit -m "Contrato v1.1: resultado do preflight Polly PCM"
 
 ## Task 4: Polly em WAV (PCM 16 kHz + header WAV)
 
-Condicionada ao resultado da Task 3.9 (aplicar a variação registrada no
-contrato, se houver).
+Só começa se a Task 3.9 confirmar `generative` + PCM 16 kHz e a audição humana
+for aprovada. Qualquer falha de `generative` bloqueia esta task até uma emenda
+aprovada.
 
 **Files:**
 - Modify: `backend/polly.py`
@@ -666,11 +910,9 @@ async def synthesize_speech(
     )
 ```
 
-- [ ] **Step 4: Rodar testes + suíte, e o preflight da Task 3.9**
+- [ ] **Step 4: Rodar testes + suíte**
 
 Run: `python -m pytest tests/test_polly.py -v && python -m pytest tests/ -q`
-Depois: `python scripts/check_polly_pcm.py` (com autorização; registrar
-resultado no contrato antes de commitar).
 
 - [ ] **Step 5: Commit**
 
@@ -771,8 +1013,8 @@ def resize_image_for_device(image_bytes: bytes, max_px: int) -> bytes:
 
 - [ ] **Step 5: Rodar testes**
 
-Run: `python -m pytest tests/test_media_utils.py -v`
-Expected: PASS.
+Run: `python -m pytest tests/test_media_utils.py -v && python -m pytest tests/ -q`
+Expected: tudo PASS.
 
 - [ ] **Step 6: Commit**
 
@@ -3041,7 +3283,12 @@ token de dispositivo fail-closed. O firmware consome esse perfil; o fluxo v1
 do frontend web segue inalterado.
 ```
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Rodar a suíte completa**
+
+Run: `python -m pytest tests/ -q`
+Expected: tudo PASS.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
@@ -3065,7 +3312,7 @@ Com o backend rodando (`uvicorn main:app --reload`) e uma lição preparada:
 curl -s -X POST http://127.0.0.1:8000/api/turn \
   -F session_id=validacao-v11 \
   -F 'audio=@amostra.wav;type=audio/wav' \
-  -F request_id=validacao-0001 \
+  -F request_id=req-validacao-$(uuidgen) \
   -F media=url -F audio_format=wav -F image_max_px=1280 | python3 -m json.tool
 ```
 
@@ -3079,6 +3326,12 @@ acompanhamento do turno real.
 Em `/Users/institutorecriare/VSCodeProjects/xiaozhi-esp32/docs/professor-virtual/contrato-dispositivo.md`,
 marcar os checkboxes de "Validações empíricas pendentes" com o resultado real
 (data, engine usado, observações de qualidade da avaliação do Gemini).
+
+Este step é um checkpoint/handoff humano e deve permanecer
+`autonomous: false` no artefato importado pelo GSD. O executor do
+`licao_casa` pausa e solicita que a alteração seja feita e commitada
+separadamente no `xiaozhi-esp32`; ele não escreve nem commita autonomamente no
+outro repositório.
 
 - [ ] **Step 3: Suíte completa + lint dos arquivos tocados**
 
@@ -3102,6 +3355,9 @@ git add docs/professor-virtual/contrato-dispositivo.md
 git commit -m "Contrato v1.1: registra resultado da validação Gemini WAV"
 ```
 
+Este commit pertence ao handoff do Step 2 e ocorre no branch correto do
+`xiaozhi-esp32`, fora do worktree/branch gerenciado pelo GSD no `licao_casa`.
+
 ---
 
 # Revisão independente (obrigatória, após a Task 11)
@@ -3120,23 +3376,43 @@ máximo duas vezes.
 Executada NESTE repositório, após os resultados da Task 11 e ANTES de qualquer
 fase do firmware que toque rede/mídia (F1, F3, F4, F7):
 
-- [ ] 1. **Q3(a) (voz do tutor)**: marcar a decisão "decodificação MP3" como
-  **superseded** pelo WAV/PCM do contrato v1.1 (mantendo MP3 documentado como
-  contingência se a Task 3.9/11 a tiver acionado).
+- [ ] 1. **Q3(a) (voz do tutor)**: marcar a decisão "decodificação MP3" do
+  áudio do tutor como **superseded** pelo WAV/PCM validado do contrato v1.1.
+  A Task 12 só é alcançada depois que um caminho WAV foi validado; não manter
+  fallback MP3 acionável pelo preflight.
 - [ ] 2. **F3**: substituir "base64→PNG" / "base64→MP3" por download via
   `audio_url`/`image_url` (+ `request_id`, `image_max_px=1280`, `audio_format`
   conforme validação); manter o fluxo 502/409/re-hidratação.
-- [ ] 3. **Regra de retry**: substituir "sem retry" por "retransmissão apenas
-  com o mesmo `request_id` (replay 200 ou 409 fail-safe); após 409,
-  re-hidratar + `request_id` novo".
+- [ ] 3. **Regra de retry completa**: sem `request_id`, retry automático de
+  `POST /api/turn` é proibido. Com cliente único/serial, cache íntegro e o
+  MESMO `request_id`, uma retransmissão pode processar após falha anterior ao
+  marcador `processing`, devolver replay 200 quando há resposta `done` válida
+  e replayável, ou 409 fail-safe quando o resultado é indeterminado,
+  supersedido ou não replayável. Status HTTP isolado, inclusive 502, não
+  autoriza retry automático; a garantia é não haver dupla aplicação
+  silenciosa dentro dessas premissas. Após 409, descartar ids pendentes,
+  re-hidratar `GET /api/state` + `GET /api/lesson` e iniciar turno lógico novo
+  com UUID novo.
 - [ ] 4. **F7**: substituir envio em lote único por
   `/api/prepare/start|page|finish` (estratégia de RAM: uma página por vez).
 - [ ] 5. **Processo transversal**: substituir "O backend jamais é alterado"
   pela regra de duas zonas + referência ao contrato canônico.
 - [ ] 6. **F1**: adicionar o token (`DEVICE_API_TOKEN`) ao provisionamento
-  (NVS `pv_settings`) e o tratamento de `401`/`503` do middleware.
-- [ ] 7. Registrar fallbacks sobreviventes da validação empírica.
-- [ ] 8. Commit:
+  no namespace NVS **`"pv"`** (o módulo continua se chamando `pv_settings`) e
+  o tratamento de `401`/`503` do middleware.
+- [ ] 7. **Token em todas as chamadas**: enviar a credencial em toda chamada
+  HTTP do firmware, incluindo `/api/prepare/*`, `/api/state`, `/api/lesson`,
+  `/api/turn`, `/api/media/...` e `/api/health`.
+- [ ] 8. **Varredura de referências antigas**: procurar por `retry`, `MP3`,
+  `base64` e `lote` em todo o `plano-firmware.md`, cobrindo árvore de
+  arquitetura (`pv_backend_client ... SEM retry`), Q3(a), decisões
+  complementares, F3, F7, tabela de riscos e Processo transversal. Classificar
+  cada ocorrência antes de editar: referências ao MP3 do áudio do tutor podem
+  ser obsoletas, mas referências válidas a MP3/OGG de sons locais não são
+  substituídas cegamente.
+- [ ] 9. Registrar somente fallbacks que sobreviveram à validação empírica e
+  são compatíveis com o contrato aprovado.
+- [ ] 10. Commit:
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/xiaozhi-esp32
