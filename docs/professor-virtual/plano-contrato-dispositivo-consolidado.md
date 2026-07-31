@@ -6,8 +6,9 @@
 **Este documento consolida:** `plano-contrato-dispositivo.md`
 + `emenda-01-plano-contrato-dispositivo.md`
 + `emenda-02-plano-contrato-dispositivo.md` (versão corrigida pelo auditor,
-commit `64f0ba3`) + `emenda-03-fish-audio.md` e as correções documentais da
-auditoria final. **Para execução, este documento prevalece sobre os quatro**;
+commit `64f0ba3`) + `emenda-03-fish-audio.md`
++ `emenda-04-normalizacao-cabecalho-wav.md` e as correções documentais da
+auditoria final. **Para execução, este documento prevalece sobre os cinco**;
 eles permanecem como histórico. O conteúdo técnico das tasks foi preservado;
 as correções posteriores tornaram preflight, governança e sequência
 operacional autocontidos e executáveis.
@@ -50,6 +51,15 @@ somente como legado inativo da V1.
   `s2.1-pro-free`. A integração é HTTP bloqueante até o áudio completo, sem
   WebSocket, tags emocionais, retry ou fallback para Polly. Qualquer falha ou
   reprovação do preflight interrompe antes da Task 4.
+  **Emenda 04 (WAV finito):** o Fish devolve o WAV com placeholders de
+  streaming (RIFF `4.294.967.076` e `data` `4.294.967.040` observados em um
+  arquivo de 1.121.194 bytes com 1.121.150 bytes de PCM). Antes de validar,
+  persistir ou devolver o áudio, o backend normaliza o cabeçalho para um
+  arquivo finito percorrendo os chunks RIFF, sem presumir offset 36/44.
+  Entregar os placeholders ao dispositivo é bloqueio técnico D4, porque o
+  firmware confia nos tamanhos declarados. A audição humana de MP3 e WAV já
+  foi aprovada; o preflight só é considerado concluído após ser reexecutado
+  com normalização.
 - **D5 — marcos da V1:** a tag anotada `v1.0.0` já existe, resolve exatamente
   para `34041d9` e registra o encerramento documental já concluído do milestone
   V1 pelo GSD. A tag manual `baseline-v1.0`, já aprovada pelo proprietário,
@@ -66,6 +76,8 @@ somente como legado inativo da V1.
 | Contrato canônico (`contrato-dispositivo.md`) criado | FEITO (commit `caa3ba8`) — emendas da Parte 1 abaixo PENDENTES |
 | CLAUDE.md (zonas + retry) | FEITO (commit `3873025`) — ajuste de redação na Parte 1 PENDENTE |
 | Emenda 03 Fish Audio incorporada ao consolidado | FEITO — revisão independente pré-código aprovada em 30/07/2026 |
+| Emenda 04 (normalização do cabeçalho WAV) incorporada ao consolidado | FEITO — execução do `licao_casa` parada antes da Task 4, em `c2872c5` |
+| Preflight Fish (Task 3.9) | AUDIÇÃO APROVADA, PREFLIGHT NÃO CONCLUÍDO — reexecutar com a normalização da Emenda 04 |
 | `AGENTS.md` / decision-policy / decision-log | PENDENTE (Parte 1) |
 | Reconciliação, arquivamento e encerramento GSD da V1 | FEITO — tag anotada `v1.0.0` resolve para `34041d9` |
 | Tag manual `baseline-v1.0` em `5588b3e` | APROVADA E PENDENTE DE CRIAÇÃO — executar somente no Gate B após verificação e autorização operacional |
@@ -720,13 +732,20 @@ no `.env` local. O segredo nunca aparece no script, documento, commit ou log.
 Resultado técnico e audição humana são registrados separadamente no contrato
 canônico antes da Task 4.
 
+**Estado (Emenda 04):** a execução real já ocorreu e a audição humana aprovou
+MP3 e WAV (voz Itachi correta, qualidade e ritmo satisfatórios), mas o WAV
+chegou com placeholders de streaming e o preflight **não** está concluído.
+Reexecutar esta task com a normalização abaixo antes de seguir para a Task 4.
+
 - [ ] **Step 1: Criar o script standalone**
 
 ```python
 """Manual Fish Audio check for the v1.1 MP3/WAV contract.
 
 Run from backend/ with the venv active: python scripts/check_fish_tts.py
-Writes both listening files to the system temporary directory.
+Writes both listening files to the system temporary directory. The WAV header
+is normalized to a finite file before it is validated or written; this script
+stays standalone and does not import fish_audio.
 """
 
 import io
@@ -794,6 +813,71 @@ def _synthesize(client: httpx.Client, output_format: str) -> tuple[bytes, float]
     return bytes(response.content), elapsed
 
 
+_WAV_PLACEHOLDER_MIN = 0xFFFFFF00
+_UINT32_MAX = 0xFFFFFFFF
+
+
+def _find_wav_data_chunk(data: bytes) -> int:
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise RuntimeError("WAV sem RIFF/WAVE válido")
+    offset = 12
+    while offset + 8 <= len(data):
+        chunk_id = data[offset : offset + 4]
+        chunk_size = int.from_bytes(data[offset + 4 : offset + 8], "little")
+        payload = offset + 8
+        if chunk_id == b"data":
+            return payload
+        if chunk_size > len(data) - payload:
+            raise RuntimeError("WAV truncado antes do chunk data")
+        offset = payload + chunk_size + (chunk_size % 2)
+    raise RuntimeError("WAV sem chunk data")
+
+
+def _declared_sizes(data: bytes) -> tuple[int, int, int]:
+    """Return (RIFF ChunkSize, data Subchunk2Size, PCM bytes reais)."""
+    payload = _find_wav_data_chunk(data)
+    return (
+        int.from_bytes(data[4:8], "little"),
+        int.from_bytes(data[payload - 4 : payload], "little"),
+        len(data) - payload,
+    )
+
+
+def _normalize_wav_header(data: bytes) -> bytes:
+    payload = _find_wav_data_chunk(data)
+    if len(data) - 8 > _UINT32_MAX:
+        raise RuntimeError("WAV acima do limite de uint32")
+
+    riff_size, data_size, pcm_bytes = _declared_sizes(data)
+    if pcm_bytes == 0:
+        raise RuntimeError("WAV sem PCM")
+    if pcm_bytes % 2:
+        raise RuntimeError("WAV com amostra s16le incompleta")
+
+    expected_riff = len(data) - 8
+    if riff_size == expected_riff and data_size == pcm_bytes:
+        return data
+    if riff_size < _WAV_PLACEHOLDER_MIN or data_size < _WAV_PLACEHOLDER_MIN:
+        raise RuntimeError(
+            f"WAV com tamanhos inconsistentes: riff={riff_size} data={data_size}"
+        )
+
+    normalized = bytearray(data)
+    normalized[4:8] = expected_riff.to_bytes(4, "little")
+    normalized[payload - 4 : payload] = pcm_bytes.to_bytes(4, "little")
+    return bytes(normalized)
+
+
+def _validate_finite_sizes(data: bytes) -> None:
+    riff_size, data_size, pcm_bytes = _declared_sizes(data)
+    if riff_size != len(data) - 8:
+        raise RuntimeError(
+            f"RIFF ChunkSize {riff_size} != tamanho do arquivo - 8 ({len(data) - 8})"
+        )
+    if data_size != pcm_bytes:
+        raise RuntimeError(f"data Subchunk2Size {data_size} != PCM real ({pcm_bytes})")
+
+
 def _validate_wav(data: bytes) -> None:
     if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
         raise RuntimeError("WAV sem RIFF/WAVE válido")
@@ -803,13 +887,14 @@ def _validate_wav(data: bytes) -> None:
                 wav_file.getnchannels(),
                 wav_file.getframerate(),
                 wav_file.getsampwidth(),
+                wav_file.getcomptype(),
             )
     except (EOFError, wave.Error) as exc:
         raise RuntimeError("WAV inválido") from exc
-    if values != (1, 16000, 2):
+    if values != (1, 16000, 2, "NONE"):
         raise RuntimeError(
             f"WAV inesperado: channels={values[0]} rate={values[1]} "
-            f"sampwidth={values[2]}"
+            f"sampwidth={values[2]} comptype={values[3]}"
         )
 
 
@@ -824,12 +909,22 @@ def main() -> None:
     if not settings.fish_api_key.strip():
         raise SystemExit("BLOCKER: configure FISH_API_KEY apenas no .env local")
 
-    outputs: list[tuple[str, Path, float]] = []
+    outputs: list[tuple[str, Path, float, str]] = []
     with httpx.Client(timeout=settings.fish_tts_timeout_seconds) as client:
         for output_format in ("mp3", "wav"):
             data, elapsed = _synthesize(client, output_format)
+            note = ""
             if output_format == "wav":
+                before = _declared_sizes(data)
+                data = _normalize_wav_header(data)
+                after = _declared_sizes(data)
+                _validate_finite_sizes(data)
                 _validate_wav(data)
+                note = (
+                    f" normalizado={'sim' if after[:2] != before[:2] else 'nao'}"
+                    f" riff={before[0]}->{after[0]}"
+                    f" data={before[1]}->{after[1]} pcm={after[2]}"
+                )
             else:
                 _validate_mp3(data)
             path = (
@@ -837,12 +932,12 @@ def main() -> None:
                 / f"fish_itachi_preflight.{output_format}"
             )
             path.write_bytes(data)
-            outputs.append((output_format, path, elapsed))
+            outputs.append((output_format, path, elapsed, note))
 
-    for output_format, path, elapsed in outputs:
+    for output_format, path, elapsed, note in outputs:
         print(
             f"OK técnico format={output_format} model={settings.fish_tts_model} "
-            f"voice={settings.fish_voice_id} time={elapsed:.2f}s file={path}"
+            f"voice={settings.fish_voice_id} time={elapsed:.2f}s file={path}{note}"
         )
     print("PAUSA OBRIGATÓRIA: ouça MP3 e WAV e aprove voz/qualidade.")
 
@@ -857,17 +952,24 @@ if __name__ == "__main__":
 
 O texto é plain e não contém marcadores emocionais. O script usa HTTP
 diretamente, não importa `fish_audio.py` e termina antes de a Task 4 começar.
+A duplicação da normalização é deliberada para manter o script standalone; o
+parser percorre os chunks RIFF e não presume offset 36 nem PCM no byte 44.
 
 - [ ] **Step 2: Rodar com autorização e audição humana**
 
 Run: `python scripts/check_fish_tts.py`
 
-Expected: dois `OK técnico`, MP3 Itachi reproduzível, WAV Itachi reproduzível
-e WAV validado como RIFF/WAVE mono/16-bit/16 kHz.
+Expected: dois `OK técnico`, MP3 Itachi reproduzível, WAV Itachi reproduzível,
+WAV validado como RIFF/WAVE PCM linear mono/16-bit/16 kHz e, na linha do WAV,
+o relatório de normalização com `riff=<antes>-><depois>`,
+`data=<antes>-><depois>` e `pcm=<bytes reais>`, com RIFF ChunkSize igual ao
+tamanho final do arquivo menos 8 e `data` Subchunk2Size igual ao PCM real.
+Nenhuma chave e nenhum texto sintetizado aparecem na saída.
 
-**Condição de parada (D4):** qualquer falha técnica, voz incorreta ou qualidade
-reprovada interrompe antes da Task 4 e exige nova emenda. Não há retry
-automático nem fallback para Polly.
+**Condição de parada (D4):** qualquer falha técnica, voz incorreta, qualidade
+reprovada ou WAV que não possa ser normalizado para um arquivo finito
+interrompe antes da Task 4 e exige nova emenda. Não há retry automático nem
+fallback para Polly.
 
 - [ ] **Step 3: Rodar a suíte completa**
 
@@ -891,7 +993,8 @@ git commit -m "Contrato v1.1: registra preflight Fish MP3 e WAV"
 ## Task 4: Fish Audio para web MP3 e dispositivo WAV
 
 Só começa depois de o preflight Fish MP3+WAV e a audição humana serem
-aprovados.
+aprovados. Pela Emenda 04, isso inclui a reexecução do preflight com
+normalização produzindo um WAV finito; a audição já aprovada não basta.
 
 **Files:**
 - Create: `backend/fish_audio.py`
@@ -929,6 +1032,27 @@ Criar `backend/tests/test_fish_audio.py` cobrindo:
 - `main.synthesize_speech is fish_audio.synthesize_speech`, provando que o
   runtime v1.1 não chama Polly.
 
+Normalização do cabeçalho WAV (Emenda 04) — seis testes explícitos:
+
+1. **WAV finito correto permanece byte a byte igual:** um WAV coerente passa
+   por `_normalize_wav_header` e volta com os mesmos bytes.
+2. **Placeholders observados no Fish são corrigidos:** entrada com RIFF
+   `4294967076` (`0xFFFFFF24`) e `data` `4294967040` (`0xFFFFFF00`) devolve
+   RIFF `len(audio) - 8` e `data` igual ao PCM real, em uint32 little-endian,
+   com o restante dos bytes preservado.
+3. **Chunk opcional antes de `data` prova que não existe offset fixo:** com um
+   `LIST` entre `fmt ` e `data`, a reescrita ocorre na posição correta; o teste
+   afirma que o chunk `data` não está no offset 36 nem o PCM no byte 44.
+4. **Divergência não-placeholder é rejeitada:** RIFF e/ou `data` divergentes,
+   mas abaixo de `0xFFFFFF00` (inclusive só um dos dois em placeholder),
+   levantam `FishAudioError`.
+5. **RIFF/`data` ausente ou truncado é rejeitado:** arquivo com menos de 12
+   bytes, sem `RIFF`/`WAVE`, sem chunk `data`, com chunk anterior truncado, com
+   PCM vazio e com número ímpar de bytes de PCM levantam `FishAudioError`.
+6. **`synthesize_speech` devolve os tamanhos finitos corretos:** com o
+   transporte simulado devolvendo o WAV de placeholders, os bytes retornados
+   declaram `len(audio) - 8` e o PCM real, nunca os valores originais.
+
 Usar uma fixture local que substitui `httpx.AsyncClient`; nenhum teste faz rede
 real.
 
@@ -958,6 +1082,59 @@ class FishAudioError(RuntimeError):
     """Sanitized Fish Audio failure safe to surface in internal debug."""
 
 
+_WAV_PLACEHOLDER_MIN = 0xFFFFFF00
+_UINT32_MAX = 0xFFFFFFFF
+
+
+def _find_wav_data_chunk(data: bytes) -> int:
+    """Return the data chunk payload offset by walking the RIFF chunk list."""
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise FishAudioError("Fish Audio returned an invalid WAV")
+    offset = 12
+    while offset + 8 <= len(data):
+        chunk_id = data[offset : offset + 4]
+        chunk_size = int.from_bytes(data[offset + 4 : offset + 8], "little")
+        payload = offset + 8
+        if chunk_id == b"data":
+            return payload
+        if chunk_size > len(data) - payload:
+            raise FishAudioError("Fish Audio returned a truncated WAV")
+        offset = payload + chunk_size + (chunk_size % 2)
+    raise FishAudioError("Fish Audio returned a WAV without a data chunk")
+
+
+def _normalize_wav_header(data: bytes) -> bytes:
+    """Return a WAV whose RIFF/data sizes describe a finite file.
+
+    Fish Audio may answer with the streaming placeholders observed in the
+    preflight (RIFF 0xFFFFFF24 and data 0xFFFFFF00). A coherent finite header
+    is returned unchanged, the recognized placeholder pair is rewritten with
+    the real sizes and any other mismatch is rejected.
+    """
+    payload = _find_wav_data_chunk(data)
+    if len(data) - 8 > _UINT32_MAX:
+        raise FishAudioError("Fish Audio returned an oversized WAV")
+
+    riff_size = int.from_bytes(data[4:8], "little")
+    data_size = int.from_bytes(data[payload - 4 : payload], "little")
+    pcm_bytes = len(data) - payload
+    if pcm_bytes == 0:
+        raise FishAudioError("Fish Audio returned a WAV without PCM data")
+    if pcm_bytes % 2:
+        raise FishAudioError("Fish Audio returned a WAV with a partial s16le sample")
+
+    expected_riff = len(data) - 8
+    if riff_size == expected_riff and data_size == pcm_bytes:
+        return data
+    if riff_size < _WAV_PLACEHOLDER_MIN or data_size < _WAV_PLACEHOLDER_MIN:
+        raise FishAudioError("Fish Audio returned inconsistent WAV sizes")
+
+    normalized = bytearray(data)
+    normalized[4:8] = expected_riff.to_bytes(4, "little")
+    normalized[payload - 4 : payload] = pcm_bytes.to_bytes(4, "little")
+    return bytes(normalized)
+
+
 def _validate_wav(data: bytes) -> None:
     if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
         raise FishAudioError("Fish Audio returned an invalid WAV")
@@ -967,10 +1144,11 @@ def _validate_wav(data: bytes) -> None:
                 wav_file.getnchannels(),
                 wav_file.getframerate(),
                 wav_file.getsampwidth(),
+                wav_file.getcomptype(),
             )
     except (EOFError, wave.Error) as exc:
         raise FishAudioError("Fish Audio returned an invalid WAV") from exc
-    if values != (1, 16000, 2):
+    if values != (1, 16000, 2, "NONE"):
         raise FishAudioError("Fish Audio returned an unexpected WAV layout")
 
 
@@ -1033,11 +1211,19 @@ async def synthesize_speech(
 
     audio = bytes(response.content)
     if output_format == "wav":
+        audio = _normalize_wav_header(audio)
         _validate_wav(audio)
     return audio
 ```
 
 Não incluir corpo remoto, chave ou texto nos erros. Não adicionar retry.
+
+A ordem normalizar → validar → devolver é obrigatória: `synthesize_speech`
+nunca devolve os placeholders originais, e `_validate_wav` sozinho não os
+detecta, porque o módulo `wave` só usa o `Subchunk2Size` declarado quando
+frames são efetivamente lidos. O PCM entregue é tudo o que existe depois do
+cabeçalho do chunk `data`; chunks posteriores ao `data` produziriam divergência
+não-placeholder e são rejeitados (fail-closed).
 
 Em `backend/main.py`, substituir somente:
 
@@ -3530,13 +3716,43 @@ voz Itachi, RIFF/WAVE PCM s16le mono/16 kHz e audível; JPEG ≤1280 px. A
 entrada WAV também comprova o caminho Gemini. **Pausar e chamar o
 proprietário** para a audição e o acompanhamento do turno real.
 
+Conferir também (Emenda 04) que o WAV real baixado é um arquivo finito,
+percorrendo os chunks em vez de presumir offset fixo:
+
+```bash
+python3 - turn_<hex32>_audio.wav <<'PY'
+import pathlib
+import sys
+
+data = pathlib.Path(sys.argv[1]).read_bytes()
+assert data[:4] == b"RIFF" and data[8:12] == b"WAVE", "sem RIFF/WAVE"
+offset = 12
+while offset + 8 <= len(data) and data[offset : offset + 4] != b"data":
+    size = int.from_bytes(data[offset + 4 : offset + 8], "little")
+    offset += 8 + size + (size % 2)
+assert offset + 8 <= len(data), "WAV sem chunk data"
+payload = offset + 8
+riff = int.from_bytes(data[4:8], "little")
+declared = int.from_bytes(data[offset + 4 : offset + 8], "little")
+print("riff", riff, "esperado", len(data) - 8)
+print("data", declared, "pcm real", len(data) - payload)
+assert riff == len(data) - 8, "RIFF ChunkSize não corresponde ao arquivo"
+assert declared == len(data) - payload, "data Subchunk2Size não corresponde ao PCM"
+print("OK: WAV finito")
+PY
+```
+
+Expected: `OK: WAV finito`. Nenhum placeholder de streaming
+(`>= 0xFFFFFF00`) pode chegar ao dispositivo.
+
 - [ ] **Step 2: Registrar resultados no contrato canônico**
 
 Em `/Users/institutorecriare/VSCodeProjects/xiaozhi-esp32/docs/professor-virtual/contrato-dispositivo.md`,
 marcar os checkboxes de "Validações empíricas pendentes" com o resultado real
 (data, endpoint, modelo Fish, voice id Itachi, formatos, parâmetros, tempos
-observados, aprovação humana da voz/qualidade e observações da avaliação do
-Gemini). Nunca registrar a chave.
+observados, aprovação humana da voz/qualidade, tamanhos finitos conferidos
+no WAV — RIFF ChunkSize, `data` Subchunk2Size e PCM real — e observações da
+avaliação do Gemini). Nunca registrar a chave.
 
 Este step é um checkpoint/handoff humano e deve permanecer
 `autonomous: false` no PLAN nativo gerado pelo GSD. O executor do

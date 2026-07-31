@@ -185,6 +185,12 @@ Fluxo do dispositivo (RAM limitada): fotografa → envia → libera → repete.
 - WAV: PCM s16le, mono, 16000 Hz, com header RIFF/WAVE.
 - MP3: mono, 44100 Hz, 128 kbps.
 
+O WAV entregue pelo backend é sempre um **arquivo finito**: o RIFF ChunkSize
+corresponde ao tamanho físico do arquivo menos 8 bytes e o `data` Subchunk2Size
+corresponde ao PCM efetivamente entregue. Placeholders de streaming (valores
+próximos de `0xFFFFFFFF`) são normalizados no backend e **não chegam ao
+dispositivo**. O firmware pode confiar nos tamanhos declarados no cabeçalho.
+
 O firmware deve interpretar a estrutura RIFF/WAVE; não deve presumir que o
 payload PCM sempre começa em um offset fixo de 44 bytes.
 
@@ -200,7 +206,16 @@ empírica (abaixo). WebM/Opus NÃO é exigido.
       (`c5a6cb585b094dedb241365e7e271973`), produz MP3 mono 44,1 kHz/128 kbps
       e WAV PCM s16le mono/16 kHz com qualidade aprovada pelo proprietário.
       Registrar data, modelo efetivo, voz, formatos, tempos observados no MP3
-      e no WAV e resultado da audição humana.
+      e no WAV, tamanhos declarados no cabeçalho WAV e resultado da audição
+      humana.
+      **Parcial em 31/07/2026 — NÃO concluído:** a audição humana aprovou o MP3
+      e o WAV reais (voz Itachi correta, qualidade e ritmo satisfatórios). O WAV
+      recebido do provedor, porém, trazia placeholders de streaming
+      (RIFF `4.294.967.076`, `data` `4.294.967.040`) em 1.121.194 bytes totais
+      com 1.121.150 bytes de PCM, violando o requisito de arquivo finito acima.
+      O preflight só será considerado concluído após ser reexecutado com a
+      normalização do cabeçalho (`emenda-04-normalizacao-cabecalho-wav.md`) e
+      produzir um WAV finito.
 - [ ] Gemini aceita `audio/wav` no turno multimodal com qualidade de avaliação
       equivalente ao WebM/Opus.
 
