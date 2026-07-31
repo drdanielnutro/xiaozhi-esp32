@@ -97,16 +97,21 @@ A missão deste fork é o firmware do Professor Virtual (especificação em
 `DOCUMENTACAO-APP.md`; contexto completo em `AGENTS.md`, incluindo a
 hierarquia das fontes). Regras inegociáveis ao decidir:
 
-- Preserve o contrato HTTP da especificação (seção 7). Não invente
-  endpoints, campos, estados ou capacidades.
-- Nunca aprove retry automático de `POST /api/turn` — o contrato não tem
-  idempotência.
+- Preserve o contrato HTTP: seção 7 da especificação (v1) + perfil v1.1 de
+  `docs/professor-virtual/contrato-dispositivo.md`. Não invente endpoints,
+  campos, estados ou capacidades fora deles.
+- Retry de `POST /api/turn`: nunca aprove retry sem `request_id`. Com
+  cliente único/serial, cache íntegro e o MESMO `request_id` (v1.1), uma
+  retransmissão pode processar após falha pré-`processing`, devolver replay
+  200 ou 409 fail-safe. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático. A garantia é não haver dupla aplicação silenciosa dentro dessas
+  premissas. Após 409: descartar ids pendentes, re-hidratar e usar UUID novo.
 - Nunca aprove mover regra pedagógica, contador ou decisão de avanço para o
   dispositivo: o backend é a única fonte de verdade pedagógica.
-- Mudança no backend (`/Users/institutorecriare/VSCodeProjects/licao_casa/backend/`) só pode ser
-  recomendada nas 5 condições de "Preservação do backend" do `AGENTS.md`;
-  sem elas, a resposta é adaptar o firmware. Mesmo com elas, `escalate: true`
-  — mexer no backend é decisão do proprietário.
+- Mudança no backend: as mudanças aditivas de transporte do contrato v1.1
+  estão pré-aprovadas pelo proprietário (30/07/2026, plano consolidado).
+  Qualquer mudança FORA desse escopo — em especial no miolo pedagógico —
+  mantém as 5 condições do `AGENTS.md` e `escalate: true`.
 
 ### Upstream
 

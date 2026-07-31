@@ -113,8 +113,11 @@ lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
   contrato do dispositivo, sempre preservando o comportamento v1 (frontend web
   e testes existentes intactos).
 - Retry de `POST /api/turn`: proibido sem `request_id`; com `request_id`
-  (contrato v1.1), reenviar o MESMO `request_id` após timeout é seguro — o
-  backend devolve a resposta armazenada sem criar novo turno.
+  (contrato v1.1), cliente único/serial e cache íntegro, a retransmissão do
+  MESMO turno pode processar após falha pré-`processing`, devolver replay 200
+  ou 409 fail-safe. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático; a garantia é não haver dupla aplicação silenciosa dentro dessas
+  premissas. Após 409: descartar ids pendentes, re-hidratar e usar UUID novo.
 - Placa alvo: Waveshare ESP32-P4-WIFI6-Touch-LCD-7B.
 - Upstream `78/xiaozhi-esp32`: sincronização pull-only; mantenha o trabalho do
   Professor Virtual aditivo (placa própria, módulos novos, Kconfig próprio) em

@@ -39,9 +39,13 @@ periféricos da placa.
 - **Este repositório** (`/Users/institutorecriare/VSCodeProjects/xiaozhi-esp32`): base do
   firmware; fork do `78/xiaozhi-esp32`.
 - **`/Users/institutorecriare/VSCodeProjects/licao_casa`**: o Professor Virtual existente.
-  O `backend/` (Python + FastAPI) é a fonte de verdade pedagógica e
-  persistente e permanece **intocável**; o `frontend/` (React) é a
-  implementação de referência do comportamento do cliente.
+  O `backend/` (Python + FastAPI) tem duas zonas: o **miolo pedagógico é
+  intocável** (prompts, vereditos, máquina de estados da sessão, failsafe —
+  `gemini.py`, `session_engine.py` e as transições de estado de `main.py`);
+  a **borda de transporte aceita mudanças aditivas** definidas em
+  `docs/professor-virtual/contrato-dispositivo.md` (perfil v1.1), sempre
+  preservando o comportamento v1 literal para o frontend web. O `frontend/`
+  (React) é a implementação de referência do comportamento do cliente.
 - **`DOCUMENTACAO-APP.md`** (raiz deste repo): especificação funcional
   completa e autossuficiente — comportamento, estados, contrato da API,
   mídia, temporizações e notas de porte embarcado (Apêndice B).
@@ -84,11 +88,20 @@ inicial, não prova.
 - **Usuário principal:** a criança (8–11 anos), sem digitar nada; o adulto
   participa apenas no failsafe/modo adulto via PIN.
 - **Restrições obrigatórias:** preservar o backend e seus contratos;
-  nenhuma regra pedagógica no dispositivo; sem retry automático de turno;
+  nenhuma regra pedagógica no dispositivo;
+  retry automático de `POST /api/turn` proibido sem `request_id`; com cliente
+  único/serial, cache íntegro e o MESMO `request_id` (contrato v1.1), uma
+  retransmissão pode processar se a falha anterior ocorreu antes de
+  `processing`, devolver replay 200 quando há resposta `done` válida e
+  replayável, ou 409 fail-safe quando o resultado é indeterminado,
+  supersedido ou não replayável. Status HTTP isolado, inclusive 502, não
+  autoriza retry automático; a garantia é não haver dupla aplicação
+  silenciosa dentro dessas premissas;
   segredos e PIN nunca no firmware ou em logs.
-- **Fora de escopo:** alterar o backend por conveniência do firmware;
-  soluções em nuvem; duplicar a fonte de verdade no dispositivo; manter
-  qualquer parte da experiência do usuário no desktop.
+- **Fora de escopo:** alterar o miolo pedagógico do backend; mudanças de
+  transporte fora do contrato v1.1 aprovado; soluções em nuvem; duplicar a
+  fonte de verdade no dispositivo; manter qualquer parte da experiência do
+  usuário no desktop.
 - **Relação com o upstream (`78/xiaozhi-esp32`):** sincronização seletiva,
   somente de entrada (pull), para aproveitar a evolução do suporte a
   ESP32-P4; nunca contribuir o trabalho do Professor Virtual de volta.
@@ -124,6 +137,11 @@ no backend só pode ser recomendada quando **todas** estas condições valerem:
 Sem essas condições, a resposta é adaptar o firmware ao contrato vigente.
 Mesmo com elas, mudar o backend é decisão do proprietário: escale.
 
+Exceção aprovada pelo proprietário (30/07/2026): as mudanças aditivas de
+transporte do contrato v1.1 (`docs/professor-virtual/contrato-dispositivo.md`)
+estão pré-autorizadas nos termos do plano consolidado. Mudanças além desse
+escopo continuam sujeitas às 5 condições e ao escalonamento.
+
 ## Invariantes do Professor Virtual
 
 Limites de arquitetura do produto (detalhes na especificação — use-a):
@@ -136,8 +154,14 @@ Limites de arquitetura do produto (detalhes na especificação — use-a):
 - No boot e após reconexão, o cliente se re-hidrata via `GET /api/state` +
   `GET /api/lesson`.
 - Um turno contém exatamente uma entrada: áudio **ou** imagem.
-- **Nunca** faça retry automático de `POST /api/turn`: o contrato não tem
-  idempotência; a repetição pode virar outro turno.
+- Retry de `POST /api/turn` sem `request_id`: **nunca** (pode virar outro
+  turno). Com cliente único/serial, cache íntegro e o MESMO `request_id`
+  (v1.1), a retransmissão pode processar se a falha anterior ocorreu antes de
+  `processing`, devolver replay 200 se há resposta `done` válida e replayável,
+  ou 409 fail-safe se o resultado é indeterminado, supersedido ou não
+  replayável. Status HTTP isolado, inclusive 502, não autoriza retry
+  automático. Após 409, descartar ids pendentes, re-hidratar `GET /api/state`
+  + `GET /api/lesson` e iniciar turno lógico novo com UUID novo.
 - Após erro HTTP respondido pelo servidor (especialmente 502/409),
   re-consultar o estado antes de decidir a interface; após erro de rede,
   re-hidratar quando a conexão voltar.
