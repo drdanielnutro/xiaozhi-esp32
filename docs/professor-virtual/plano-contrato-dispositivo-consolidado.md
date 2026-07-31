@@ -88,7 +88,7 @@ branch/worktree sob seu controle.
 
 **Ordem de execução:** Parte 1 → Parte 2 (Gates A–D: reconhecer o encerramento
 já concluído da V1, criar a tag manual da baseline, criar a branch e o
-milestone v1.1 e importar mecanicamente somente a Parte 3) → Tasks 3 → 3.9 → 4
+milestone v1.1 e compilar mecanicamente somente a Parte 3) → Tasks 3 → 3.9 → 4
 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → revisão independente final → Parte 4 → só
 então fases F1+ do firmware.
 
@@ -407,7 +407,7 @@ O milestone V1 já foi reconciliado, auditado, arquivado e encerrado antes deste
 plano. A tag anotada `v1.0.0` já registra esse fechamento em `34041d9`.
 Executar esta Parte apenas para confirmar os marcos existentes, criar a tag
 manual já aprovada da baseline, criar a branch v1.1, registrar o novo milestone
-e importar mecanicamente a Parte 3. Preservar todos os arquivos não rastreados
+e compilar mecanicamente a Parte 3. Preservar todos os arquivos não rastreados
 existentes, incluindo auditorias, respostas e notas.
 
 ## Gate A — reconhecer o encerramento V1 já concluído
@@ -473,31 +473,54 @@ existentes, incluindo auditorias, respostas e notas.
 4. Se a estrutura produzida divergir, interromper e pedir correção mecânica;
    não aceitar a divergência por conveniência.
 
-## Gate D — importar somente a Parte 3
+## Gate D — compilar mecanicamente a Parte 3 em PLANs nativos do GSD
 
-Não executar `/gsd:import` diretamente sobre este consolidado: o comando não
-possui seletor de seção e o documento contém tarefas dos dois repositórios.
+Não executar `/gsd:import` sobre este consolidado nem sobre um artefato dele
+derivado. O comando não possui seletor de seção, o documento contém tarefas dos
+dois repositórios e o formato de checkbox da Parte 3 não é reconhecido pelo
+executor do GSD, que segmenta o trabalho por blocos `<task type="...">`.
+Também não executar `/gsd:discuss-phase` nem `/gsd:plan-phase` para esta fase:
+ambos autorizam o planner a autorar conteúdo, que é exatamente o redesenho
+proibido pelo Gate C.
 
 Depois que o milestone informar o número real da fase:
 
-1. criar no `licao_casa` um artefato de importação mecanicamente derivado,
-   contendo somente esta Parte 3 (Tasks 3–11);
-2. usar frontmatter GSD com `phase: N`, número do plano, `type` adequado e
-   `autonomous: false`;
-3. preservar verbatim o conteúdo técnico das Tasks 3–10;
-4. representar as escritas da Task 11 no `xiaozhi-esp32` como checkpoint/handoff
-   humano, mantendo o texto exato a registrar e exigindo commit separado no
-   repositório correto;
-5. usar o caminho absoluto do artefato no `/gsd:import --from ...`;
-6. validar paridade 1:1 entre o artefato, esta Parte 3 e o `PLAN.md` resultante;
-7. resolver conflitos de decisões antigas atualizando somente o contexto e as
-   decisões do milestone v1.1; não reescrever conteúdo técnico;
-8. somente depois da aprovação da paridade executar `/gsd:execute-phase N`.
-9. como esta fase contém um único plano com comandos absolutos para o checkout
-   dedicado do `licao_casa`, configurar `workflow.use_worktrees: false` antes
-   da importação, executar a Phase 6 sequencialmente nesse checkout e manter a
-   opção desativada até o encerramento da fase; restaurar `true` somente depois
-   da Task 11 e da revisão independente final.
+1. registrar no `licao_casa` esta Parte 3 como fonte normativa somente-leitura
+   em `.planning/sources/06-contrato-dispositivo-v1.1-SOURCE.md`, com
+   frontmatter de fonte (sem `plan`, `type` ou `wave`, para que não seja
+   confundida com um plano executável);
+2. manter o corpo dessa fonte idêntico byte a byte a esta Parte 3; qualquer
+   correção aqui é replicada lá na mesma operação, e vice-versa;
+3. compilar a fonte em PLANs nativos do GSD por meio de um script determinístico
+   versionado (`scripts/build_phase6_gsd_plans.py`), que copia cada bloco
+   técnico verbatim entre marcadores `SOURCE-VERBATIM-BEGIN/END` e acrescenta
+   somente a estrutura operacional do GSD (`<objective>`, `<tasks>`,
+   `<verify>`, `<done>` e afins);
+4. proibir inferência por modelo na compilação: `files`, `verify`, `done`,
+   requisitos, tipo de task e checkpoints vêm de uma tabela fixa no script;
+5. produzir seis PLANs em `.planning/phases/06-contrato-de-dispositivo-v1-1/`,
+   em waves lineares 1–6: Task 3; Task 3.9; Tasks 4–6; Tasks 7–9; Task 10;
+   Task 11 e revisão independente;
+6. representar as escritas da Task 11 no `xiaozhi-esp32` como
+   `checkpoint:human-action`, mantendo o texto exato a registrar e exigindo
+   commit separado no repositório correto; nenhuma task automática executa Git
+   no outro repositório;
+7. tratar os blocos `git add`/`git commit` locais da fonte como referência não
+   executável — o protocolo `task_commit` do GSD é o único responsável pelos
+   commits no `licao_casa`;
+8. validar com `build_phase6_gsd_plans.py --check` (regeneração idempotente) e
+   com a concatenação dos blocos verbatim, que deve produzir diff vazio contra
+   esta Parte 3;
+9. configurar `workflow.human_verify_mode: mid-flight` antes de compilar: o
+   default `end-of-phase` suprime a emissão de `checkpoint:human-verify` e
+   adiaria para o fim da fase as audições obrigatórias das Tasks 3.9 e 11,
+   violando a condição de parada D4;
+10. como esta fase contém comandos absolutos para o checkout dedicado do
+    `licao_casa`, configurar `workflow.use_worktrees: false` antes da
+    compilação, executar a Phase 6 sequencialmente nesse checkout e manter a
+    opção desativada até o encerramento da fase; restaurar `true` somente
+    depois da Task 11 e da revisão independente final;
+11. somente depois da aprovação da paridade executar `/gsd:execute-phase N`.
 
 ---
 
@@ -3516,7 +3539,7 @@ observados, aprovação humana da voz/qualidade e observações da avaliação d
 Gemini). Nunca registrar a chave.
 
 Este step é um checkpoint/handoff humano e deve permanecer
-`autonomous: false` no artefato importado pelo GSD. O executor do
+`autonomous: false` no PLAN nativo gerado pelo GSD. O executor do
 `licao_casa` pausa e solicita que a alteração seja feita e commitada
 separadamente no `xiaozhi-esp32`; ele não escreve nem commita autonomamente no
 outro repositório.
