@@ -18,7 +18,9 @@ idempotência fail-safe por `request_id`, preparação página a página e token
 autenticação fail-closed), preservando literalmente o contrato e o fluxo
 pedagógico v1 do frontend web. Na versão v1.1, a única mudança intencional no
 comportamento percebido do web é a voz: Fish Audio/Itachi substitui
-Polly/Camila. A V1 exata permanece recuperável pela tag `baseline-v1.0`.
+Polly/Camila. A V1 exata permanece recuperável pelo commit `5588b3e`; a tag manual
+`baseline-v1.0`, já aprovada, será criada nesse commit no Gate B após
+verificação do alvo e autorização operacional.
 
 **Architecture:** Mudanças aditivas na borda de transporte (campos opcionais,
 endpoints novos, campos novos de resposta que só aparecem no perfil v1.1). O
@@ -37,9 +39,10 @@ somente como legado inativo da V1.
 - **D2 — fail-closed:** não-loopback com token configurado e credencial
   ausente/errada ⇒ `401`; não-loopback com `DEVICE_API_TOKEN` NÃO configurado ⇒
   `503`; loopback sempre isento; origem ausente/desconhecida NÃO é loopback.
-- **D3:** `5588b3e` é a baseline do código V1, condicionada à reconciliação e
-  arquivamento corretos do GSD antes de tag/branch; arquivos não rastreados
-  ficam fora da tag.
+- **D3 — baseline funcional:** `5588b3e` é a baseline funcional aprovada do
+  código V1. A reconciliação, o arquivamento e o encerramento do milestone V1
+  já foram concluídos pelo GSD; arquivos não rastreados não pertencem à
+  baseline nem à tag que a marcará.
 - **D4 — Fish Audio na v1.1:** Fish Audio substitui Polly como provedor ativo
   de todo TTS da v1.1. O web recebe MP3 44,1 kHz/128 kbps e o dispositivo
   recebe WAV PCM s16le mono/16 kHz, ambos com a voz Itachi
@@ -47,9 +50,14 @@ somente como legado inativo da V1.
   `s2.1-pro-free`. A integração é HTTP bloqueante até o áudio completo, sem
   WebSocket, tags emocionais, retry ou fallback para Polly. Qualquer falha ou
   reprovação do preflight interrompe antes da Task 4.
-- **D5 — duas tags:** `baseline-v1.0` aponta exatamente para `5588b3e` e marca
-  a baseline funcional do código; a tag automática `v1.0` do GSD marca o
-  encerramento documental do milestone. `git.create_tag` permanece `true`.
+- **D5 — marcos da V1:** a tag anotada `v1.0.0` já existe, resolve exatamente
+  para `34041d9` e registra o encerramento documental já concluído do milestone
+  V1 pelo GSD. A tag manual `baseline-v1.0`, já aprovada pelo proprietário,
+  ainda não existe e será criada em `5588b3e` no Gate B, somente após
+  verificação do alvo e autorização operacional. Não repetir
+  `/gsd:audit-milestone`, `/gsd:complete-milestone`, arquivamento ou criação de
+  outra tag de encerramento da V1. `git.create_tag` permanece `true`
+  exclusivamente para milestones futuros.
 
 ## Estado atual
 
@@ -59,7 +67,9 @@ somente como legado inativo da V1.
 | CLAUDE.md (zonas + retry) | FEITO (commit `3873025`) — ajuste de redação na Parte 1 PENDENTE |
 | Emenda 03 Fish Audio incorporada ao consolidado | FEITO — revisão independente pré-código aprovada em 30/07/2026 |
 | `AGENTS.md` / decision-policy / decision-log | PENDENTE (Parte 1) |
-| Reconciliação GSD, baseline, branch | PENDENTE (Parte 2) |
+| Reconciliação, arquivamento e encerramento GSD da V1 | FEITO — tag anotada `v1.0.0` resolve para `34041d9` |
+| Tag manual `baseline-v1.0` em `5588b3e` | APROVADA E PENDENTE DE CRIAÇÃO — executar somente no Gate B após verificação e autorização operacional |
+| Branch e milestone v1.1 | PENDENTES (Parte 2) |
 | Tasks 3–11 (backend `licao_casa`) | PENDENTES (Parte 3) |
 | Task 12 (`plano-firmware.md`) | PENDENTE (Parte 4, pós-Task 11) |
 
@@ -76,17 +86,19 @@ checkpoints/handoffs para commit separado no `xiaozhi-esp32`. O executor GSD
 do `licao_casa` não faz commits autônomos no outro repositório nem fora do
 branch/worktree sob seu controle.
 
-**Ordem de execução:** Parte 1 → Parte 2 → conversão mecânica das tasks da
-Parte 3 em `PLAN.md` do GSD (sem redesenho) → Tasks 3 → 3.9 → 4 → 5 → 6 → 7 →
-8 → 9 → 10 → 11 → revisão independente final → Parte 4 → só então fases F1+ do
-firmware.
+**Ordem de execução:** Parte 1 → Parte 2 (Gates A–D: reconhecer o encerramento
+já concluído da V1, criar a tag manual da baseline, criar a branch e o
+milestone v1.1 e importar mecanicamente somente a Parte 3) → Tasks 3 → 3.9 → 4
+→ 5 → 6 → 7 → 8 → 9 → 10 → 11 → revisão independente final → Parte 4 → só
+então fases F1+ do firmware.
 
 ## Global Constraints
 
 - **v1 literal (D1):** requisições sem campos v1.1 retornam exatamente as
   chaves v1 de hoje e preservam sua semântica. A mudança intencional da v1.1 é
-  o provedor/voz e, portanto, os bytes do MP3; a V1 exata está preservada em
-  `baseline-v1.0`. A suíte existente (152 testes) não pode ser editada nem
+  o provedor/voz e, portanto, os bytes do MP3; a V1 exata está preservada no commit
+  `5588b3e`; a tag manual `baseline-v1.0`, já aprovada, permanece pendente de
+  criação no Gate B. A suíte existente (152 testes) não pode ser editada nem
   removida — apenas ADICIONAR testes. `python -m pytest tests/ -q` verde ao
   fim de CADA task.
 - **Miolo pedagógico intocável:** zero edições em `gemini.py`,
@@ -389,52 +401,62 @@ git commit -m "Contrato v1.1: idempotência fail-safe completa, v1 literal, toke
 
 ---
 
-# Parte 2 — Pré-condições operacionais GSD/Git no `licao_casa`
+# Parte 2 — Transição operacional GSD/Git para v1.1 no `licao_casa`
 
-Executar ANTES de abrir o milestone, numa sessão local do `licao_casa` com o
-proprietário. Preservar todos os arquivos não rastreados existentes
-(auditorias, respostas e notas).
+O milestone V1 já foi reconciliado, auditado, arquivado e encerrado antes deste
+plano. A tag anotada `v1.0.0` já registra esse fechamento em `34041d9`.
+Executar esta Parte apenas para confirmar os marcos existentes, criar a tag
+manual já aprovada da baseline, criar a branch v1.1, registrar o novo milestone
+e importar mecanicamente a Parte 3. Preservar todos os arquivos não rastreados
+existentes, incluindo auditorias, respostas e notas.
 
-## Gate A — confirmar e auditar a V1
+## Gate A — reconhecer o encerramento V1 já concluído
 
-1. Confirmar em modo somente leitura o estado de Git e que `5588b3e` continua
-   sendo a baseline funcional aprovada.
-2. Executar `/gsd:audit-milestone`.
-3. Tratar o resultado como diagnóstico. Esse comando não reconcilia nem
-   corrige automaticamente `STATE.md`, `ROADMAP.md`, summaries, verificações,
-   UATs, requisitos ou quick tasks.
-4. Confrontar todos esses artefatos e reconciliar as divergências encontradas
-   (incluindo a fase 5 como "executing" em um lugar e concluída em outro).
-5. Qualquer gap que dependa de julgamento humano deve ser apresentado ao
-   proprietário para resolução ou aceite explícito e documentado.
-6. Repetir a auditoria. Não executar `complete-milestone` enquanto ela não
-   estiver aprovada ou enquanto os gaps não tiverem sido explicitamente
-   aceitos e registrados.
+1. Confirmar em modo somente leitura que:
+   - `5588b3e` continua sendo a baseline funcional aprovada;
+   - `v1.0.0^{}` resolve exatamente para `34041d9`;
+   - `.planning/STATE.md` registra a V1 como concluída e arquivada;
+   - `.planning/MILESTONES.md` registra a V1 como shipped;
+   - as nove fases permanecem em
+     `.planning/milestones/v1.0.0-phases/`.
+2. Se qualquer verificação divergir, interromper e consultar o proprietário.
+   Não reparar, mover ou recriar marcos.
+3. Quando tudo coincidir, considerar satisfeita a pré-condição de encerramento
+   da V1.
+4. Não executar novamente `/gsd:audit-milestone`,
+   `/gsd:complete-milestone`, arquivamento ou outro fluxo de encerramento da
+   V1.
+5. Não criar, mover, substituir ou apagar `v1.0.0`.
+6. Não criar uma segunda tag automática `v1.0`.
 
-## Gate B — preservar os dois marcos Git
+## Gate B — criar a tag aprovada da baseline e a branch v1.1
 
-1. Verificar se a tag `baseline-v1.0` já existe.
-2. Se não existir, e somente após autorização explícita do proprietário,
-   criá-la apontando exatamente para `5588b3e`:
+1. Confirmar que `main` está sincronizada com `origin/main`, registrar o HEAD
+   atual e preservar todos os arquivos não rastreados.
+2. Verificar se `baseline-v1.0` existe.
+3. Se não existir:
+   - confirmar que `5588b3e` existe e é a baseline aprovada;
+   - solicitar autorização operacional do proprietário;
+   - sem autorização, interromper a Parte 2;
+   - depois da autorização, executar exatamente:
 
    ```bash
    git tag -a baseline-v1.0 5588b3e \
      -m "Baseline funcional da V1 antes do contrato de dispositivo v1.1"
    ```
 
-3. Se já existir, verificar que `baseline-v1.0^{}` resolve exatamente para
-   `5588b3e`; qualquer divergência interrompe o fluxo.
-4. Manter `git.create_tag: true`.
-5. Executar `/gsd:complete-milestone 1.0`.
-6. Quando o GSD perguntar pelos diretórios das fases, escolher arquivá-los em
-   `.planning/milestones/`; não deixá-los para remoção posterior por
-   `phases.clear`.
-7. Permitir que o GSD crie sua tag automática `v1.0`. Ela representa o
-   fechamento documental do milestone e é deliberadamente distinta da
-   `baseline-v1.0`, que representa o código V1 funcional.
-8. Somente depois que o fechamento e todos os commits de arquivamento
-   terminarem, criar, com autorização explícita do proprietário, a branch
-   `milestone/device-contract-v1.1` a partir do HEAD final da `main`.
+4. Se `baseline-v1.0` já existir, não recriar nem mover a tag.
+5. Verificar obrigatoriamente que `baseline-v1.0^{}` resolve para `5588b3e`.
+   Qualquer divergência interrompe a Parte 2.
+6. Não oferecer ou aceitar um caminho sem `baseline-v1.0`; sua criação já foi
+   aprovada.
+7. Manter `git.create_tag: true` apenas para milestones futuros.
+8. Confirmar que `milestone/device-contract-v1.1` ainda não existe. Se existir,
+   interromper; não apagar, mover ou reutilizar silenciosamente.
+9. Depois de validar `baseline-v1.0` e receber autorização operacional separada,
+   criar `milestone/device-contract-v1.1` a partir do HEAD atual da `main`.
+10. Confirmar que a branch aponta para esse HEAD e só então prosseguir ao
+    Gate C.
 
 ## Gate C — registrar o novo milestone sem redesenhar
 
