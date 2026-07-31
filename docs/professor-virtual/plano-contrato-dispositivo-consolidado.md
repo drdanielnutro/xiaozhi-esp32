@@ -1221,9 +1221,15 @@ Não incluir corpo remoto, chave ou texto nos erros. Não adicionar retry.
 A ordem normalizar → validar → devolver é obrigatória: `synthesize_speech`
 nunca devolve os placeholders originais, e `_validate_wav` sozinho não os
 detecta, porque o módulo `wave` só usa o `Subchunk2Size` declarado quando
-frames são efetivamente lidos. O PCM entregue é tudo o que existe depois do
-cabeçalho do chunk `data`; chunks posteriores ao `data` produziriam divergência
-não-placeholder e são rejeitados (fail-closed).
+frames são efetivamente lidos. No caso do par de placeholders, o PCM é todo o
+conteúdo depois do cabeçalho do chunk `data` até o fim do arquivo, pois o
+placeholder não fornece outro limite confiável — o formato observado do Fish
+Audio possui `data` como último chunk. Chunks posteriores a `data` não são
+suportados e não podem ser distinguidos com segurança de bytes PCM nessa
+representação; a implementação não afirma detectá-los ou rejeitá-los. Em um WAV
+com cabeçalho finito, `data` deve ocupar todo o conteúdo restante, e qualquer
+divergência entre o tamanho declarado e os bytes restantes é rejeitada pela
+regra fail-closed.
 
 Em `backend/main.py`, substituir somente:
 

@@ -98,10 +98,16 @@ Isso caracteriza bloqueio técnico D4 e é o objeto desta emenda.
 
 ## 4. Consequências explícitas do parser
 
-- O PCM entregue é tudo o que existe depois do cabeçalho do chunk `data` até o
-  fim do arquivo. Um arquivo com chunks **depois** do `data` produziria
-  `Subchunk2Size != PCM real` e cai na regra 5 (rejeição), porque não é o par
-  de placeholders reconhecido. Isso é intencional e fail-closed.
+- No caso do par de placeholders, o PCM é todo o conteúdo depois do cabeçalho
+  do chunk `data` até o fim do arquivo, pois o placeholder não fornece outro
+  limite confiável. O formato observado do Fish Audio possui `data` como
+  último chunk.
+- Chunks **posteriores** a `data` não são suportados e não podem ser
+  distinguidos com segurança de bytes PCM nessa representação; a implementação
+  não afirma detectá-los ou rejeitá-los.
+- Em um WAV com cabeçalho finito, `data` deve ocupar todo o conteúdo restante.
+  Qualquer divergência entre o tamanho declarado e os bytes restantes é
+  rejeitada pela regra fail-closed.
 - Chunks **antes** do `data` (`LIST`, `fact`, etc.) são suportados: o parser
   os percorre respeitando o byte de padding de alinhamento par.
 - Um cabeçalho finito já coerente é devolvido **byte a byte igual**; a
