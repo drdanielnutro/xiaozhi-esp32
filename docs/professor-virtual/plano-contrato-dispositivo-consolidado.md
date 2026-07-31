@@ -493,6 +493,11 @@ Depois que o milestone informar o número real da fase:
 7. resolver conflitos de decisões antigas atualizando somente o contexto e as
    decisões do milestone v1.1; não reescrever conteúdo técnico;
 8. somente depois da aprovação da paridade executar `/gsd:execute-phase N`.
+9. como esta fase contém um único plano com comandos absolutos para o checkout
+   dedicado do `licao_casa`, configurar `workflow.use_worktrees: false` antes
+   da importação, executar a Phase 6 sequencialmente nesse checkout e manter a
+   opção desativada até o encerramento da fase; restaurar `true` somente depois
+   da Task 11 e da revisão independente final.
 
 ---
 
@@ -3392,7 +3397,7 @@ git commit -m "Preparação página a página + publicação da lição sob lock
 **Files:**
 - Create: `CONTRATO-DISPOSITIVO.md` (raiz do `licao_casa`)
 - Modify: `.env.example` (apenas ADICIONAR)
-- Modify: `MIGRACAO-ESP32-P4.md` (apenas ADICIONAR seção ao final)
+- Modify: `DOCUMENTACAO-APP.md` (apenas ADICIONAR seção ao final)
 
 - [ ] **Step 1: Criar o ponteiro do contrato**
 
@@ -3440,12 +3445,17 @@ trocados por ambiente sem alterar o contrato. As variáveis AWS permanecem
 documentadas enquanto `polly.py` e seus testes legados existirem, mas o runtime
 v1.1 não as usa para TTS.
 
-- [ ] **Step 3: Nota na doc de migração**
+- [ ] **Step 3: Nota de versão na documentação geral do app**
 
-Adicionar ao final de `MIGRACAO-ESP32-P4.md`:
+Adicionar ao final de `DOCUMENTACAO-APP.md`:
 
 ```markdown
 ## Adendo (jul/2026): contrato de dispositivo v1.1 implementado
+
+Este documento descreve principalmente a V1 do aplicativo e permanece como
+referência histórica e arquitetural. Para nomes de campos, endpoints e
+comportamentos normativos da v1.1, prevalece o contrato canônico apontado por
+`CONTRATO-DISPOSITIVO.md`.
 
 As adaptações discutidas neste documento foram consolidadas no perfil v1.1 do
 backend (ver `CONTRATO-DISPOSITIVO.md` na raiz): mídia por URL em vez de
@@ -3465,8 +3475,8 @@ Expected: tudo PASS.
 
 ```bash
 cd /Users/institutorecriare/VSCodeProjects/licao_casa
-git add CONTRATO-DISPOSITIVO.md .env.example MIGRACAO-ESP32-P4.md
-git commit -m "Docs: ponteiro do contrato v1.1, DEVICE_API_TOKEN fail-closed, adendo na migração"
+git add CONTRATO-DISPOSITIVO.md .env.example DOCUMENTACAO-APP.md
+git commit -m "Docs: ponteiro do contrato v1.1, configuração fail-closed e adendo do app"
 ```
 
 ## Task 11: Validação E2E com Fish MP3/WAV, Gemini WAV e fechamento
