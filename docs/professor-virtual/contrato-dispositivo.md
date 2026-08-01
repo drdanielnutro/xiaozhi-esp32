@@ -197,10 +197,10 @@ payload PCM sempre começa em um offset fixo de 44 bytes.
 ## Áudio de subida (dispositivo → backend)
 
 Sem mudança de contrato: `/api/turn` repassa bytes+MIME ao Gemini. O
-dispositivo envia **WAV 16 kHz mono** (`audio/wav`) — pendente de validação
-empírica (abaixo). WebM/Opus NÃO é exigido.
+dispositivo envia **WAV 16 kHz mono** (`audio/wav`) — caminho validado
+empiricamente em 2026-08-01 (abaixo). WebM/Opus NÃO é exigido.
 
-## Validações empíricas pendentes (Task 11 do plano)
+## Validações empíricas (Task 11 do plano)
 
 - [x] Fish Audio, usando o modelo configurado e a voz Itachi
       (`c5a6cb585b094dedb241365e7e271973`), produz MP3 mono 44,1 kHz/128 kbps
@@ -226,7 +226,39 @@ empírica (abaixo). WebM/Opus NÃO é exigido.
         qualidade e ritmo satisfatórios em MP3 e WAV
       - Resultado técnico: placeholders removidos; RIFF = tamanho físico − 8;
         `data` = PCM real
-- [ ] Gemini aceita `audio/wav` no turno multimodal com qualidade de avaliação
-      equivalente ao WebM/Opus.
-
-Resultados devem ser registrados NESTE documento ao concluir a Task 11.
+- [x] Gemini aceita `audio/wav` no turno multimodal com qualidade de avaliação
+      equivalente ao caminho WebM/Opus para uma entrada inteligível.
+      **Concluído em 2026-08-01.**
+      - Endpoint do turno: `POST /api/turn` em `127.0.0.1:8000`
+      - Recuperação da mídia: `GET /api/media/{filename}`
+      - Perfil solicitado: `media=url`, `audio_format=wav`,
+        `image_max_px=1280`
+      - Turno canônico: `turn_2ceed0030a35493e99a14aff2ff4bcc2`
+      - Fish Audio: `https://api.fish.audio/v1/tts`,
+        modelo `s2.1-pro-free`, voz Itachi
+        (`c5a6cb585b094dedb241365e7e271973`)
+      - Entrada Gemini: WAV PCM s16le mono/16 kHz; uma amostra inteligível foi
+        compreendida e recebeu veredicto `wrong` coerente, com dica pedagógica
+        sem revelar a resposta correta
+      - WAV canônico: arquivo 408.620 bytes; RIFF `ChunkSize` 408612;
+        `data` `Subchunk2Size` 408576; PCM real 408576 bytes; duração 12,77 s
+      - WAV de comemoração: arquivo 387.816 bytes; RIFF `ChunkSize` 387808;
+        `data` `Subchunk2Size` 387772; PCM real 387772 bytes
+      - Resultado WAV: ambos são arquivos finitos e não contêm placeholders
+        de streaming
+      - Imagem: JPEG 1280×698, 214.285 bytes
+      - Regressão web v1: MP3 Fish 44,1 kHz/128 kbps com voz Itachi e imagem
+        exibidos corretamente no fluxo acoplado existente
+      - Tempos pontuais observados: aproximadamente 14 s no turno do
+        dispositivo e 16,437 s no turno web; são execuções isoladas, sem
+        instrumentação agregada e não constituem baseline estatística de
+        latência
+      - Aprovação humana: voz Itachi, qualidade do áudio e imagem aprovadas em
+        2026-08-01; no teste controlado, `error: null` e
+        `technical_failure_count: 0`
+      - Validação automatizada: 246 testes aprovados, Ruff limpo e nenhuma
+        chamada runtime à Polly na v1.1
+      - Limitação observada: uma primeira amostra sintética ininteligível
+        recebeu `correct` em vez de `unidentifiable`; o transporte WAV foi
+        validado com a amostra inteligível, e o comportamento pedagógico ficou
+        registrado para investigação posterior fora deste milestone
