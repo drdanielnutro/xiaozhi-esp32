@@ -202,20 +202,30 @@ empírica (abaixo). WebM/Opus NÃO é exigido.
 
 ## Validações empíricas pendentes (Task 11 do plano)
 
-- [ ] Fish Audio, usando o modelo configurado e a voz Itachi
+- [x] Fish Audio, usando o modelo configurado e a voz Itachi
       (`c5a6cb585b094dedb241365e7e271973`), produz MP3 mono 44,1 kHz/128 kbps
       e WAV PCM s16le mono/16 kHz com qualidade aprovada pelo proprietário.
       Registrar data, modelo efetivo, voz, formatos, tempos observados no MP3
       e no WAV, tamanhos declarados no cabeçalho WAV e resultado da audição
       humana.
-      **Parcial em 31/07/2026 — NÃO concluído:** a audição humana aprovou o MP3
-      e o WAV reais (voz Itachi correta, qualidade e ritmo satisfatórios). O WAV
-      recebido do provedor, porém, trazia placeholders de streaming
-      (RIFF `4.294.967.076`, `data` `4.294.967.040`) em 1.121.194 bytes totais
-      com 1.121.150 bytes de PCM, violando o requisito de arquivo finito acima.
-      O preflight só será considerado concluído após ser reexecutado com a
-      normalização do cabeçalho (`emenda-04-normalizacao-cabecalho-wav.md`) e
-      produzir um WAV finito.
+      **Concluído em 2026-07-31.**
+      - Data: 2026-07-31
+      - Endpoint: `https://api.fish.audio/v1/tts`
+      - Modelo: `s2.1-pro-free`
+      - Voice id: `c5a6cb585b094dedb241365e7e271973` (Itachi)
+      - Formatos: MP3 44,1 kHz/128 kbps; WAV PCM s16le mono/16 kHz
+      - Parâmetros: `latency=normal`, `speed=1.0`, `volume=0`,
+        `normalize=true`, `normalize_loudness=true`, `timeout=120s`
+      - Tempos: MP3 10,08 s; WAV 8,62 s
+      - Antes da normalização: RIFF `ChunkSize` 4294967076; `data`
+        `Subchunk2Size` 4294967040
+      - Depois da normalização: arquivo 1.273.518 bytes; RIFF `ChunkSize`
+        1273510; `data` `Subchunk2Size` 1273474; PCM real 1273474 bytes;
+        duração 39,80 s
+      - Aprovação humana: aprovada em 2026-07-31; voz Itachi correta;
+        qualidade e ritmo satisfatórios em MP3 e WAV
+      - Resultado técnico: placeholders removidos; RIFF = tamanho físico − 8;
+        `data` = PCM real
 - [ ] Gemini aceita `audio/wav` no turno multimodal com qualidade de avaliação
       equivalente ao WebM/Opus.
 
