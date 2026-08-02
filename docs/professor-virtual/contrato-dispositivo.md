@@ -262,3 +262,38 @@ empiricamente em 2026-08-01 (abaixo). WebM/Opus NÃO é exigido.
         recebeu `correct` em vez de `unidentifiable`; o transporte WAV foi
         validado com a amostra inteligível, e o comportamento pedagógico ficou
         registrado para investigação posterior fora deste milestone
+
+### Revalidação pós-gap-closure — 2026-08-02
+
+- Escopo: revalidação realizada depois do fechamento dos gaps GAP-A a GAP-E
+  da Phase 6 do backend.
+- Aprovação humana: WAV do dispositivo, MP3 do fluxo web, imagem e veredicto
+  aprovados pelo proprietário em 2026-08-02.
+- Endpoint: `POST /api/turn`.
+- Perfil do dispositivo: `media=url`, `audio_format=wav`,
+  `image_max_px=1280`.
+- Fish Audio: modelo `s2.1-pro-free`; voz Itachi
+  (`c5a6cb585b094dedb241365e7e271973`).
+- Turno real do dispositivo: HTTP 200 em 16,1 s; veredicto `teach`;
+  `request_id` ecoado; `audio_base64` e `image_base64` vazios; entrada WAV
+  PCM mono/16 kHz com 5,2 s, validando o caminho de entrada do Gemini.
+- WAV recuperado por `audio_url`: arquivo físico com 476.980 bytes; RIFF
+  `ChunkSize` 476972, igual ao tamanho físico menos 8; `data`
+  `Subchunk2Size` 476936, igual aos 476936 bytes reais de PCM; PCM s16le,
+  mono, 16 kHz; duração aproximada de 14,9 s; nenhum placeholder de
+  streaming.
+- JPEG recuperado por `image_url`: baseline JFIF, 1280×698 px, 82.755 bytes,
+  respeitando `image_max_px=1280`.
+- Regressão web v1: turno real concluído em 2026-08-02T13:23:10Z, sem erro
+  e sem 502; MP3 Fish mono, 44,1 kHz, 128 kbps, 18,73 s e 299.675 bytes;
+  reprodução completa com voz Itachi e imagem exibida no fluxo acoplado.
+- Avaliação Gemini: fala real compreendida tanto no caminho WAV do
+  dispositivo quanto no caminho WebM/Opus do web; resposta pedagógica
+  considerada coerente pelo proprietário.
+- Validação automatizada: 273/273 testes aprovados; Ruff limpo nos 14
+  arquivos definidos pelo plano; nenhuma chamada runtime à Polly na v1.1;
+  isolamento da suíte confirmado sem alteração dos artefatos reais de
+  `data/debug/`.
+- Limitação preservada: caracteres malformados em `texto_explicacao`
+  continuam registrados como item deferido do miolo pedagógico e estão fora
+  do contrato de transporte v1.1.
