@@ -36,7 +36,7 @@ assistente); testes host passam; decisões registradas no decision-log.
       em `main/main.cc` · pronto quando: com a opção desligada, o firmware
       compila idêntico ao atual; com ela ligada, `main.cc` desvia para o
       entrypoint do PV.
-- [ ] T2 — Esqueleto `main/professor_virtual/` (`pv_app.cc/.h`,
+- [x] T2 — Esqueleto `main/professor_virtual/` (`pv_app.cc/.h`,
       `pv_strings.h` mínimo) + bloco condicional no `main/CMakeLists.txt` ·
       pronto quando: `PvApp::Start()` inicializa board/display e mostra tela
       LVGL própria "Professor Virtual" + versão, mantendo `WifiBoard`
