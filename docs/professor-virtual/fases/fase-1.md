@@ -73,7 +73,7 @@ dono).**
       desconexão mostra estado correto e re-hidrata ao voltar
       · pronto quando: build verde; lógica de rota cobre os quatro destinos
       e os estados de erro.
-- [ ] T6 — Regressão e medição: build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual`
+- [x] T6 — Regressão e medição: build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual`
       + build `esp32-p4-wifi6-touch-lcd-7b` original + testes host
       (`python3 -m unittest discover -s scripts/tests`) + tamanho do binário
       vs OTA 4 MB registrado
@@ -188,6 +188,14 @@ dono).**
 - Validação do orquestrador: host test **147 OK** (+25 casos de textos de
   rota, incl. corte UTF-8 sem partir acento); build verde
   (`xiaozhi.bin` 2.779.024 bytes, 34% livres); 10 `.obj` do PV presentes.
+
+### T6 — Regressão e medição (2026-08-03)
+
+- `release.py` PV verde: `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual.zip`.
+- `release.py` 7b original verde: `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b.zip`.
+- Testes host: `python3 -m unittest discover -s scripts/tests` → 8 OK.
+- `xiaozhi.bin` da variante PV: **2.779.024 bytes** (0x2a6790) — 34% livres
+  na partição de app de 4 MB. Sem necessidade do plano B (REMOVE_ITEM).
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):
