@@ -232,12 +232,24 @@ bool ParseState(const char* json, PvSessionState& out) {
         return false;
     }
 
+    // Uma sessão do §7.2 sempre tem session_status; um objeto com session_id
+    // mas sem status de sessão não é nenhum dos três formatos e seria
+    // perigoso aceitar — {"session_id":"x"} solto rotearia para a tutoria
+    // (revisão F1, P1).
+    const cJSON* session_status = cJSON_GetObjectItem(root, "session_status");
+    if (!cJSON_IsString(session_status) || session_status->valuestring == nullptr ||
+        session_status->valuestring[0] == '\0' || session_id->valuestring[0] == '\0') {
+        cJSON_Delete(root);
+        out.Clear();
+        return false;
+    }
+
     out.kind = PvStateKind::Session;
     out.session_id = session_id->valuestring;
     out.student_id = GetString(root, "student_id");
     out.student_name = GetString(root, "student_name");
     out.lesson_id = GetString(root, "lesson_id");
-    out.session_status = GetString(root, "session_status");
+    out.session_status = session_status->valuestring;
     out.waiting_for_photo = GetBool(root, "waiting_for_photo");
     out.adult_intervention_required = GetBool(root, "adult_intervention_required");
     out.created_at = GetString(root, "created_at");
@@ -295,8 +307,14 @@ bool ParseLesson(const char* json, PvLesson& out) {
             out.Clear();
             return false;
         }
-        // "no_lesson" (ou qualquer status sem lesson_id) = sem lição.
+        // Só o "no_lesson" literal do contrato significa "sem lição"; outro
+        // status é corpo fora do §7.3 e vira ParseError (revisão F1, P1).
+        bool is_no_lesson = std::string(status->valuestring) == "no_lesson";
         cJSON_Delete(root);
+        if (!is_no_lesson) {
+            out.Clear();
+            return false;
+        }
         out.has_lesson = false;
         return true;
     }
@@ -332,11 +350,16 @@ bool ParseLesson(const char* json, PvLesson& out) {
     return true;
 }
 
+// "Utilizável" é lista FECHADA: só os dois estados que têm rota própria no
+// §9.1 ("active" → tutoria/failsafe, "completed" → celebração). Um
+// session_status fora do contrato não pode acabar em tela pedagógica — cai
+// na preparação (revisão F1, P1; substitui a interpretação anterior que só
+// excluía closed/expired).
 bool IsSessionUsable(const PvSessionState& state) {
     if (state.kind != PvStateKind::Session) {
         return false;
     }
-    return state.session_status != "closed" && state.session_status != "expired";
+    return state.session_status == "active" || state.session_status == "completed";
 }
 
 PvRoute DecideRoute(const PvSessionState& state, const PvLesson& lesson) {

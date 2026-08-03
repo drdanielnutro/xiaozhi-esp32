@@ -49,6 +49,11 @@ public:
     struct HydrationResult {
         PvBackendResult backend;  // etapa que interrompeu (ou Ok)
         Stage stage = Stage::Complete;
+        // Geração de conectividade do PvApp no momento do PEDIDO. A task
+        // principal descarta resultados de uma geração anterior (revisão F1
+        // P1: um resultado em voo durante a desconexão não pode "reviver" o
+        // estado Online com dado velho).
+        uint32_t generation = 0;
     };
 
     // Chamado NA TASK DO WORKER quando um job termina. A implementação deve
@@ -63,24 +68,32 @@ public:
     bool Start(DoneHandler handler);
 
     // Enfileiram um job. false = já havia um igual em voo (coalescido) ou o
-    // worker não está no ar.
-    bool RequestHydrate();
-    bool RequestHealth();
+    // worker não está no ar. `generation` é a geração de conectividade do
+    // PvApp; volta intacta no resultado para a task principal detectar
+    // resultados obsoletos.
+    bool RequestHydrate(uint32_t generation);
+    bool RequestHealth(uint32_t generation);
 
     // Retiram o resultado pronto (move para fora). false quando não há nada
     // novo — o que acontece, de propósito, quando dois avisos do mesmo job
     // chegam na fila e o segundo já não tem dado a entregar.
     bool TakeHydration(HydrationResult& result, PvSessionState& state, PvLesson& lesson);
-    bool TakeHealth(PvBackendResult& result);
+    bool TakeHealth(PvBackendResult& result, uint32_t& generation);
 
     bool hydrate_in_flight() const { return hydrate_in_flight_.load(); }
     bool health_in_flight() const { return health_in_flight_.load(); }
 
 private:
-    bool Enqueue(Job job, std::atomic<bool>& in_flight);
+    // Item da fila interna: o job e a geração de conectividade do pedido.
+    struct JobItem {
+        Job job;
+        uint32_t generation;
+    };
+
+    bool Enqueue(Job job, uint32_t generation, std::atomic<bool>& in_flight);
     void Loop();
-    void RunHydrate();
-    void RunHealth();
+    void RunHydrate(uint32_t generation);
+    void RunHealth(uint32_t generation);
 
     QueueHandle_t queue_ = nullptr;
     TaskHandle_t task_ = nullptr;
@@ -96,6 +109,7 @@ private:
     PvLesson hydration_lesson_;
     bool health_ready_ = false;
     PvBackendResult health_result_;
+    uint32_t health_generation_ = 0;
 };
 
 #endif  // PV_WORKER_H

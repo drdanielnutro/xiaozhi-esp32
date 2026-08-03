@@ -121,6 +121,13 @@ private:
     bool network_connected_ = false;
     std::string network_name_;
 
+    // Geração de conectividade: incrementada a cada fronteira (desconexão,
+    // entrada em config mode Wi-Fi). Pedidos ao worker carregam a geração
+    // corrente e resultados de geração anterior são descartados — um HTTP que
+    // estava em voo durante a desconexão não pode "reviver" o estado Online
+    // com dado velho (revisão F1, P1). Escrita/leitura só na task principal.
+    uint32_t net_generation_ = 0;
+
     // Configuração pendente de gravação, entregue pela task do LVGL.
     std::mutex pending_mutex_;
     bool pending_save_valid_ = false;

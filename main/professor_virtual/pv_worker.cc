@@ -32,7 +32,7 @@ bool PvWorker::Start(DoneHandler handler) {
     }
     done_handler_ = std::move(handler);
 
-    queue_ = xQueueCreate(kQueueLength, sizeof(Job));
+    queue_ = xQueueCreate(kQueueLength, sizeof(JobItem));
     if (queue_ == nullptr) {
         ESP_LOGE(TAG, "Falha ao criar a fila de pedidos do worker");
         return false;
@@ -52,7 +52,7 @@ bool PvWorker::Start(DoneHandler handler) {
     return true;
 }
 
-bool PvWorker::Enqueue(Job job, std::atomic<bool>& in_flight) {
+bool PvWorker::Enqueue(Job job, uint32_t generation, std::atomic<bool>& in_flight) {
     if (queue_ == nullptr) {
         return false;
     }
@@ -62,7 +62,8 @@ bool PvWorker::Enqueue(Job job, std::atomic<bool>& in_flight) {
         // tick de 10 s nunca empilhar chamadas de 15 s.
         return false;
     }
-    if (xQueueSend(queue_, &job, 0) != pdTRUE) {
+    JobItem item{job, generation};
+    if (xQueueSend(queue_, &item, 0) != pdTRUE) {
         ESP_LOGW(TAG, "Fila do worker cheia; pedido %d descartado", static_cast<int>(job));
         in_flight.store(false);
         return false;
@@ -70,37 +71,42 @@ bool PvWorker::Enqueue(Job job, std::atomic<bool>& in_flight) {
     return true;
 }
 
-bool PvWorker::RequestHydrate() { return Enqueue(Job::Hydrate, hydrate_in_flight_); }
+bool PvWorker::RequestHydrate(uint32_t generation) {
+    return Enqueue(Job::Hydrate, generation, hydrate_in_flight_);
+}
 
-bool PvWorker::RequestHealth() { return Enqueue(Job::HealthCheck, health_in_flight_); }
+bool PvWorker::RequestHealth(uint32_t generation) {
+    return Enqueue(Job::HealthCheck, generation, health_in_flight_);
+}
 
 void PvWorker::Loop() {
     while (true) {
-        Job job = Job::HealthCheck;
-        if (xQueueReceive(queue_, &job, portMAX_DELAY) != pdTRUE) {
+        JobItem item{Job::HealthCheck, 0};
+        if (xQueueReceive(queue_, &item, portMAX_DELAY) != pdTRUE) {
             continue;
         }
-        switch (job) {
+        switch (item.job) {
             case Job::Hydrate:
-                RunHydrate();
+                RunHydrate(item.generation);
                 hydrate_in_flight_.store(false);
                 break;
             case Job::HealthCheck:
-                RunHealth();
+                RunHealth(item.generation);
                 health_in_flight_.store(false);
                 break;
         }
         if (done_handler_) {
-            done_handler_(job);
+            done_handler_(item.job);
         }
     }
 }
 
-void PvWorker::RunHydrate() {
+void PvWorker::RunHydrate(uint32_t generation) {
     // §9.1 manda health, depois state + lesson. O cliente de referência faz as
     // duas leituras em paralelo; aqui elas são sequenciais na mesma task, o que
     // custa uma ida e volta a mais e economiza uma segunda task de rede.
     HydrationResult result;
+    result.generation = generation;
     PvSessionState state;
     PvLesson lesson;
 
@@ -128,10 +134,11 @@ void PvWorker::RunHydrate() {
     hydration_ready_ = true;
 }
 
-void PvWorker::RunHealth() {
+void PvWorker::RunHealth(uint32_t generation) {
     PvBackendResult result = PvBackendClient::CheckHealth();
     std::lock_guard<std::mutex> lock(result_mutex_);
     health_result_ = result;
+    health_generation_ = generation;
     health_ready_ = true;
 }
 
@@ -151,12 +158,13 @@ bool PvWorker::TakeHydration(HydrationResult& result, PvSessionState& state, PvL
     return true;
 }
 
-bool PvWorker::TakeHealth(PvBackendResult& result) {
+bool PvWorker::TakeHealth(PvBackendResult& result, uint32_t& generation) {
     std::lock_guard<std::mutex> lock(result_mutex_);
     if (!health_ready_) {
         return false;
     }
     result = health_result_;
+    generation = health_generation_;
     health_ready_ = false;
     return true;
 }

@@ -197,6 +197,40 @@ dono).**
 - `xiaozhi.bin` da variante PV: **2.779.024 bytes** (0x2a6790) — 34% livres
   na partição de app de 4 MB. Sem necessidade do plano B (REMOVE_ITEM).
 
+### Revisão independente — rodada 1 (2026-08-03, Codex thread 019fc93f)
+
+5×P1 + 1×P2, nenhum P0. Todas as alegações verificadas no código antes da
+correção. **P1 corrigidos:**
+
+1. Token em log DEBUG do wrapper (`http_client.cc:162` loga todos os
+   headers): `esp_log_level_set("HttpClient", ESP_LOG_INFO)` no
+   `PvApp::Initialize` — defesa em profundidade; o token jamais aparece em
+   log mesmo em build de diagnóstico.
+2. `ReadAll()` trava com corpo > 8 KiB (produtor pausa a 8 KiB e `ReadAll`
+   só drena após EOF): leitura incremental `ReadBody()` em blocos de 1 KiB
+   com teto de 256 KiB.
+3. `GetStatusCode()` = -1 (timeout/sem resposta) virava `HttpError`:
+   status < 100 agora é `NetworkError`.
+4. Resultado HTTP obsoleto podia "reviver" Online após desconexão:
+   geração de conectividade (`net_generation_`) incrementada em
+   desconexão/config-mode, carregada nos pedidos ao worker e conferida em
+   `HandleHydrationDone`/`HandleHealthDone` (descarta geração antiga).
+5. Parsers frouxos: sessão agora exige `session_id` E `session_status`
+   não-vazios (senão `ParseError`); `IsSessionUsable` virou lista fechada
+   {"active","completed"} (status desconhecido → preparação; substitui a
+   interpretação registrada na T3); lição só aceita `status=="no_lesson"`
+   literal (outro status → `ParseError`).
+
+Host test: **155 verificações, 0 falhas** (novos casos das regressões
+acima). Riscos que a T7 deve cobrir (do revisor): desconectar com
+health/hidratação em voo; lição > 8 KiB; logs em build DEBUG sem token.
+
+**P2 adiado com registro:** `ResolveUrl` aceita URL absoluta de qualquer
+origem; sem download de mídia na F1 não há exposição, mas ANTES da F3 o
+helper deve restringir URLs absolutas à mesma origem da base (ou rejeitar),
+para o header de autenticação nunca viajar a outro host. Gatilho: abertura
+da F3.
+
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):
   - `Http` wrapper (`78__esp-ml307`) tem `SetTimeout` (default 30 s);

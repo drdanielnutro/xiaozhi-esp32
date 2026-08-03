@@ -150,10 +150,11 @@ enum class PvRoute {
     Tutoring,
 };
 
-// "Sessão utilizável": kind == Session e session_status fora de
-// "closed"/"expired". Interpretação registrada: "completed" NÃO torna a sessão
-// inutilizável — ela é justamente a condição da tela de celebração, avaliada
-// logo depois no §9.1.
+// "Sessão utilizável": kind == Session e session_status na lista FECHADA
+// {"active", "completed"} — os dois únicos estados com rota própria no §9.1
+// ("completed" é a condição da tela de celebração, avaliada logo depois).
+// Qualquer status fora do contrato cai na preparação, nunca em tela
+// pedagógica (revisão F1, P1).
 bool IsSessionUsable(const PvSessionState& state);
 
 // Rota de boot, na ORDEM EXATA do §9.1:

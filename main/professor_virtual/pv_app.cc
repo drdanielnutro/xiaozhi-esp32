@@ -81,6 +81,13 @@ void PvApp::Initialize() {
         health_timer_ = nullptr;
     }
 
+    // O wrapper HttpClient (78__esp-ml307) loga TODOS os cabeçalhos da
+    // requisição em ESP_LOGD — incluindo Authorization. Em build release o
+    // DEBUG é eliminado em compilação, mas num build de diagnóstico o token
+    // vazaria (revisão F1, P1). Trava o tag em INFO como defesa em
+    // profundidade: o token JAMAIS aparece em log.
+    esp_log_level_set("HttpClient", ESP_LOG_INFO);
+
     // O PV é o dono do callback de rede (decisão Q1a): registrado antes de
     // StartNetwork() para que o fluxo do assistente nunca receba os eventos.
     RegisterNetworkCallback();
@@ -195,6 +202,9 @@ void PvApp::HandleEvent(const PvEvent& event) {
 
         case PvEventType::NetDisconnected:
             network_connected_ = false;
+            // Fronteira de conectividade: resultados HTTP que ficaram em voo
+            // pertencem à geração anterior e serão descartados ao chegar.
+            net_generation_++;
             // Sem rede o espelho envelhece: a volta obriga nova hidratação
             // (§9.7) e o health para de bater até a rede voltar.
             hydrated_ = false;
@@ -277,6 +287,7 @@ void PvApp::HandleNetworkConnected(const char* ssid) {
 void PvApp::HandleWifiConfigMode() {
     phase_ = PvPhase::WifiConfigMode;
     network_connected_ = false;
+    net_generation_++;
     hydrated_ = false;
     StopHealthTimer();
     SetBackendHealthy(false);
@@ -413,7 +424,7 @@ void PvApp::StartHydration() {
 
     StartHealthTimer();
 
-    if (!worker_.RequestHydrate()) {
+    if (!worker_.RequestHydrate(net_generation_)) {
         ESP_LOGI(TAG, "Hidratação já em andamento; pedido coalescido");
     }
 }
@@ -424,6 +435,15 @@ void PvApp::HandleHydrationDone() {
     PvLesson lesson;
     if (!worker_.TakeHydration(result, state, lesson)) {
         // Aviso duplicado de um ciclo cujo resultado já foi consumido.
+        return;
+    }
+
+    if (result.generation != net_generation_ || !network_connected_) {
+        // Resultado de uma geração de conectividade anterior (a rede caiu ou
+        // entrou em config mode com o HTTP em voo): descartar, sem tocar
+        // fase, telas ou máquina de estados (revisão F1, P1).
+        ESP_LOGW(TAG, "Hidratação obsoleta descartada (geração %u != %u)",
+                 static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_));
         return;
     }
 
@@ -488,14 +508,21 @@ void PvApp::HandleHealthTick() {
         StartHydration();
         return;
     }
-    if (!worker_.RequestHealth()) {
+    if (!worker_.RequestHealth(net_generation_)) {
         ESP_LOGD(TAG, "Health já em andamento; tick ignorado");
     }
 }
 
 void PvApp::HandleHealthDone() {
     PvBackendResult result;
-    if (!worker_.TakeHealth(result)) {
+    uint32_t generation = 0;
+    if (!worker_.TakeHealth(result, generation)) {
+        return;
+    }
+
+    if (generation != net_generation_ || !network_connected_) {
+        ESP_LOGW(TAG, "Health obsoleto descartado (geração %u != %u)",
+                 static_cast<unsigned>(generation), static_cast<unsigned>(net_generation_));
         return;
     }
 

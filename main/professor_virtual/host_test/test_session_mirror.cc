@@ -387,12 +387,40 @@ void TestMalformed() {
           "lesson: objeto sem lesson_id nem status -> false");
     Check(!lesson.has_lesson, "lesson fica limpa após falha");
 
+    // Fora do contrato (revisão F1, P1): sessão sem session_status não é
+    // nenhum dos três formatos do §7.2 — aceitar rotearia para a tutoria.
+    PvSessionState bare;
+    Check(!ParseState(R"({"session_id": "s1"})", bare),
+          "state com session_id mas sem session_status -> false");
+    Check(!ParseState(R"({"session_id": "", "session_status": "active"})", bare),
+          "state com session_id vazio -> false");
+    Check(!ParseState(R"({"session_id": "s1", "session_status": ""})", bare),
+          "state com session_status vazio -> false");
+
+    // session_status fora da lista fechada do contrato: parseia (é uma sessão
+    // sintaticamente válida), mas nunca chega a tela pedagógica.
+    PvSessionState weird;
+    Check(ParseState(R"({"session_id": "s1", "session_status": "archived"})", weird),
+          "state com session_status desconhecido parseia");
+    Check(!IsSessionUsable(weird), "session_status desconhecido não é utilizável");
+    PvLesson lesson_ok;
+    Check(ParseLesson(kLessonFull, lesson_ok), "lição válida para o caso de rota");
+    Check(DecideRoute(weird, lesson_ok) == PvRoute::Preparation,
+          "session_status desconhecido -> preparação, mesmo com lição");
+
+    // Lição com status fora do contrato: só "no_lesson" literal é aceito.
+    PvLesson weird_lesson;
+    Check(!ParseLesson(R"({"status": "archived"})", weird_lesson),
+          "lesson com status desconhecido -> false");
+
     // Robustez: campos ausentes/tipos errados dentro de um formato reconhecido
     // não invalidam o parse (cliente robusto), viram defaults.
     PvSessionState partial;
-    Check(ParseState(R"({"session_id": "s1", "waiting_for_photo": "sim", "item_progress": 7})",
-                     partial),
-          "state mínimo com tipos errados ainda parseia");
+    Check(
+        ParseState(
+            R"({"session_id": "s1", "session_status": "active", "waiting_for_photo": "sim", "item_progress": 7})",
+            partial),
+        "state mínimo com tipos errados ainda parseia");
     Check(partial.kind == PvStateKind::Session, "state mínimo é sessão");
     Check(!partial.waiting_for_photo, "tipo errado vira default");
     CheckEqInt(static_cast<int>(partial.item_progress.size()), 0,
@@ -452,9 +480,11 @@ void TestRouteText() {
                       accented),
           "ParseLesson do enunciado acentuado");
     PvSessionState at_item;
-    Check(ParseState(R"({"session_id": "s1", "current_item": "item_1", "current_tarefa": "t1"})",
-                     at_item),
-          "ParseState apontando para o enunciado acentuado");
+    Check(
+        ParseState(
+            R"({"session_id": "s1", "session_status": "active", "current_item": "item_1", "current_tarefa": "t1"})",
+            at_item),
+        "ParseState apontando para o enunciado acentuado");
     // 10 caracteres "ã" = 20 bytes; cortar em 5 bytes cairia no meio do 3º.
     std::string cut = PvBuildTutoringDetail(at_item, accented, 5);
     Check(cut.find("ãã...") != std::string::npos, "corte recua para a fronteira UTF-8");

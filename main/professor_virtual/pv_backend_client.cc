@@ -35,8 +35,13 @@ bool StartsWithIgnoreCase(const std::string& text, const char* prefix) {
     return true;
 }
 
-// Traduz o status HTTP na taxonomia da F1.
+// Traduz o status HTTP na taxonomia da F1. O wrapper devolve -1 quando os
+// cabeçalhos não chegam (timeout/erro de rede): qualquer valor abaixo de 100
+// não é uma resposta HTTP e vira NetworkError (revisão F1, P1).
 PvBackendStatus ClassifyHttpStatus(int http_status) {
+    if (http_status < 100) {
+        return PvBackendStatus::NetworkError;
+    }
     switch (http_status) {
         case 200:
             return PvBackendStatus::Ok;
@@ -46,6 +51,31 @@ PvBackendStatus ClassifyHttpStatus(int http_status) {
             return PvBackendStatus::ServiceUnavailable;
         default:
             return PvBackendStatus::HttpError;
+    }
+}
+
+// Teto de segurança para corpos de resposta: uma lição de 20 páginas cabe com
+// folga; algo maior que isso é anomalia e não deve estourar a RAM.
+constexpr size_t kMaxBodyBytes = 256 * 1024;
+
+// Lê o corpo em blocos. O wrapper pausa a recepção quando a fila interna
+// atinge 8 KiB e ReadAll() só drena depois do EOF — com corpos maiores que
+// 8 KiB isso trava até o timeout (revisão F1, P1). A leitura incremental
+// drena a fila e destrava o produtor.
+bool ReadBody(Http& http, std::string& body) {
+    char buffer[1024];
+    while (true) {
+        int n = http.Read(buffer, sizeof(buffer));
+        if (n < 0) {
+            return false;
+        }
+        if (n == 0) {
+            return true;
+        }
+        if (body.size() + static_cast<size_t>(n) > kMaxBodyBytes) {
+            return false;
+        }
+        body.append(buffer, static_cast<size_t>(n));
     }
 }
 
@@ -108,8 +138,16 @@ PvBackendResult Get(const char* path, int timeout_ms, std::string& body) {
         return result;
     }
 
-    body = http->ReadAll();
+    bool read_ok = ReadBody(*http, body);
     http->Close();
+
+    if (!read_ok) {
+        ESP_LOGW(TAG, "GET %s: corpo interrompido ou acima de %u bytes", path,
+                 static_cast<unsigned>(kMaxBodyBytes));
+        body.clear();
+        result.status = PvBackendStatus::NetworkError;
+        return result;
+    }
 
     if (body.empty()) {
         // 200 sem corpo = resposta truncada/perdida; tratado como falha de rede
