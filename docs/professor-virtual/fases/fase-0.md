@@ -121,6 +121,25 @@ assistente); testes host passam; decisões registradas no decision-log.
   não executado): **adiado com registro** para F9/endurecimento; build p4x sob
   demanda (placa do dono é rev v1.3 → variante 7b).
 
+### Validação física (2026-08-03, Mac do proprietário, porta /dev/cu.usbmodem*)
+
+- Chip confirmado no primeiro contato: ESP32-P4 rev v1.3, MAC
+  `80:f1:b2:d3:29:16` (idêntico ao dossiê) → variante 7b correta.
+- Primeiro flash gravou com sucesso (todos os hashes verificados), mas a placa
+  entrou em **loop de reboot**: `assert failed: esp_clk_init clk.c:104 (res)`
+  em `system_early_init` — antes de qualquer código do PV.
+- Causa raiz: `release.py` roda `set-target` (grava
+  `ESP_DEFAULT_CPU_FREQ_MHZ_400=y` explícito) antes do append de
+  `ESP32P4_SELECTS_REV_LESS_V3=y`; em silício rev<v3 o IDF 6.0.2 só aceita
+  90/180/360 MHz → assert. **Bug pré-existente que afeta também as variantes
+  upstream não-p4x** em chips v1.x com IDF 6 — dívida upstream registrada
+  (recomendação: proprietário abre issue no 78/xiaozhi-esp32 reproduzindo com
+  a 7b original, sem expor o PV).
+- Correção (decisão F0-ClockFix): `CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y`
+  somente na variante `7b-professor-virtual` (a `-p4x` segue 400 MHz).
+  Rebuild verificado: sdkconfig final com 360=y e 400 ausente.
+- Reflash e confirmação visual da tela "PV": pendente do proprietário.
+
 - Estado Git inicial: `1de736a` (worktree limpo, 2026-08-03).
 - ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf` (ativação via
   `~/.espressif/tools/activate_idf_v6.0.2.sh` + `IDF_PATH`/`PATH` manuais).
