@@ -225,6 +225,12 @@ Host test: **155 verificações, 0 falhas** (novos casos das regressões
 acima). Riscos que a T7 deve cobrir (do revisor): desconectar com
 health/hidratação em voo; lição > 8 KiB; logs em build DEBUG sem token.
 
+### Revisão independente — rodada 2 (2026-08-03, Codex thread 019fc959)
+
+**NO_FINDINGS — fase aprovada.** Correções dos 5 P1 verificadas pelo
+revisor; nenhuma regressão nova. Encerramento com a T7 (validação física)
+aberta como pendência do proprietário.
+
 **P2 adiado com registro:** `ResolveUrl` aceita URL absoluta de qualquer
 origem; sem download de mídia na F1 não há exposição, mas ANTES da F3 o
 helper deve restringir URLs absolutas à mesma origem da base (ou rejeitar),
