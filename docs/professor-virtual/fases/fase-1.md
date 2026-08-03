@@ -51,7 +51,7 @@ dono).**
       `CONFIG_LV_USE_KEYBOARD=y` nas variantes PV do `config.json`
       · pronto quando: build PV verde com a flag presente no sdkconfig
       gerado e módulo usado pelo `PvApp`.
-- [ ] T3 — `pv_backend_client` (token em toda chamada, `SetTimeout`,
+- [x] T3 — `pv_backend_client` (token em toda chamada, `SetTimeout`,
       `GET /api/health`, `GET /api/state`, `GET /api/lesson`, resolução de
       URL relativa à base, parse cJSON, taxonomia de erros: ok / rede /
       HTTP-4xx-5xx / 401 / 503 / JSON inválido) + `pv_session_mirror`
@@ -120,6 +120,25 @@ dono).**
   `orsource "Kconfig.idf_v$ESP_IDF_VERSION.in"` do `esp_wifi_remote` não
   resolve, os símbolos `WIFI_RMT_*` somem do sdkconfig e o build quebra em
   `wifi_manager.cc`.
+
+### T3 — pv_backend_client + pv_session_mirror (2026-08-03, subagente opus)
+
+- `pv_session_mirror` é PURO (só C++ padrão + cJSON) e testado no host:
+  `host_test/run.sh` → **122 verificações, 0 falhas** (com ASan/UBSan),
+  cobrindo os três formatos de state, os dois de lesson, rotas §9.1 e corpos
+  inválidos. Mapas do contrato viram vetores de pares para preservar a ordem
+  do JSON (detecção de avanço da F5 compara posições).
+- `pv_backend_client`: um `Http` novo por requisição (`CreateHttp(3)`),
+  `SetTimeout` 5 s (health) / 15 s (state/lesson), `Close()` em todos os
+  caminhos, `Authorization: Bearer` em escopo curto (token jamais logado),
+  corpo de erro não lido/logado; 200 sem corpo → `NetworkError`
+  (recuperável), corpo fora do contrato → `ParseError`.
+- Interpretações registradas: sessão identificada por `session_id` string;
+  `status` de topo desconhecido → `InvalidState` (remédio já é preparação);
+  `completed` é sessão utilizável (vai à celebração antes do failsafe).
+- Armadilha de build: o GLOB de `main/CMakeLists.txt` não usa
+  `CONFIGURE_DEPENDS` — arquivo novo em `professor_virtual/` exige
+  `idf.py reconfigure` (senão o link fica verde sem os objetos novos).
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):
