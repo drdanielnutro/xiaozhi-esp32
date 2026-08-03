@@ -386,7 +386,7 @@ checklist final de validação física com o dono, tag de versão.
 
 | Fase | Status | Concluída em | Commit | Pendências físicas |
 |---|---|---|---|---|
-| F0 — Fundações | não iniciada | — | — | — |
+| F0 — Fundações | concluída | 2026-08-03 | 63280a5 | Primeiro flash (ação do dono; confirma rev do chip) e verificação visual da tela "PV" no display |
 | F1 — Rede e hidratação | não iniciada | — | — | — |
 | F2 — Câmera | não iniciada | — | — | — |
 | F3 — Turno por foto | não iniciada | — | — | — |

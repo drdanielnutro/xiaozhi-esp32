@@ -9,7 +9,8 @@
 
 Fundações do Professor Virtual sobre a base XiaoZhi: Kconfig
 (`CONFIG_PROFESSOR_VIRTUAL`) + CMake condicional + gate em `main/main.cc` +
-variantes `professor-virtual-7b`/`professor-virtual-7b-p4x` no `config.json`
+variantes `esp32-p4-wifi6-touch-lcd-7b[-p4x]-professor-virtual` (nomes
+retificados pela Q2a-retificada de 2026-08-03) no `config.json`
 da família Waveshare P4 + esqueleto `PvApp` (boot → tela LVGL própria "PV" +
 versão). Smoke test de interoperabilidade por `curl` contra o backend real
 usando o perfil v1.1 (WAV PCM mono/16 kHz, `request_id`, `media=url`,
@@ -107,6 +108,9 @@ assistente); testes host passam; decisões registradas no decision-log.
 ### Revisão independente (2026-08-03)
 
 - Rodada 1 (Codex effort high, thread 019fc7aa): 1×P1, 1×P2, nenhum P0.
+- Rodada 2 (Codex effort high, thread 019fc7bd): **NO_FINDINGS — fase
+  aprovada** (correção do P1 validada: lock, lifetimes e não-ativação do
+  assistente conferidos; adiamento do P2 aceito).
 - P1 (PvApp sem callback de rede próprio, exigido pelo critério T2/Q1a):
   **corrigido** — `RegisterNetworkCallback()` em `PvApp::Initialize()` com
   handler próprio (status na tela de boot sob `DisplayLockGuard`);
