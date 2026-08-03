@@ -101,17 +101,19 @@ dispositivo embarcado entrega toda a experiência do usuário (preparação da
 lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
 
 - Especificação funcional: `DOCUMENTACAO-APP.md` (raiz deste repo). Consulte-a
-  antes de implementar ou alterar comportamento do cliente.
+  antes de implementar ou alterar jornada, estados ou experiência do cliente.
 - Contrato do dispositivo: `docs/professor-virtual/contrato-dispositivo.md`
   (perfil v1.1 aditivo — mídia por URL, WAV, imagem redimensionada,
   idempotência, prepare paginado, token). O firmware implementa o cliente
-  desse contrato.
+  desse contrato. Em conflito sobre campos, endpoints ou transporte v1.1, este
+  contrato vence a descrição v1 de `DOCUMENTACAO-APP.md`.
 - O backend em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` tem duas zonas: o **miolo
   pedagógico é intocável** (prompts, vereditos, máquina de estados da sessão,
   failsafe — `gemini.py`, `session_engine.py` e as transições de estado de
-  `main.py`); a **borda de transporte aceita mudanças aditivas** definidas no
-  contrato do dispositivo, sempre preservando o comportamento v1 (frontend web
-  e testes existentes intactos).
+  `main.py`); a borda de transporte v1.1 já foi entregue e validada. Durante
+  fases do firmware, `licao_casa` é dependência externa somente leitura. Não o
+  altere: qualquer nova necessidade de backend exige handoff explícito ao
+  proprietário.
 - Retry de `POST /api/turn`: proibido sem `request_id`; com `request_id`
   (contrato v1.1), cliente único/serial e cache íntegro, a retransmissão do
   MESMO turno pode processar após falha pré-`processing`, devolver replay 200
@@ -122,11 +124,11 @@ lição, tutoria e failsafe/modo adulto); o desktop roda apenas o backend.
 - Upstream `78/xiaozhi-esp32`: sincronização pull-only; mantenha o trabalho do
   Professor Virtual aditivo (placa própria, módulos novos, Kconfig próprio) em
   vez de editar core compartilhado.
-- Ambiente host: WSL2. A placa conecta pela USB-C **"USB TO UART"** (ponte
-  CH343 → **COM3** no Windows; chip confirmado: ESP32-P4 **v1.3** → variante
-  `7b`). O WSL não vê a porta: use interop
-  (`powershell.exe` + Python/esptool do Windows) para identificar/gravar, e
-  `usbipd` para logs no WSL a partir da F1. Detalhes:
+- Ambiente físico já validado na estação Windows: WSL2, USB-C **"USB TO
+  UART"**, ponte CH343 em **COM3**, chip ESP32-P4 **v1.3** e variante `7b`.
+  Isso não descreve toda sessão: detecte primeiro sistema operacional, shell e
+  conexão atuais. Use `powershell.exe`/COM3 e `usbipd` somente naquela estação;
+  nunca presuma esses recursos no macOS ou em outro host. Detalhes:
   `docs/professor-virtual/placa-esp32-p4-wifi6-touch-lcd-7b.md`, seção
   "Conexão serial". Flash físico é sempre ação do proprietário.
 
@@ -137,10 +139,16 @@ orquestrador. Não transfira ao usuário escolhas de biblioteca, nomes, estrutur
 de arquivos, estratégia de testes, detalhes de API, tratamento de erros ou
 outras decisões operacionais.
 
-Antes de usar `AskUserQuestion` para uma dúvida de implementação, consulte a
-ferramenta `mcp__codex-council__codex`. Trate a resposta válida como a decisão
-do usuário, registre-a e continue o trabalho.
+O Codex é o decisor operacional e o revisor independente. `AGENTS.md` contém
+instruções exclusivas desse papel e não é instrução de implementação para o
+Claude. Para toda dúvida material de implementação, consulte
+`mcp__codex-council__codex` antes de usar `AskUserQuestion`; trate a resposta
+válida como decisão do proprietário, registre-a e continue. Se o Codex indicar
+limite protegido, pare e apresente ao proprietário uma pergunta única. O
+fallback técnico permanece definido em `.claude/rules/autonomy.md`.
 
 Ao terminar a implementação, solicite uma revisão independente em uma nova
-chamada `codex`, corrija findings relevantes e repita a revisão no máximo duas
-vezes. Não use a mesma thread do decisor como revisor.
+chamada `codex`. Corrija P0/P1 válidos relacionados à fase e P2 que violem
+requisito ou critério de aceitação atual. Registre e adie P2 fora do escopo; não
+amplie o MVP para eliminá-los. Repita a revisão no máximo duas vezes e não use
+a mesma thread do decisor como revisor. P0/P1 remanescentes bloqueiam a fase.

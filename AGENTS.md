@@ -42,13 +42,18 @@ periféricos da placa.
   O `backend/` (Python + FastAPI) tem duas zonas: o **miolo pedagógico é
   intocável** (prompts, vereditos, máquina de estados da sessão, failsafe —
   `gemini.py`, `session_engine.py` e as transições de estado de `main.py`);
-  a **borda de transporte aceita mudanças aditivas** definidas em
-  `docs/professor-virtual/contrato-dispositivo.md` (perfil v1.1), sempre
-  preservando o comportamento v1 literal para o frontend web. O `frontend/`
-  (React) é a implementação de referência do comportamento do cliente.
+  a **borda de transporte v1.1 já foi entregue e validada**. Durante fases do
+  firmware, esse repositório é dependência externa somente leitura: qualquer
+  nova necessidade de backend exige handoff explícito ao proprietário. O
+  `frontend/` (React) é referência da jornada, da experiência e da semântica
+  v1, mas não do perfil de transporte do dispositivo.
+- **`docs/professor-virtual/contrato-dispositivo.md`**: contrato canônico do
+  perfil v1.1 do dispositivo; vence conflitos de transporte v1.1 com a
+  especificação funcional ou com descrições legadas.
 - **`DOCUMENTACAO-APP.md`** (raiz deste repo): especificação funcional
-  completa e autossuficiente — comportamento, estados, contrato da API,
-  mídia, temporizações e notas de porte embarcado (Apêndice B).
+  completa e autossuficiente — jornada, comportamento, estados, experiência,
+  temporizações e notas de porte embarcado (Apêndice B). A seção 7 v1 é
+  complementada pelo contrato canônico v1.1 acima.
 - **`AGENTS_original_do_repositorio.md`**: diretrizes técnicas originais do
   projeto XiaoZhi, preservadas do upstream.
 
@@ -61,13 +66,16 @@ Fundamente toda decisão ou revisão nesta ordem:
 
 1. **Decisões atuais do proprietário** sobre produto, negócio, escopo e
    experiência (incluindo as premissas abaixo).
-2. **`DOCUMENTACAO-APP.md`** — comportamento esperado, fluxos, estados,
-   API HTTP, mídia e experiência.
-3. **Código real do backend** em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` —
+2. **`docs/professor-virtual/contrato-dispositivo.md`** — fonte canônica dos
+   campos, endpoints, autenticação, mídia e idempotência do perfil v1.1.
+3. **`DOCUMENTACAO-APP.md`** — comportamento esperado, fluxos, estados e
+   experiência; sua API v1 permanece válida onde o perfil v1.1 não a
+   complementa.
+4. **Código real do backend** em `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/` —
    o contrato efetivamente implementado.
-4. **Código e documentação reais do firmware** neste repositório —
+5. **Código e documentação reais do firmware** neste repositório —
    arquitetura, padrões, recursos da placa, build e limitações.
-5. **Documentação oficial e atual** da Espressif, do ESP-IDF e dos
+6. **Documentação oficial e atual** da Espressif, do ESP-IDF e dos
    fabricantes dos periféricos.
 
 Conflitos entre fontes: não resolva silenciosamente. Use a especificação
@@ -97,7 +105,9 @@ inicial, não prova.
   supersedido ou não replayável. Status HTTP isolado, inclusive 502, não
   autoriza retry automático; a garantia é não haver dupla aplicação
   silenciosa dentro dessas premissas;
-  segredos e PIN nunca no firmware ou em logs.
+  PIN e chaves de APIs externas nunca no firmware; o token de autenticação do
+  próprio dispositivo é configuração necessária, provisionada no namespace
+  NVS `"pv"`, e nunca aparece em logs, UI ou corpos de resposta.
 - **Fora de escopo:** alterar o miolo pedagógico do backend; mudanças de
   transporte fora do contrato v1.1 aprovado; soluções em nuvem; duplicar a
   fonte de verdade no dispositivo; manter qualquer parte da experiência do
@@ -137,10 +147,12 @@ no backend só pode ser recomendada quando **todas** estas condições valerem:
 Sem essas condições, a resposta é adaptar o firmware ao contrato vigente.
 Mesmo com elas, mudar o backend é decisão do proprietário: escale.
 
-Exceção aprovada pelo proprietário (30/07/2026): as mudanças aditivas de
-transporte do contrato v1.1 (`docs/professor-virtual/contrato-dispositivo.md`)
-estão pré-autorizadas nos termos do plano consolidado. Mudanças além desse
-escopo continuam sujeitas às 5 condições e ao escalonamento.
+Exceção histórica aprovada pelo proprietário (30/07/2026): as mudanças
+aditivas de transporte do contrato v1.1 foram implementadas, validadas e
+encerradas no backend. Essa autorização foi consumida. Durante fases do
+firmware, `licao_casa` é somente leitura; toda mudança futura no backend,
+inclusive na borda de transporte, exige tarefa própria e decisão explícita do
+proprietário sob as 5 condições acima.
 
 ## Invariantes do Professor Virtual
 
@@ -148,9 +160,15 @@ Limites de arquitetura do produto (detalhes na especificação — use-a):
 
 - O backend é a única fonte de verdade pedagógica e persistente; o cliente
   não avalia respostas, não decide avanço e não replica contadores.
-- Lição, progresso, histórico, PIN e chaves de API ficam no desktop; o
-  dispositivo persiste apenas configuração própria (rede, endereço do
-  backend); fases de UI e última resposta (replay) vivem só em RAM.
+- Lição, progresso, histórico, PIN e chaves de APIs externas ficam no desktop;
+  o dispositivo persiste apenas configuração própria (rede, endereço do
+  backend e token do dispositivo no namespace NVS `"pv"`); fases de UI e
+  última resposta local vivem só em RAM.
+- Toda requisição HTTP remota do firmware, inclusive `/api/health`, downloads
+  em `/api/media/...` e endpoints de preparação, leva o token do dispositivo.
+  `401` significa credencial ausente/incorreta; `503`, backend remoto sem token
+  configurado. Nenhuma dessas respostas autoriza degradar para modo remoto sem
+  autenticação.
 - No boot e após reconexão, o cliente se re-hidrata via `GET /api/state` +
   `GET /api/lesson`.
 - Um turno contém exatamente uma entrada: áudio **ou** imagem.
@@ -165,8 +183,17 @@ Limites de arquitetura do produto (detalhes na especificação — use-a):
 - Após erro HTTP respondido pelo servidor (especialmente 502/409),
   re-consultar o estado antes de decidir a interface; após erro de rede,
   re-hidratar quando a conexão voltar.
-- Respostas de turno trazem MP3 e PNG em base64: planeje picos de RAM para
-  JSON bruto + base64 + mídia decodificada.
+- Todo turno do dispositivo ativa o perfil v1.1 com `request_id` UUID v4 novo,
+  `media=url`, `audio_format=wav` e `image_max_px=1280`. A resposta traz URLs
+  relativas; `audio_base64` e `image_base64` vêm vazios. Baixe prontamente,
+  com autenticação, JPEG q85 e WAV PCM s16le mono/16 kHz. Interprete o RIFF por
+  chunks, sem presumir offset fixo de 44 bytes.
+- A preparação usa `POST /api/prepare/start`, uma página por vez em
+  `/api/prepare/page`, liberando a imagem full-resolution após o envio, e
+  `/api/prepare/finish`; páginas ilegíveis podem ser substituídas no staging.
+- Fish Audio, modelo e voz Itachi são evidência empírica do backend, não
+  dependência nem identidade do firmware. O cliente permanece neutro ao
+  provedor e consome os formatos definidos no contrato.
 - Comandos de captura ficam bloqueados enquanto um turno processa ou a
   resposta está sendo apresentada.
 - Avanço só é decidido depois do fim do áudio **e** da re-hidratação.
@@ -279,6 +306,9 @@ Além dos listados na decision-policy:
   Virtual, Protocol, NVS, OTA, identidade de placa), invariantes do
   Professor Virtual acima e lacunas de teste.
 - Classifique findings em P0/P1/P2; sem findings, responda `NO_FINDINGS`.
+- P0/P1 válidos relacionados à fase são blockers. P2 só exige correção quando
+  viola requisito ou critério de aceitação da fase atual; P2 válido fora do
+  escopo é registrado para trabalho futuro e não amplia o MVP.
 - Máximo de duas rodadas de revisão por fase; findings P0/P1 remanescentes
   encerram a fase como bloqueada.
 

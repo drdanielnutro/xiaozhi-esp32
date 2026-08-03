@@ -11,7 +11,9 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
 
 ## Ativação
 
-1. Leia `AGENTS.md`, `CLAUDE.md`, a arquitetura aprovada, o plano e as tasks.
+1. Leia `CLAUDE.md`, o contrato aplicável, a arquitetura aprovada, o plano e as
+   tasks. `AGENTS.md` contém instruções do Codex e não governa a implementação
+   do Claude.
 2. Valide que o escopo da fase é suficientemente definido.
 3. Estado por task: se `docs/professor-virtual/fases/fase-N.md` não existir
    para esta fase, crie-o a partir de `docs/professor-virtual/fases/TEMPLATE.md`
@@ -59,10 +61,11 @@ grande (heurística: mais de ~5 arquivos tocados ou mais de ~300 linhas de
 mudança previstas).
 
 1. O prompt do subagente deve ser autossuficiente: texto da task e critério
-   "pronto quando" copiados da `fase-N.md`; arquivos e diretórios de
-   partida; invariantes aplicáveis do `AGENTS.md`; e as proibições — não
-   commitar, não fazer push, não editar arquivos gerados/vendor, não gravar
-   em hardware.
+   "pronto quando" copiados da `fase-N.md`; arquivos e diretórios de partida;
+   invariantes aplicáveis do `CLAUDE.md`, do contrato e do plano; e as
+   proibições — não commitar, não fazer push, não editar arquivos
+   gerados/vendor, não gravar em hardware. Não use `AGENTS.md` como instrução
+   do subagente.
 2. O subagente implementa e testa, mas NÃO decide dúvidas materiais
    (arquitetura, biblioteca, contrato, nomenclatura pública): ao encontrar
    uma, deve parar e retornar a dúvida com as opções e consequências. O
@@ -95,7 +98,9 @@ Ao concluir a fase:
 3. Instrua o Codex a atuar apenas como revisor, inspecionando o diff e os
    testes com foco em bugs, regressões, segurança, contratos e lacunas de teste.
 4. Não use `codex-reply` de uma decisão anterior.
-5. Corrija findings P0, P1 e P2 válidos.
+5. Corrija findings P0/P1 válidos relacionados à fase e P2 que violem
+   requisito ou critério de aceitação atual. Registre e adie P2 fora do escopo;
+   não amplie o MVP para eliminá-los.
 6. Repita a revisão no máximo duas vezes.
 7. Se ainda houver finding P0 ou P1, encerre como bloqueado e explique.
 
