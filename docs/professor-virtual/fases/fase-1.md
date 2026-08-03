@@ -59,7 +59,7 @@ dono).**
       · pronto quando: build verde; parse e rota validados contra os JSONs
       reais do contrato (§7.2/§7.3, incl. `no_session`, `invalid_state`,
       `no_lesson`, ausência de `status` no sucesso da lição).
-- [ ] T4 — Boot de rede real: `SetDeviceState(kDeviceStateStarting)` +
+- [x] T4 — Boot de rede real: `SetDeviceState(kDeviceStateStarting)` +
       `StartNetwork()`; tela de configuração do PV (backend URL + token,
       teclado LVGL, token mascarado, gravação em NVS `"pv"`) acessível
       quando falta configuração e em `401`/`503`; tela de status para o modo
@@ -139,6 +139,32 @@ dono).**
 - Armadilha de build: o GLOB de `main/CMakeLists.txt` não usa
   `CONFIGURE_DEPENDS` — arquivo novo em `professor_virtual/` exige
   `idf.py reconfigure` (senão o link fica verde sem os objetos novos).
+
+### T4 — Boot de rede + tela de configuração (2026-08-03, subagente opus)
+
+- PvApp virou consumidor de fila FreeRTOS (`PvEvent` POD, 8 slots): callbacks
+  de rede (task Wi-Fi) e Salvar (task LVGL) só postam; telas e
+  DeviceStateMachine mudam apenas no `Run()` (decisão 3b). Fase fina em
+  `PvPhase{Booting,WifiConnecting,WifiConfigMode,AwaitingBackendConfig,
+  Online,Offline}`.
+- `Unknown→Starting` antes de `StartNetwork()`; `Starting→WifiConfiguring`
+  continua por conta do WifiBoard (ambas legais). Activating/Idle ficam
+  para a T5.
+- `ui/`: `pv_ui_theme` (paleta + fonte com fallback `montserrat_14` para os
+  símbolos do teclado, ausentes na Noto Sans 30), `pv_status_screen`,
+  `pv_config_screen` (URL pré-preenchida; token `password_mode` +
+  `password_show_time=0`, campo sempre vazio, salvar com token vazio
+  preserva o existente, `ScrubString` nas cópias em RAM).
+- Modo config Wi-Fi: instruções com `GetApSsid()`/`GetApWebUrl()` (sem
+  hardcode). T5 abre a tela de config via
+  `RequestConfigScreen(PvConfigReason::Unauthorized|Unavailable)` (enum
+  fechado — sem caminho para vazar token/detalhe do servidor).
+- Observação registrada: `WifiBoard::StartWifiConfigMode` enfileira um
+  `Application::Schedule` que nunca executa no PV (lambda órfão, 1× por
+  entrada em config mode; inofensivo; correção exigiria tocar arquivo
+  compartilhado — fora do escopo).
+- Validação do orquestrador: host test 122 OK; testes host de release 8 OK;
+  build incremental verde com os 3 `.obj` de `ui/` presentes.
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):

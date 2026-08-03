@@ -19,6 +19,11 @@ void SetApiToken(const std::string& token);
 // true quando backend_url e api_token estão provisionados.
 bool IsConfigured();
 
+// Sobrescreve o conteúdo de `value` antes de liberá-lo. Usado nas cópias
+// temporárias do token que trafegam entre a task do LVGL e a do PvApp, para
+// não deixar o segredo em RAM depois da gravação.
+void ScrubString(std::string& value);
+
 }  // namespace PvSettings
 
 #endif  // PV_SETTINGS_H

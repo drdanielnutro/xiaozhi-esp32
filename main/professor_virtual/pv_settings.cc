@@ -50,10 +50,17 @@ void SetApiToken(const std::string& token) {
     settings.SetString(kKeyApiToken, token);
 }
 
+void ScrubString(std::string& value) {
+    volatile char* data = const_cast<volatile char*>(value.data());
+    for (size_t i = 0; i < value.size(); ++i) {
+        data[i] = '\0';
+    }
+    value.clear();
+}
+
 bool IsConfigured() {
     Settings settings(kNamespace, false);
-    return !settings.GetString(kKeyBackendUrl).empty() &&
-           !settings.GetString(kKeyApiToken).empty();
+    return !settings.GetString(kKeyBackendUrl).empty() && !settings.GetString(kKeyApiToken).empty();
 }
 
 }  // namespace PvSettings
