@@ -812,7 +812,7 @@ config PROFESSOR_VIRTUAL
         Replace the Xiaozhi assistant application with the Professor Virtual
         voice/camera homework tutor. The assistant sources remain compiled but
         are never initialized; main() boots PvApp instead of Application.
-        Enabled only by the professor-virtual-* build variants.
+        Enabled only by the *-professor-virtual build variants.
 
 choice WAKE_WORD_TYPE
     prompt "Wake Word Implementation Type"

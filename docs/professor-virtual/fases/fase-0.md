@@ -47,7 +47,7 @@ assistente); testes host passam; decisões registradas no decision-log.
       · pronto quando: `release.py --list-boards` lista as duas variantes com
       as mesmas flags da 7b/7b-p4x + `CONFIG_PROFESSOR_VIRTUAL=y`.
       (Nomes retificados pela decisão Q2a-retificada de 2026-08-03.)
-- [ ] T4 — Build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` via `release.py` + medição do binário
+- [x] T4 — Build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` via `release.py` + medição do binário
       vs partição OTA de 4 MB · pronto quando: build verde e tamanho medido
       registrado nas notas (plano B REMOVE_ITEM só se estourar).
 - [ ] T5 — Regressão: build da variante `esp32-p4-wifi6-touch-lcd-7b`
@@ -65,6 +65,16 @@ assistente); testes host passam; decisões registradas no decision-log.
 (vazio)
 
 ## Notas da fase
+
+### T4 — Build PV (2026-08-03)
+
+- `release.py` fim a fim verde:
+  `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual.zip`.
+- `xiaozhi.bin`: **2.717.184 bytes** (0x297600); partição de app 4 MB
+  (0x400000) → **1.477.120 bytes livres (35%)**. Plano B (REMOVE_ITEM dos
+  fontes do assistente) não foi necessário.
+- `pv_app.cc.obj` presente no build; `CONFIG_PROFESSOR_VIRTUAL=y` no sdkconfig
+  gerado.
 
 ### T6 — Smoke test v1.1 (2026-08-03, backend em 127.0.0.1:8001)
 
