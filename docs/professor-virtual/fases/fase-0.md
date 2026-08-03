@@ -19,7 +19,7 @@ para diagnóstico — sem troca de formato e sem fallback acionável.
 
 ## Pronto quando
 
-`release.py` builda `professor-virtual-7b` **e** a variante
+`release.py` builda `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` **e** a variante
 `esp32-p4-wifi6-touch-lcd-7b` original continua buildando (regressão);
 binário cabe na OTA de 4 MB (medir; plano B: REMOVE_ITEM dos fontes do
 assistente); testes host passam; decisões registradas no decision-log.
@@ -42,11 +42,12 @@ assistente); testes host passam; decisões registradas no decision-log.
       LVGL própria "Professor Virtual" + versão, mantendo `WifiBoard`
       funcional (callback de rede próprio registrado, sem ativar o fluxo
       assistente).
-- [x] T3 — Variantes `professor-virtual-7b` e `professor-virtual-7b-p4x` no
+- [x] T3 — Variantes `esp32-p4-wifi6-touch-lcd-7b[-p4x]-professor-virtual` no
       `config.json` da família `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/`
       · pronto quando: `release.py --list-boards` lista as duas variantes com
       as mesmas flags da 7b/7b-p4x + `CONFIG_PROFESSOR_VIRTUAL=y`.
-- [ ] T4 — Build `professor-virtual-7b` via `release.py` + medição do binário
+      (Nomes retificados pela decisão Q2a-retificada de 2026-08-03.)
+- [ ] T4 — Build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` via `release.py` + medição do binário
       vs partição OTA de 4 MB · pronto quando: build verde e tamanho medido
       registrado nas notas (plano B REMOVE_ITEM só se estourar).
 - [ ] T5 — Regressão: build da variante `esp32-p4-wifi6-touch-lcd-7b`
@@ -66,5 +67,8 @@ assistente); testes host passam; decisões registradas no decision-log.
 ## Notas da fase
 
 - Estado Git inicial: `1de736a` (worktree limpo, 2026-08-03).
-- ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf`.
+- ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf` (ativação via
+  `~/.espressif/tools/activate_idf_v6.0.2.sh` + `IDF_PATH`/`PATH` manuais).
+- 2026-08-03 — Q2a retificada (Codex 019fc773): nomes das variantes ganham o
+  prefixo do leaf da placa por exigência do release.py.
 - Backend (dependência somente leitura): `/Users/institutorecriare/VSCodeProjects/licao_casa/backend/`.

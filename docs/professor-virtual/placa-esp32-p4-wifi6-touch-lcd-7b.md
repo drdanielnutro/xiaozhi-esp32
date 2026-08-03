@@ -201,7 +201,8 @@ Documentação interna do repo: `docs/custom-board.md`,
    `esptool chip-id` na porta "USB TO UART" (COM3, ponte CH343):
    **ESP32-P4 revisão v1.3**, Dual Core + LP Core 400 MHz, MAC
    `80:f1:b2:d3:29:16`. Conclusão: **usar a variante `7b`**
-   (`esp32-p4-wifi6-touch-lcd-7b`; para o PV, `professor-virtual-7b`) —
+   (`esp32-p4-wifi6-touch-lcd-7b`; para o PV,
+   `esp32-p4-wifi6-touch-lcd-7b-professor-virtual`) —
    a `-p4x` não se aplica a esta unidade.
 2. ~~O módulo de câmera OV5647 veio incluso e está conectado?~~
    **RESOLVIDO (26/07/2026):** a unidade do proprietário é a versão com

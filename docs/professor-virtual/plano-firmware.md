@@ -51,10 +51,14 @@
   compilados mas nunca inicializados; o PV registra o próprio callback de
   rede e mantém a `DeviceStateMachine` em estados compatíveis com o
   `WifiBoard`.
-- **Q2(a) — Identidade de build:** novas variantes `professor-virtual-7b` e
-  `professor-virtual-7b-p4x` no `config.json` da família
+- **Q2(a) — Identidade de build:** novas variantes na família
   `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/` (mesmas flags da 7b +
   `CONFIG_PROFESSOR_VIRTUAL=y`); zero duplicação de pinos.
+  *Retificada em 2026-08-03 (F0, thread Codex 019fc773):* `scripts/release.py`
+  exige que o nome da variante contenha o leaf do diretório da placa; nomes
+  definitivos: `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` e
+  `esp32-p4-wifi6-touch-lcd-7b-p4x-professor-virtual` (sem alterar
+  `release.py` e sem diretório de placa artificial).
 - **Q3(a) — Voz do tutor:** `SUPERSEDED pela Task 12 — contrato v1.1 validado`.
   - *Decisão anterior (histórica, não acionável):* decodificação MP3 no lado
     PV (componente `espressif/esp_audio_codec`, já no manifest) + método
@@ -202,7 +206,8 @@ mono/16 kHz**; solicitar o **perfil v1.1** (`request_id`, `media=url`,
 mídia** recuperada por `audio_url`/`image_url`. **Qualquer falha interrompe a
 F0 para diagnóstico** da divergência entre firmware e contrato: **não** se
 alterna para Opus/OGG, MP3 ou outro formato e **não** se mantém fallback de
-formato acionável. **Pronto quando:** `release.py` builda `professor-virtual-7b`
+formato acionável. **Pronto quando:** `release.py` builda
+`esp32-p4-wifi6-touch-lcd-7b-professor-virtual`
 **e** a variante `esp32-p4-wifi6-touch-lcd-7b` original continua buildando
 (regressão); binário cabe na OTA de 4 MB (medir; plano B: REMOVE_ITEM dos
 fontes do assistente); testes host passam; decisões registradas no

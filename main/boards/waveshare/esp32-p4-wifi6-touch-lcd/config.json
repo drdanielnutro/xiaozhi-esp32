@@ -129,7 +129,7 @@
             ]
         },
         {
-            "name": "professor-virtual-7b",
+            "name": "esp32-p4-wifi6-touch-lcd-7b-professor-virtual",
             "sdkconfig_append": [
                 "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0",
                 "CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y",
@@ -149,7 +149,7 @@
             ]
         },
         {
-            "name": "professor-virtual-7b-p4x",
+            "name": "esp32-p4-wifi6-touch-lcd-7b-p4x-professor-virtual",
             "sdkconfig_append": [
                 "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0",
                 "CONFIG_BOOTLOADER_CACHE_32BIT_ADDR_QUAD_FLASH=y",
