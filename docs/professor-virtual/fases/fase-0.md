@@ -70,8 +70,8 @@ assistente); testes host passam; decisões registradas no decision-log.
 
 - `release.py` fim a fim verde:
   `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual.zip`.
-- `xiaozhi.bin`: **2.717.184 bytes** (0x297600); partição de app 4 MB
-  (0x400000) → **1.477.120 bytes livres (35%)**. Plano B (REMOVE_ITEM dos
+- `xiaozhi.bin`: **2.717.184 bytes** no build da T4; **2.719.136 bytes** após a
+  correção do P1 da revisão — partição de app 4 MB (0x400000), ~35% livres. Plano B (REMOVE_ITEM dos
   fontes do assistente) não foi necessário.
 - `pv_app.cc.obj` presente no build; `CONFIG_PROFESSOR_VIRTUAL=y` no sdkconfig
   gerado.
@@ -103,6 +103,19 @@ assistente); testes host passam; decisões registradas no decision-log.
   `image_max_px=1280`.
 - Token: loopback isento (decisão SmokeToken 2026-08-03); exercício real de
   401/503 e do `DEVICE_API_TOKEN` fica para a F1.
+
+### Revisão independente (2026-08-03)
+
+- Rodada 1 (Codex effort high, thread 019fc7aa): 1×P1, 1×P2, nenhum P0.
+- P1 (PvApp sem callback de rede próprio, exigido pelo critério T2/Q1a):
+  **corrigido** — `RegisterNetworkCallback()` em `PvApp::Initialize()` com
+  handler próprio (status na tela de boot sob `DisplayLockGuard`);
+  `DeviceStateMachine` fica em `kDeviceStateUnknown` na F0 por decisão
+  registrada (StartNetwork só na F1; BOOT button inerte por design na F0 —
+  board file fora da lista fechada).
+- P2 (testes host sem paridade das variantes PV; build `7b-p4x-professor-virtual`
+  não executado): **adiado com registro** para F9/endurecimento; build p4x sob
+  demanda (placa do dono é rev v1.3 → variante 7b).
 
 - Estado Git inicial: `1de736a` (worktree limpo, 2026-08-03).
 - ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf` (ativação via

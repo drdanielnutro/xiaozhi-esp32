@@ -6,6 +6,8 @@
 #include <freertos/task.h>
 #include <lvgl.h>
 
+#include <string>
+
 #include "board.h"
 #include "display/display.h"
 #include "pv_strings.h"
@@ -23,6 +25,12 @@ void PvApp::Initialize() {
              board.GetBoardType().c_str());
 
     SetupBootScreen();
+
+    // O PV é o dono do callback de rede (decisão Q1a): registrado antes de
+    // qualquer StartNetwork() futuro, para que o fluxo assistente nunca
+    // receba os eventos. Na F0 a rede não é iniciada; a F1 assume as
+    // transições de estado quando StartNetwork() entrar.
+    RegisterNetworkCallback();
 }
 
 void PvApp::Run() {
@@ -58,6 +66,44 @@ void PvApp::SetupBootScreen() {
     auto* status = lv_label_create(screen);
     lv_label_set_text(status, PvStrings::kBootStatus);
     lv_obj_align_to(status, title, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);
+    status_label_ = status;
 
     lv_screen_load(screen);
+}
+
+void PvApp::SetStatusText(const char* text) {
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr || status_label_ == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    lv_label_set_text(static_cast<lv_obj_t*>(status_label_), text);
+}
+
+void PvApp::RegisterNetworkCallback() {
+    // Callbacks chegam fora da task principal; aqui só se atualiza o label
+    // de status sob DisplayLockGuard, sem tocar no fluxo do assistente.
+    Board::GetInstance().SetNetworkEventCallback(
+        [this](NetworkEvent event, const std::string& data) {
+            switch (event) {
+                case NetworkEvent::Scanning:
+                    SetStatusText(PvStrings::kNetScanning);
+                    break;
+                case NetworkEvent::Connecting:
+                    SetStatusText((PvStrings::kNetConnecting + data + "...").c_str());
+                    break;
+                case NetworkEvent::Connected:
+                    SetStatusText((PvStrings::kNetConnected + data).c_str());
+                    break;
+                case NetworkEvent::Disconnected:
+                    SetStatusText(PvStrings::kNetDisconnected);
+                    break;
+                case NetworkEvent::WifiConfigModeEnter:
+                    SetStatusText(PvStrings::kNetConfigMode);
+                    break;
+                default:
+                    ESP_LOGI(TAG, "Evento de rede ignorado na F0: %d", static_cast<int>(event));
+                    break;
+            }
+        });
 }

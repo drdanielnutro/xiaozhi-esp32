@@ -20,6 +20,11 @@ private:
     PvApp& operator=(const PvApp&) = delete;
 
     void SetupBootScreen();
+    void RegisterNetworkCallback();
+    void SetStatusText(const char* text);
+
+    // Label de status da tela de boot; escrito só sob DisplayLockGuard.
+    void* status_label_ = nullptr;
 };
 
 #endif  // PV_APP_H
