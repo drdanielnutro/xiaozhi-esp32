@@ -55,10 +55,14 @@ Execute a fase descrita em `$ARGUMENTS` como implementador e orquestrador.
 ### Tasks pesadas em contexto limpo
 
 Para proteger a janela de contexto do orquestrador em fases longas, execute
-em um subagente (ferramenta de agente, tipo `general-purpose`) toda task que
-provavelmente exigir ler muitos arquivos do firmware ou produzir um diff
-grande (heurística: mais de ~5 arquivos tocados ou mais de ~300 linhas de
-mudança previstas).
+pela ferramenta `Agent`, com `agent_type: general-purpose` e `model: opus`,
+toda task que provavelmente exigir ler muitos arquivos do firmware ou produzir
+um diff grande (heurística: mais de ~5 arquivos tocados ou mais de ~300 linhas
+de mudança previstas).
+
+Fixe `model: opus` em toda invocação do subagente implementador desta seção;
+nunca use `inherit`. Essa regra não se aplica automaticamente a agentes de
+exploração, pesquisa ou revisão, nem ao Codex.
 
 1. O prompt do subagente deve ser autossuficiente: texto da task e critério
    "pronto quando" copiados da `fase-N.md`; arquivos e diretórios de partida;
