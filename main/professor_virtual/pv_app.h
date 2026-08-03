@@ -1,6 +1,7 @@
 #ifndef PV_APP_H
 #define PV_APP_H
 
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
@@ -8,7 +9,10 @@
 #include <mutex>
 #include <string>
 
+#include "pv_session_mirror.h"
+#include "pv_worker.h"
 #include "ui/pv_config_screen.h"
+#include "ui/pv_route_screens.h"
 #include "ui/pv_status_screen.h"
 
 // Fase fina do Professor Virtual. É um enum próprio do PV: a
@@ -54,6 +58,12 @@ private:
         NetConfigModeExit,
         ConfigScreenRequested,
         ConfigSaveRequested,
+        // Postados pelo timer de 10 s e pela task de rede (PvWorker). O dado
+        // pesado (espelho da sessão/lição) NÃO vem na fila: fica no worker e é
+        // retirado com Take*() já dentro da task principal.
+        HealthTick,
+        HydrationDone,
+        HealthDone,
     };
 
     // POD trafegado pela fila. `data` guarda o SSID (máx. 32 bytes + NUL) e
@@ -76,7 +86,17 @@ private:
     void HandleWifiConfigMode();
     void HandlePendingSave();
     void ShowConfigScreen(PvConfigReason reason);
-    void ShowReadyStatus();
+
+    // Hidratação (§9.1) e monitoramento de conectividade (§9.7). Tudo aqui
+    // roda na task principal; só as chamadas HTTP vão para o PvWorker.
+    void StartHydration();
+    void HandleHydrationDone();
+    void HandleHealthTick();
+    void HandleHealthDone();
+    void ShowBackendError(const char* message);
+    void SetBackendHealthy(bool healthy);
+    void StartHealthTimer();
+    void StopHealthTimer();
 
     // Chamado na task do LVGL pelo botão Salvar: só copia e sinaliza.
     void OnSaveRequestedFromLvglTask(std::string url, std::string token);
@@ -85,6 +105,17 @@ private:
 
     PvStatusScreen status_screen_;
     PvConfigScreen config_screen_;
+    PvRouteScreens route_screens_;
+
+    PvWorker worker_;
+    esp_timer_handle_t health_timer_ = nullptr;
+
+    // Espelho corrente da sessão e da lição. Só é substituído por uma
+    // hidratação bem-sucedida: rota nenhuma é decidida com dado velho.
+    PvSessionState session_state_;
+    PvLesson lesson_;
+    bool hydrated_ = false;
+    bool backend_healthy_ = false;
 
     PvPhase phase_ = PvPhase::Booting;
     bool network_connected_ = false;

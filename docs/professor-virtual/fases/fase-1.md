@@ -66,7 +66,7 @@ dono).**
       de configuração Wi-Fi do `WifiBoard`
       · pronto quando: build verde; fluxo de telas e transições de estado
       legais na `DeviceStateMachine`.
-- [ ] T5 — Hidratação + roteamento + health: `GET /api/state` +
+- [x] T5 — Hidratação + roteamento + health: `GET /api/state` +
       `GET /api/lesson` após rede conectada; roteamento para telas
       placeholder (preparação/tutoria/celebração/failsafe) conforme §9.1;
       `GET /api/health` periódico de 10 s + indicador de conexão;
@@ -165,6 +165,29 @@ dono).**
   compartilhado — fora do escopo).
 - Validação do orquestrador: host test 122 OK; testes host de release 8 OK;
   build incremental verde com os 3 `.obj` de `ui/` presentes.
+
+### T5 — Hidratação, roteamento e health (2026-08-03, subagente opus)
+
+- `pv_worker`: task FreeRTOS própria (8192 B, prio 2) para o HTTP bloqueante;
+  resultado (`PvSessionState`/`PvLesson`) em holder sob mutex com
+  transferência de posse via `TakeHydration()/TakeHealth()`; coalescência por
+  `atomic<bool>` (tick de 10 s nunca empilha chamadas de 15 s). Worker nunca
+  toca LVGL nem DeviceStateMachine.
+- Sequência: Activating (task principal) → health → state → lesson →
+  `DecideRoute` → Idle → tela da rota. Falha de hidratação PERMANECE em
+  Activating (Activating→Starting é ilegal) e re-tenta no tick seguinte;
+  401/503 → tela de config (`Unauthorized`/`Unavailable`) e timer parado.
+- Gatilhos de re-hidratação: ficar Online configurado; salvar config; 
+  reconexão Wi-Fi; health voltando a passar (§9.7).
+- `pv_route_text` (puro, testado no host) + `ui/pv_route_screens`: quatro
+  placeholders com badge de conexão; tutoria mostra `current_item`/
+  `current_tarefa` + título da tarefa do espelho (prova de hidratação real).
+- Desconexão com rota carregada: tela permanece, badge vira "desconectado" e
+  a rota nunca troca com dado velho; tela técnica offline só antes do
+  primeiro roteamento.
+- Validação do orquestrador: host test **147 OK** (+25 casos de textos de
+  rota, incl. corte UTF-8 sem partir acento); build verde
+  (`xiaozhi.bin` 2.779.024 bytes, 34% livres); 10 `.obj` do PV presentes.
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):

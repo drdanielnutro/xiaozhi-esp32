@@ -3,6 +3,8 @@
 
 #include <lvgl.h>
 
+#include "ui/pv_ui_theme.h"
+
 // Tela de status do Professor Virtual: marca, mensagem principal, bloco de
 // detalhe (usado pelas instruções do modo de configuração Wi-Fi) e versão do
 // firmware. É a tela de boot da F0 evoluída para cobrir todo o ciclo de rede.
@@ -33,10 +35,14 @@ public:
     // Cor da mensagem principal (paleta em PvUi).
     void SetStatusColor(uint32_t color);
 
+    // Indicador de conexão com o backend (§9.7).
+    void SetConnected(bool connected);
+
 private:
     lv_obj_t* screen_ = nullptr;
     lv_obj_t* status_label_ = nullptr;
     lv_obj_t* detail_label_ = nullptr;
+    PvUi::ConnectionBadge badge_;
 };
 
 #endif  // PV_UI_PV_STATUS_SCREEN_H

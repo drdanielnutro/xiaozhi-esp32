@@ -43,6 +43,7 @@ fi
     -o "${OUT_DIR}/test_session_mirror" \
     "${HERE}/test_session_mirror.cc" \
     "${PV_DIR}/pv_session_mirror.cc" \
+    "${PV_DIR}/pv_route_text.cc" \
     "${OUT_DIR}/cJSON.o"
 
 "${OUT_DIR}/test_session_mirror"

@@ -8,7 +8,9 @@
 #include <cstdio>
 #include <string>
 
+#include "pv_route_text.h"
 #include "pv_session_mirror.h"
+#include "pv_strings.h"
 
 namespace {
 
@@ -400,6 +402,67 @@ void TestMalformed() {
     Check(partial.IsUntouched(), "sessão sem contadores é intocada");
 }
 
+// Textos das telas de rota (pv_route_text): a tradução "espelho hidratado ->
+// texto na tela" é justamente a prova de hidratação real que a tela de tutoria
+// exibe, então ela é testada aqui junto com os parsers.
+void TestRouteText() {
+    std::printf("caso: textos das telas de rota (§9.1)\n");
+
+    Check(std::string(PvRouteTitle(PvRoute::Preparation)) != PvRouteTitle(PvRoute::Tutoring),
+          "preparação e tutoria têm títulos distintos");
+    Check(std::string(PvRouteTitle(PvRoute::Celebration)) != PvRouteTitle(PvRoute::Failsafe),
+          "celebração e failsafe têm títulos distintos");
+    for (PvRoute route :
+         {PvRoute::Preparation, PvRoute::Celebration, PvRoute::Failsafe, PvRoute::Tutoring}) {
+        Check(PvRouteTitle(route) != nullptr && PvRouteTitle(route)[0] != '\0',
+              "toda rota tem título");
+        Check(PvRouteSubtitle(route) != nullptr && PvRouteSubtitle(route)[0] != '\0',
+              "toda rota tem subtítulo");
+    }
+
+    PvSessionState state;
+    PvLesson lesson;
+    Check(ParseState(kStateActive, state), "ParseState para o detalhe da tutoria");
+    Check(ParseLesson(kLessonFull, lesson), "ParseLesson para o detalhe da tutoria");
+
+    std::string detail = PvBuildTutoringDetail(state, lesson);
+    Check(detail.find("item_2") != std::string::npos, "detalhe mostra o current_item");
+    Check(detail.find("item_2_task_1") != std::string::npos, "detalhe mostra o current_tarefa");
+    Check(detail.find("Exercício 2") != std::string::npos, "detalhe mostra o título do item");
+    Check(detail.find("primeira pergunta") != std::string::npos,
+          "detalhe mostra o enunciado da tarefa corrente");
+    Check(detail.find("segunda pergunta") == std::string::npos, "detalhe não mistura outra tarefa");
+
+    // Espelho sem posição corrente: nada de string vazia solta na tela.
+    PvSessionState empty;
+    std::string placeholder = PvBuildTutoringDetail(empty, lesson);
+    Check(placeholder.find(PvStrings::kRouteUnknownValue) != std::string::npos,
+          "sem current_item o detalhe usa o marcador pt-BR");
+
+    // Lição ausente (rota de preparação, mas a função não pode quebrar).
+    std::string no_lesson = PvBuildTutoringDetail(state, PvLesson());
+    Check(no_lesson.find("item_2") != std::string::npos,
+          "sem lição o detalhe ainda mostra a posição");
+    Check(no_lesson.find("Exercício") == std::string::npos, "sem lição não há título de item");
+
+    // Corte do enunciado: nunca parte um caractere UTF-8 pelo meio.
+    PvLesson accented;
+    Check(ParseLesson(R"({"lesson_id": "l1", "items": {"item_1": {"titulo": "Título",
+          "tarefas": {"t1": {"enunciado": "ãããããããããã"}}}}})",
+                      accented),
+          "ParseLesson do enunciado acentuado");
+    PvSessionState at_item;
+    Check(ParseState(R"({"session_id": "s1", "current_item": "item_1", "current_tarefa": "t1"})",
+                     at_item),
+          "ParseState apontando para o enunciado acentuado");
+    // 10 caracteres "ã" = 20 bytes; cortar em 5 bytes cairia no meio do 3º.
+    std::string cut = PvBuildTutoringDetail(at_item, accented, 5);
+    Check(cut.find("ãã...") != std::string::npos, "corte recua para a fronteira UTF-8");
+    Check(cut.find("ãããããã") == std::string::npos, "corte realmente encurtou o enunciado");
+    std::string uncut = PvBuildTutoringDetail(at_item, accented, 0);
+    Check(uncut.find("ãããããããããã") != std::string::npos, "max 0 desliga o corte");
+}
+
 }  // namespace
 
 int main() {
@@ -411,6 +474,7 @@ int main() {
     TestRouteClosedExpired();
     TestLesson();
     TestMalformed();
+    TestRouteText();
 
     std::printf("\n%d verificações, %d falha(s)\n", g_checks, g_failures);
     if (g_failures == 0) {

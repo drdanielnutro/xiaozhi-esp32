@@ -53,6 +53,8 @@ void PvStatusScreen::Create() {
     lv_obj_align(version, LV_ALIGN_BOTTOM_MID, 0, -16);
     lv_obj_add_flag(version, LV_OBJ_FLAG_IGNORE_LAYOUT);
 
+    badge_ = PvUi::CreateConnectionBadge(screen);
+
     screen_ = screen;
     lv_screen_load(screen);
 }
@@ -88,6 +90,15 @@ void PvStatusScreen::SetDetail(const char* text) {
     }
     lv_label_set_text(detail_label_, text);
     lv_obj_remove_flag(detail_label_, LV_OBJ_FLAG_HIDDEN);
+}
+
+void PvStatusScreen::SetConnected(bool connected) {
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr || badge_.dot == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    PvUi::SetConnectionBadge(badge_, connected);
 }
 
 void PvStatusScreen::SetStatusColor(uint32_t color) {

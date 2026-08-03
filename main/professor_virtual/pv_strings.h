@@ -50,6 +50,39 @@ inline constexpr const char* kCfgReasonUnavailable =
     "Não consegui falar com o servidor. Confira o endereço.";
 inline constexpr const char* kCfgReasonManual = "Confira os dados do servidor.";
 
+// Indicador de conexão com o backend, presente em todas as telas do PV.
+inline constexpr const char* kConnOnline = "conectado";
+inline constexpr const char* kConnOffline = "desconectado";
+
+// Hidratação (§9.1): health + state + lesson depois que a rede sobe.
+inline constexpr const char* kHydrating = "Falando com o professor...";
+inline constexpr const char* kHydrateRetryHint = "Vou tentar de novo sozinho em alguns segundos.";
+inline constexpr const char* kHydrateErrNetwork = "Não consegui falar com o servidor.";
+inline constexpr const char* kHydrateErrHttp = "O servidor respondeu com um erro.";
+inline constexpr const char* kHydrateErrParse = "Não entendi a resposta do servidor.";
+inline constexpr const char* kHealthLost = "Perdi o contato com o servidor.";
+
+// Telas placeholder das rotas do §9.1. O subtítulo diz, em linguagem simples,
+// o que a fase seguinte do firmware vai trazer para aquela tela.
+inline constexpr const char* kRoutePreparationTitle = "Vamos preparar a lição";
+inline constexpr const char* kRoutePreparationSubtitle =
+    "Em breve: fotografar as páginas, revisar e enviar a lição.";
+inline constexpr const char* kRouteTutoringTitle = "Hora da lição!";
+inline constexpr const char* kRouteTutoringSubtitle =
+    "Em breve: gravar a pergunta, mostrar a resposta e ouvir o professor.";
+inline constexpr const char* kRouteCelebrationTitle = "Você terminou tudo!";
+inline constexpr const char* kRouteCelebrationSubtitle =
+    "Em breve: a comemoração completa do fim da lição.";
+inline constexpr const char* kRouteFailsafeTitle = "Preciso de um adulto aqui";
+inline constexpr const char* kRouteFailsafeBadge = "Atenção";
+inline constexpr const char* kRouteFailsafeSubtitle =
+    "Em breve: a tela do adulto com senha para destravar a tarefa.";
+
+// Detalhe da tela de tutoria: prova de que o espelho foi hidratado de verdade.
+inline constexpr const char* kRouteItemPrefix = "Item atual: ";
+inline constexpr const char* kRouteTaskPrefix = "Tarefa atual: ";
+inline constexpr const char* kRouteUnknownValue = "(sem tarefa marcada)";
+
 }  // namespace PvStrings
 
 #endif  // PV_STRINGS_H
