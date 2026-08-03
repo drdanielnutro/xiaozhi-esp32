@@ -55,16 +55,32 @@
   `professor-virtual-7b-p4x` no `config.json` da família
   `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/` (mesmas flags da 7b +
   `CONFIG_PROFESSOR_VIRTUAL=y`); zero duplicação de pinos.
-- **Q3(a) — Voz do tutor:** decodificação MP3 no lado PV (componente
-  `espressif/esp_audio_codec`, já no manifest) + método aditivo
-  `AudioService::PlayPcm(...)` empurrando na fila interna de playback
-  (dono único do codec).
+- **Q3(a) — Voz do tutor:** `SUPERSEDED pela Task 12 — contrato v1.1 validado`.
+  - *Decisão anterior (histórica, não acionável):* decodificação MP3 no lado
+    PV (componente `espressif/esp_audio_codec`, já no manifest) + método
+    aditivo `AudioService::PlayPcm(...)`.
+  - **Decisão vigente:** o firmware **solicita `audio_format=wav`** e **recebe
+    a voz do tutor por `audio_url`** (contrato v1.1). O `pv_audio`
+    **interpreta a estrutura RIFF/WAVE percorrendo seus chunks** e **não
+    presume PCM em offset fixo de 44 bytes**; **exige PCM s16le, mono,
+    16 kHz**; **exige arquivo finito** (RIFF `ChunkSize` = tamanho físico − 8
+    e `data` `Subchunk2Size` = PCM real, conforme o contrato); e **entrega o
+    PCM a `AudioService::PlayPcm(...)`** (dono único do codec, fila interna de
+    playback). **Não existe fallback MP3 para a voz remota.** Fish
+    Audio/Itachi é tratado **apenas como evidência empírica do backend**: o
+    requisito do firmware permanece **neutro ao provedor**. A dependência
+    `esp_audio_codec` pode continuar existindo no upstream, mas **deixa de ser
+    requisito da voz do Professor Virtual**.
 
 Decisões de engenharia complementares: gravação em **WAV/PCM 16 kHz mono**
-(canal do mic de `ReadAudioData`, cabeçalho WAV de 44 bytes; ~960 KB por
-30 s em PSRAM), validada contra o backend via `curl` antes de codificar
-firmware; sons de UI convertidos MP3→OGG (sem decode MP3 para assets);
-textos pt-BR em `pv_strings.h` próprio (sem mexer no sistema de locales).
+(canal do mic de `ReadAudioData`; **cabeçalho WAV canônico de 44 bytes escrito
+pelo próprio firmware na subida** — essa referência vale **somente** para o
+arquivo que o firmware cria; ~960 KB por 30 s em PSRAM), caminho de subida já
+validado empiricamente contra o backend. **O WAV baixado do backend exige
+parser de chunks**, e a premissa dos 44 bytes não se aplica a ele. Sons de UI
+convertidos MP3→OGG — **conversão de assets locais, que continua válida**, pois
+esses assets **não são a voz remota do tutor**. Textos pt-BR em `pv_strings.h`
+próprio (sem mexer no sistema de locales).
 
 > Pendência de registro: ao iniciar a F0, gravar estas decisões no
 > `.claude/autonomy/decision-log.jsonl`.
@@ -74,11 +90,14 @@ textos pt-BR em `pv_strings.h` próprio (sem mexer no sistema de locales).
 ```
 main/professor_virtual/            (novo, aditivo)
 ├── pv_app.cc/.h                   singleton PvApp: init (board/audio/UI), event loop, fases RAM (§9.2)
-├── pv_backend_client.cc/.h        contrato §7 completo; cJSON; SEM retry de /api/turn; timeouts §8.1
+├── pv_backend_client.cc/.h        contrato de dispositivo v1.1 (token, mídia por URL, idempotência
+│                                  fail-safe por request_id); cJSON; timeouts §8.1
 ├── pv_session_mirror.cc/.h        espelho RAM de state/lesson (§7.2/§7.3); detecção de avanço (§9.4)
-├── pv_audio.cc/.h                 gravação WAV; MP3→PCM (esp_audio_codec) → PlayPcm; sons OGG locais
-├── pv_camera.cc/.h                preview, captura JPEG, lote da preparação (PSRAM)
-├── pv_settings.cc/.h              NVS namespace "pv" (backend_url etc.)
+├── pv_audio.cc/.h                 gravação WAV para subida; reprodução do WAV/PCM recebido por URL
+│                                  (parser RIFF/WAVE → PlayPcm); sons OGG locais
+├── pv_camera.cc/.h                preview, captura JPEG, preparação página a página (sem lote
+│                                  full-resolution residente em PSRAM)
+├── pv_settings.cc/.h              NVS namespace "pv" (backend_url, DEVICE_API_TOKEN etc.)
 ├── pv_strings.h                   textos pt-BR (Apêndice A da spec)
 ├── assets_sounds/*.ogg            sons locais convertidos de licao_casa/frontend/public/sounds/
 └── ui/                            telas LVGL próprias (lv_screen_load): conexão/config, preparação,
@@ -93,16 +112,97 @@ adição exige justificativa):**
 3. `main/CMakeLists.txt` — bloco condicional: GLOB de `professor_virtual/*.cc` +
    `ui/*.cc`, INCLUDE_DIRS, EMBED dos `.ogg` do PV.
 4. `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/config.json` — 2 variantes novas (Q2).
-5. `main/audio/audio_service.{h,cc}` — método `PlayPcm` aditivo (Q3).
+5. `main/audio/audio_service.{h,cc}` — método `PlayPcm` aditivo (Q3 vigente:
+   recebe o PCM extraído do WAV baixado por `audio_url`).
+
+Nenhum arquivo ou componente novo entra no escopo por conta da Task 12.
+
+### Perfil comum de turno do dispositivo (`pv_backend_client`)
+
+Todo **turno lógico** do dispositivo (F3, F4 e qualquer turno futuro) envia:
+
+- `request_id`: **UUID v4 novo** por turno lógico;
+- `media=url`;
+- `audio_format=wav`;
+- `image_max_px=1280`;
+- `session_id`;
+- **token em todas as chamadas** (`Authorization: Bearer <token>` ou
+  `X-Api-Token`).
+
+Na resposta **200**, o cliente:
+
+- valida o **eco de `request_id`**;
+- exige `audio_base64=""` e `image_base64=""`;
+- resolve `audio_url` e `image_url` **relativamente à base do backend**;
+- baixa ambas **com o token**;
+- valida MIME e extensão (`audio/wav`+`.wav`, `image/jpeg`+`.jpg`);
+- reproduz o WAV via **parser RIFF/WAVE por chunks → PCM → `PlayPcm`**;
+- exibe o JPEG obtido por `image_url`;
+- preserva o **fluxo acoplado** de áudio e imagem.
+
+### Retry e idempotência de `POST /api/turn`
+
+- **Sem `request_id`, retry automático de `/api/turn` é proibido.**
+- O UUID identifica **um único turno lógico**; **nunca** reutilizar um UUID
+  para outro conteúdo, outra lição ou outro momento da instalação.
+- Uma retransmissão conserva **o mesmo UUID, os mesmos campos e os mesmos
+  bytes** de mídia.
+- Com **cliente único/serial e cache íntegro**, a retransmissão do MESMO turno
+  pode:
+  - **processar**, quando a falha anterior ocorreu antes do marcador
+    `processing`;
+  - receber **replay 200**, quando existe resposta `done` válida e replayável;
+  - receber **409**, quando o resultado é indeterminado, supersedido ou não
+    replayável.
+- **Status HTTP isolado, inclusive 502, não autoriza retry automático.** A
+  garantia é não haver dupla aplicação silenciosa dentro dessas premissas.
+- Após **409**, o dispositivo: descarta os ids pendentes; **não reproduz o 409
+  como resposta pedagógica**; re-hidrata `GET /api/state` + `GET /api/lesson`;
+  e só então inicia um **turno lógico novo com UUID novo**.
+- **Nunca** permitir dupla aplicação pedagógica silenciosa.
+
+## Evidência empírica congelada do contrato v1.1
+
+Registro do que foi **observado** na validação do backend (concluída antes
+desta Task 12). Não contém segredo.
+
+- Fish endpoint: `https://api.fish.audio/v1/tts`
+- Modelo observado: `s2.1-pro-free`
+- Voz observada: Itachi
+- Voice id: `c5a6cb585b094dedb241365e7e271973`
+- MP3 do fluxo web: mono, 44,1 kHz, 128 kbps
+- WAV do dispositivo: PCM s16le mono/16 kHz, arquivo finito
+- Preflight: MP3 10,08 s; WAV 8,62 s
+- E2E pós-gap-closure: HTTP 200 em 16,1 s
+- WAV: 476.980 bytes físicos; RIFF `ChunkSize` 476972; `data`/PCM 476936;
+  duração ~14,9 s
+- JPEG: 1280×698
+- Aprovação humana: 2026-08-02
+- Backend final: 295 testes, auditoria independente APPROVED,
+  `threats_open: 0`
+
+**Declaração:**
+
+- estes valores são **evidência, não requisitos do firmware**;
+- **provedor, modelo e voz podem mudar sem alterar o firmware**;
+- o firmware depende **apenas** de contrato, formatos, MIME, endpoints,
+  autenticação e regra de retry;
+- **não existe fallback MP3 aprovado para a voz remota.**
 
 ## Fases (cada uma executável via `/autonomous-phase`, com commit e revisão Codex ao final)
 
 ### F0 — Fundações e prova do build *(primeira fase autônoma: pequena e observada)*
 
 Kconfig + CMake + gate no `main.cc` + variantes no `config.json` + esqueleto
-`PvApp` (boot → tela LVGL própria "PV" + versão). Validar formato de áudio
-com o backend por `curl` (WAV 16 kHz mono → `POST /api/turn`; critério: 200
-com veredicto). **Pronto quando:** `release.py` builda `professor-virtual-7b`
+`PvApp` (boot → tela LVGL própria "PV" + versão). **Smoke test de
+interoperabilidade por `curl`** — não é decisão de formato: o formato já está
+decidido e validado pelo contrato v1.1. O smoke test deve: enviar **WAV PCM
+mono/16 kHz**; solicitar o **perfil v1.1** (`request_id`, `media=url`,
+`audio_format=wav`, `image_max_px=1280`, token); e **confirmar a resposta e a
+mídia** recuperada por `audio_url`/`image_url`. **Qualquer falha interrompe a
+F0 para diagnóstico** da divergência entre firmware e contrato: **não** se
+alterna para Opus/OGG, MP3 ou outro formato e **não** se mantém fallback de
+formato acionável. **Pronto quando:** `release.py` builda `professor-virtual-7b`
 **e** a variante `esp32-p4-wifi6-touch-lcd-7b` original continua buildando
 (regressão); binário cabe na OTA de 4 MB (medir; plano B: REMOVE_ITEM dos
 fontes do assistente); testes host passam; decisões registradas no
@@ -113,7 +213,24 @@ decision-log.
 Callback de rede próprio; tela de configuração (backend URL via teclado
 LVGL → NVS "pv"); `GET /api/health` periódico (10 s) + indicador;
 `GET /api/state` + `GET /api/lesson`; roteamento de boot para telas
-placeholder (preparação/tutoria/celebração/failsafe). **Spikes:** (a)
+placeholder (preparação/tutoria/celebração/failsafe).
+
+**Credencial de dispositivo (contrato v1.1):**
+
+- `DEVICE_API_TOKEN` **provisionado no namespace NVS exato `"pv"`** (o módulo
+  continua se chamando `pv_settings`);
+- o token **nunca aparece em UI, log ou mensagem de erro**;
+- **toda** chamada HTTP envia `Authorization: Bearer <token>` **ou**
+  `X-Api-Token: <token>`;
+- **`401`** = token ausente/incorreto; **`503`** = backend remoto sem token
+  configurado; **ambos interrompem o fluxo normal** e encaminham à tela de
+  configuração/erro, **nunca à resposta pedagógica**.
+
+Endpoints que exigem a credencial: `/api/health`, `/api/state`, `/api/lesson`,
+`/api/turn`, `/api/media/...`, `/api/prepare/start`, `/api/prepare/page`,
+`/api/prepare/finish` e os endpoints adultos usados futuramente.
+
+**Spikes:** (a)
 timeout do wrapper `Http` com resposta lenta (se insuficiente → fallback
 `esp_http_client` direto no `pv_backend_client`); (b) cobertura de acentos
 pt-BR da fonte (fallback: `AddTextGlyphs`/outra fonte da família).
@@ -131,18 +248,31 @@ centenas de KB).
 
 ### F3 — Fatia vertical do turno por foto *(o marco central; B.5 item 9)*
 
-`POST /api/turn` multipart (`image`+`session_id`, chunked, timeout ≥120 s,
-**sem retry**); parse da resposta; base64→PNG na tela; base64→MP3→PCM→
-`PlayPcm` (voz); sons locais de feedback (OGG); re-hidratação pós-turno;
-efeitos de erro 502/409 (§7.5). **Pronto quando:** ciclo completo mostrar
+`POST /api/turn` multipart (chunked, timeout ≥120 s) contendo **a imagem JPEG
+e `session_id`** — **nenhum arquivo de áudio é enviado na F3** —, aplicando o
+**perfil comum de turno v1.1** descrito acima (`request_id` UUID v4 novo,
+`media=url`, `audio_format=wav`, `image_max_px=1280`, token em todas as
+chamadas). Parse da resposta com validação do eco de `request_id`; download de
+`image_url` (JPEG exibido na tela) e de `audio_url` (WAV interpretado por
+**parser RIFF/WAVE por chunks** → PCM → `PlayPcm`); sons locais de feedback
+(OGG); re-hidratação pós-turno conforme o contrato. **Não há decodificação
+base64 de mídia** e **não há decoder nem fallback MP3 para a voz**. Erros
+502/409 seguem a **regra de idempotência** acima (§7.5 + contrato v1.1).
+**Pronto quando:** ciclo completo mostrar
 tarefa→foto→resposta com voz+imagem funciona contra o backend real; RAM
 medida no pico do turno.
 
 ### F4 — Turno por áudio
 
-Gravação ≤30 s com contador e auto-stop (§9.3), upload WAV, bloqueio de
-comandos fora de `idle`. **Pronto quando:** turnos por voz funcionam fim a
-fim (formato pré-validado na F0).
+Gravação ≤30 s com contador e auto-stop (§9.3). `POST /api/turn` multipart
+contendo **o WAV PCM mono/16 kHz e `session_id`** — **nenhuma imagem é enviada
+na F4** —, aplicando o **mesmo perfil comum v1.1** (`request_id`, `media=url`,
+`audio_format=wav`, `image_max_px=1280`, token). A **resposta continua trazendo
+áudio e imagem por URL** (fluxo acoplado preservado). Bloqueio de comandos fora
+de `idle`. O caminho de subida WAV **já foi validado empiricamente** contra o
+backend; **não existe fallback WebM/Opus/OGG para a subida**. Erros 502/409
+seguem a regra de idempotência acima. **Pronto quando:** turnos por voz
+funcionam fim a fim.
 
 ### F5 — Máquina de fases completa (§9.2–§9.5)
 
@@ -160,12 +290,26 @@ fluxo forçado (3 erros por foto no backend real) passa.
 
 ### F7 — Preparação da lição (§9.8)
 
-Captura em lote (≤20), miniaturas com excluir/refazer no mesmo índice,
-envio único com campo `files` repetido, ilegíveis marcadas, revisão em
-acordeões + chime, recomeçar com confirmação. Estratégia de RAM: lote em
-PSRAM com teto por página + orçamento agregado **medido** (risco do dossiê
-§5). **Pronto quando:** lição real de N páginas preparada no dispositivo e
-tutoria iniciada.
+Captura página a página (≤20) com **upload incremental**, substituindo o envio
+em lote único:
+
+1. `POST /api/prepare/start` → `upload_id`;
+2. para cada página, `POST /api/prepare/page` com `upload_id`, `index` (0–19) e
+   o arquivo **JPEG/PNG ≤10 MB**;
+3. **liberar a imagem full-resolution** assim que o upload é confirmado;
+4. manter em memória **somente metadados e a miniatura** necessária à revisão;
+5. `POST /api/prepare/finish` com `upload_id`;
+6. em **`illegible`**, o staging é **mantido**: reenviar **somente os índices
+   ilegíveis** por `/api/prepare/page`;
+7. chamar **`finish` novamente**;
+8. em **`ready`**, o staging está encerrado.
+
+Preservados: excluir/refazer no mesmo índice, ilegíveis marcadas, revisão em
+acordeões + chime e recomeçar com confirmação. Estratégia de RAM: **nunca
+manter o lote completo de imagens full-resolution em PSRAM** — apenas **uma
+página full-resolution por vez**, com pico de RAM/PSRAM **medido** (risco do
+dossiê §5). **Pronto quando:** lição real de N páginas preparada no dispositivo
+e tutoria iniciada.
 
 ### F8 — Robustez (§9.7, §10)
 
@@ -188,10 +332,11 @@ checklist final de validação física com o dono, tag de versão.
 |---|---|---|
 | Timeout do wrapper `Http` para turno de dezenas de segundos | F1 | Medir; fallback `esp_http_client` direto |
 | Fonte sem acentos pt-BR | F1 | `AddTextGlyphs`/fonte maior da família |
-| Formato de áudio rejeitado pela API multimodal | F0 (curl) | Alternar para Opus/OGG (encoder já existe) |
-| API MP3 do `esp_audio_codec` (componente não vendorizado) | F3 | Componente baixa no 1º build (F0); validar API então |
+| Divergência de integração no smoke test do WAV já aprovado | F0 (curl) | Interromper e diagnosticar a divergência entre firmware e contrato; sem troca de formato e sem fallback acionável |
+| Parser RIFF/WAVE do WAV recebido rejeita/interpreta mal o arquivo | F3 | Percorrer os chunks e rejeitar layout inválido; **nunca** usar offset fixo de 44 bytes no WAV recebido |
+| Retransmissão de `/api/turn` aplicando o turno duas vezes | F3/F4 | Sem `request_id` não há retry automático; com o MESMO UUID vale a regra de idempotência (processa / replay 200 / 409); após 409, descartar ids, re-hidratar e usar UUID novo |
 | Binário > 4 MB com código morto do assistente | F0 | REMOVE_ITEM condicional dos fontes do assistente |
-| RAM do lote da preparação | F7 | Teto por página + medição; qualidade adaptativa |
+| RAM da preparação página a página | F7 | Somente uma página full-resolution por vez; liberar a página após o upload; manter só metadados e miniaturas; medir pico de RAM/PSRAM |
 | Eco na gravação (caminho pré-AFE sem AEC) | F4 | Nada toca durante a gravação (spec); plano B: expor tap pós-AFE (toque aditivo) |
 
 ## Processo transversal
@@ -204,9 +349,16 @@ checklist final de validação física com o dono, tag de versão.
   tabela "Status das fases"** no commit de encerramento.
 - Regressão obrigatória por fase: build da variante PV **e** da variante
   XiaoZhi 7b original + `python3 -m unittest discover -s scripts/tests`.
-- O backend jamais é alterado; necessidade de mudança vira adaptação no
-  firmware ou escalonamento ao dono (5 condições do `AGENTS.md`).
-- Push, flash físico e alterações no backend: sempre do proprietário.
+- **Contrato canônico:** `docs/professor-virtual/contrato-dispositivo.md`. O
+  **miolo pedagógico do backend é intocável**; a **borda de transporte** aceita
+  **somente mudanças aditivas aprovadas**, preservando o comportamento v1
+  (frontend web e testes existentes intactos). O executor do firmware **não
+  modifica autonomamente o `licao_casa`**: qualquer necessidade de backend vira
+  **handoff explícito ao proprietário**.
+- **Regra de retry/idempotência** (seção "Retry e idempotência" acima) vale em
+  toda chamada a `/api/turn`, em qualquer fase: nunca há dupla aplicação
+  pedagógica silenciosa, e um 409 nunca é reproduzido como turno.
+- Push e flash físico: sempre ações do proprietário.
 
 ## Pré-requisitos do proprietário (podem andar em paralelo)
 
