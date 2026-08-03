@@ -53,7 +53,7 @@ assistente); testes host passam; decisões registradas no decision-log.
 - [ ] T5 — Regressão: build da variante `esp32-p4-wifi6-touch-lcd-7b`
       original + `python3 -m unittest discover -s scripts/tests` · pronto
       quando: build verde e testes host passando.
-- [ ] T6 — Smoke test de interoperabilidade por `curl` contra o backend real
+- [x] T6 — Smoke test de interoperabilidade por `curl` contra o backend real
       (perfil v1.1 completo, WAV PCM mono/16 kHz na subida, token; validar
       eco de `request_id`, `audio_base64`/`image_base64` vazios, download de
       `audio_url`/`image_url` com MIME/extensão corretos, WAV finito
@@ -65,6 +65,27 @@ assistente); testes host passam; decisões registradas no decision-log.
 (vazio)
 
 ## Notas da fase
+
+### T6 — Smoke test v1.1 (2026-08-03, backend em 127.0.0.1:8001)
+
+- Porta 8000 estava ocupada por outro app do proprietário (`app.py`, intocado);
+  backend subiu em 8001 via venv próprio do `licao_casa`.
+- Preparação paginada v1.1: `prepare/start` → `prepare/page` (index 0,
+  `data/images/page_1.jpg`) → `prepare/finish` = `ready` (lição
+  `883faf42-d167-465e-b004-b22ae2053888`, sessão nova ativa).
+- Turno: WAV de fala pt-BR sintetizada (`say -v Luciana` → afconvert PCM s16le
+  mono/16 kHz, ~5,9 s) + perfil completo (`request_id` UUID v4, `media=url`,
+  `audio_format=wav`, `image_max_px=1280`). **HTTP 200 em 14,6 s.**
+- Validações bloqueantes todas OK: eco do `request_id`;
+  `audio_base64`/`image_base64` vazios; `audio_url`/`image_url` relativos com
+  padrão `turn_<hex32>_(audio|image)`; MIME `audio/wav`+`.wav` e
+  `image/jpeg`+`.jpg`.
+- WAV baixado: 552.770 bytes físicos; RIFF ChunkSize 552.762 (= físico − 8);
+  `data` 552.726 (= PCM real); PCM s16le mono 16 kHz; ~17,3 s — **arquivo
+  finito** conforme o contrato. JPEG: 1280×698, 132.084 bytes — respeita
+  `image_max_px=1280`.
+- Token: loopback isento (decisão SmokeToken 2026-08-03); exercício real de
+  401/503 e do `DEVICE_API_TOKEN` fica para a F1.
 
 - Estado Git inicial: `1de736a` (worktree limpo, 2026-08-03).
 - ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf` (ativação via
