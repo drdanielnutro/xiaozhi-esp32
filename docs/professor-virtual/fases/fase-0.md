@@ -27,9 +27,11 @@ assistente); testes host passam; decisões registradas no decision-log.
 
 ## Pendências físicas (hardware)
 
-- Flash e boot na placa real (primeiro flash — ação do dono; revela revisão
-  do chip → variante `7b` vs `7b-p4x`).
-- Verificação visual da tela "PV" + versão no display físico.
+- ~~Flash e boot na placa real~~ **RESOLVIDO (2026-08-03):** chip v1.3 →
+  variante `7b`; flash pelo proprietário no Mac (porta `/dev/cu.usbmodem*`).
+- ~~Verificação visual da tela "PV" + versão~~ **RESOLVIDO (2026-08-03):**
+  tela "Professor Virtual" + "Iniciando..." + "v2.4.0" confirmada pelo
+  proprietário após o hotfix de clock (360 MHz).
 
 ## Tasks
 
@@ -138,7 +140,9 @@ assistente); testes host passam; decisões registradas no decision-log.
 - Correção (decisão F0-ClockFix): `CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y`
   somente na variante `7b-professor-virtual` (a `-p4x` segue 400 MHz).
   Rebuild verificado: sdkconfig final com 360=y e 400 ausente.
-- Reflash e confirmação visual da tela "PV": pendente do proprietário.
+- Reflash feito pelo proprietário: boot ultrapassou `system_early_init` e a
+  tela "Professor Virtual" + "Iniciando..." + "v2.4.0" foi confirmada
+  visualmente em 2026-08-03. **Validação física da F0 completa.**
 
 - Estado Git inicial: `1de736a` (worktree limpo, 2026-08-03).
 - ESP-IDF v6.0.2 localizado em `~/.espressif/v6.0.2/esp-idf` (ativação via
