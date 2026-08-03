@@ -50,7 +50,7 @@ assistente); testes host passam; decisões registradas no decision-log.
 - [x] T4 — Build `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` via `release.py` + medição do binário
       vs partição OTA de 4 MB · pronto quando: build verde e tamanho medido
       registrado nas notas (plano B REMOVE_ITEM só se estourar).
-- [ ] T5 — Regressão: build da variante `esp32-p4-wifi6-touch-lcd-7b`
+- [x] T5 — Regressão: build da variante `esp32-p4-wifi6-touch-lcd-7b`
       original + `python3 -m unittest discover -s scripts/tests` · pronto
       quando: build verde e testes host passando.
 - [x] T6 — Smoke test de interoperabilidade por `curl` contra o backend real
@@ -75,6 +75,13 @@ assistente); testes host passam; decisões registradas no decision-log.
   fontes do assistente) não foi necessário.
 - `pv_app.cc.obj` presente no build; `CONFIG_PROFESSOR_VIRTUAL=y` no sdkconfig
   gerado.
+
+### T5 — Regressão (2026-08-03)
+
+- `release.py` da variante original verde:
+  `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b.zip`.
+- Testes host: `python3 -m unittest discover -s scripts/tests` → 8 testes OK
+  (rodados após T3 e novamente após T4/T5).
 
 ### T6 — Smoke test v1.1 (2026-08-03, backend em 127.0.0.1:8001)
 
