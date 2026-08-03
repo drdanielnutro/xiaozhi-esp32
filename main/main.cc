@@ -7,7 +7,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+#if CONFIG_PROFESSOR_VIRTUAL
+#include "pv_app.h"
+#else
 #include "application.h"
+#endif
 
 #define TAG "main"
 
@@ -23,7 +27,11 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Initialize and run the application
+#if CONFIG_PROFESSOR_VIRTUAL
+    auto& app = PvApp::GetInstance();
+#else
     auto& app = Application::GetInstance();
+#endif
     app.Initialize();
     app.Run();  // This function runs the main event loop and never returns
 }

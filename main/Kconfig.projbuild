@@ -805,6 +805,15 @@ config USE_MULTILINE_CHAT_MESSAGE
         When disabled (default), a single-line horizontally scrolling label
         is shown at the bottom of the screen.
 
+config PROFESSOR_VIRTUAL
+    bool "Professor Virtual application mode"
+    default n
+    help
+        Replace the Xiaozhi assistant application with the Professor Virtual
+        voice/camera homework tutor. The assistant sources remain compiled but
+        are never initialized; main() boots PvApp instead of Application.
+        Enabled only by the professor-virtual-* build variants.
+
 choice WAKE_WORD_TYPE
     prompt "Wake Word Implementation Type"
     default USE_AFE_WAKE_WORD if (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && SPIRAM
