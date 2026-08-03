@@ -42,7 +42,7 @@ assistente); testes host passam; decisões registradas no decision-log.
       LVGL própria "Professor Virtual" + versão, mantendo `WifiBoard`
       funcional (callback de rede próprio registrado, sem ativar o fluxo
       assistente).
-- [ ] T3 — Variantes `professor-virtual-7b` e `professor-virtual-7b-p4x` no
+- [x] T3 — Variantes `professor-virtual-7b` e `professor-virtual-7b-p4x` no
       `config.json` da família `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/`
       · pronto quando: `release.py --list-boards` lista as duas variantes com
       as mesmas flags da 7b/7b-p4x + `CONFIG_PROFESSOR_VIRTUAL=y`.
