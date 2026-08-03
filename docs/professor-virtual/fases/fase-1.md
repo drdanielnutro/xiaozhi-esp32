@@ -44,7 +44,7 @@ dono).**
 
 ## Tasks
 
-- [ ] T1 — Decisões estruturais da F1 via Codex (teclado LVGL, provisão do
+- [x] T1 — Decisões estruturais da F1 via Codex (teclado LVGL, provisão do
       token, condução da `DeviceStateMachine`, estratégia de timeout HTTP)
       · pronto quando: decisões registradas no decision-log.
 - [ ] T2 — `pv_settings` (NVS `"pv"`: `backend_url`, `api_token`) +
@@ -87,6 +87,25 @@ dono).**
 (vazio)
 
 ## Notas da fase
+
+### T1 — Decisões estruturais (2026-08-03, Codex thread 019fc8cc)
+
+- **F1-Keyboard (1a):** `CONFIG_LV_USE_KEYBOARD=y` só nas variantes PV via
+  `config.json`.
+- **F1-Token (2a):** provisão pela tela de configuração touchscreen → NVS
+  `"pv"`; `lv_textarea_set_password_show_time(..., 0)` obrigatório (default
+  LVGL revela o último caractere por 1500 ms); campo volta vazio ao reabrir;
+  NVS nunca lido de volta para a UI; token proibido em log/erro/dump.
+- **F1-StateMachine (3b):** Starting → Activating (hidratação) → Idle (após
+  hidratar com sucesso); estado fino do PV em enum próprio; transições só na
+  task principal do PV (callbacks apenas sinalizam). Correção factual do
+  Codex: reentrada no config Wi-Fi é legal a partir de Idle
+  (`wifi_board.cc:215`); parar em Starting quebraria após o primeiro config
+  mode.
+- **F1-HttpTimeout (4a):** `Http::SetTimeout` por requisição (health 5 s,
+  state/lesson 15 s); fallback `esp_http_client` só com falha demonstrada no
+  spike físico (roteiro: conexão lenta, atraso pré-headers, corpo
+  interrompido, backend indisponível, recuperação pós-timeout).
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):
