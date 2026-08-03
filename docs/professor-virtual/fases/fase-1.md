@@ -47,7 +47,7 @@ dono).**
 - [x] T1 — Decisões estruturais da F1 via Codex (teclado LVGL, provisão do
       token, condução da `DeviceStateMachine`, estratégia de timeout HTTP)
       · pronto quando: decisões registradas no decision-log.
-- [ ] T2 — `pv_settings` (NVS `"pv"`: `backend_url`, `api_token`) +
+- [x] T2 — `pv_settings` (NVS `"pv"`: `backend_url`, `api_token`) +
       `CONFIG_LV_USE_KEYBOARD=y` nas variantes PV do `config.json`
       · pronto quando: build PV verde com a flag presente no sdkconfig
       gerado e módulo usado pelo `PvApp`.
@@ -106,6 +106,20 @@ dono).**
   state/lesson 15 s); fallback `esp_http_client` só com falha demonstrada no
   spike físico (roteiro: conexão lenta, atraso pré-headers, corpo
   interrompido, backend indisponível, recuperação pós-timeout).
+
+### T2 — pv_settings + teclado LVGL (2026-08-03)
+
+- `pv_settings.h/.cc`: namespace NVS `"pv"`, chaves `backend_url` (com
+  normalização de espaços/barra final) e `api_token` (nunca logado; só
+  presença). `PvApp::Initialize` loga o estado de provisão.
+- `CONFIG_LV_USE_KEYBOARD=y` apendado às duas variantes PV no `config.json`;
+  sdkconfig gerado confirma a flag. Binário: 2.722.800 bytes (antes:
+  2.719.136) — folga de ~35% na OTA de 4 MB mantida.
+- Armadilha de ambiente registrada: builds fora do `export.sh` oficial devem
+  exportar `ESP_IDF_VERSION=6.0` (major.minor). Com `6.0.2`, o
+  `orsource "Kconfig.idf_v$ESP_IDF_VERSION.in"` do `esp_wifi_remote` não
+  resolve, os símbolos `WIFI_RMT_*` somem do sdkconfig e o build quebra em
+  `wifi_manager.cc`.
 
 - Estado Git inicial: `ac258c8` (worktree limpo, 2026-08-03).
 - Fatos de código levantados na abertura da fase (exploração 2026-08-03):

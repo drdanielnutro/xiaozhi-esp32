@@ -146,7 +146,8 @@
                 "CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y",
                 "CONFIG_ESP32P4_REV_MIN_100=y",
                 "CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y",
-                "CONFIG_PROFESSOR_VIRTUAL=y"
+                "CONFIG_PROFESSOR_VIRTUAL=y",
+                "CONFIG_LV_USE_KEYBOARD=y"
             ]
         },
         {
@@ -164,7 +165,8 @@
                 "CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y",
                 "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/32m.csv\"",
                 "CONFIG_ESPTOOLPY_FLASH_MODE_AUTO_DETECT=n",
-                "CONFIG_PROFESSOR_VIRTUAL=y"
+                "CONFIG_PROFESSOR_VIRTUAL=y",
+                "CONFIG_LV_USE_KEYBOARD=y"
             ]
         },
         {

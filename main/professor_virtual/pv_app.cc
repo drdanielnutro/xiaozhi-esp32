@@ -10,6 +10,7 @@
 
 #include "board.h"
 #include "display/display.h"
+#include "pv_settings.h"
 #include "pv_strings.h"
 
 #define TAG "PvApp"
@@ -25,6 +26,12 @@ void PvApp::Initialize() {
              board.GetBoardType().c_str());
 
     SetupBootScreen();
+
+    // Provisão do dispositivo (contrato v1.1): backend_url + api_token no
+    // NVS "pv". O token nunca é logado — só a presença.
+    ESP_LOGI(TAG, "Configuração: backend %s, token %s",
+             PvSettings::GetBackendUrl().empty() ? "(vazio)" : PvSettings::GetBackendUrl().c_str(),
+             PvSettings::HasApiToken() ? "provisionado" : "ausente");
 
     // O PV é o dono do callback de rede (decisão Q1a): registrado antes de
     // qualquer StartNetwork() futuro, para que o fluxo assistente nunca
