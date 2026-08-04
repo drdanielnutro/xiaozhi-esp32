@@ -487,10 +487,14 @@ bool PvApp::HandleJpegReady() {
         // sinal de que a captura terminou em falha).
         return false;
     }
-    if (!camera_screen_.IsActive()) {
-        // A tela saiu enquanto a codificação rodava: a posse dos DOIS buffers é
-        // nossa e morre aqui, senão vazariam megabytes de PSRAM.
-        ESP_LOGW(TAG, "Foto pronta fora da tela de câmera; descartada");
+    if (!camera_screen_.IsCapturing()) {
+        // Ninguém está esperando ESTA captura. IsActive() não basta: a tela
+        // pode ter fechado durante a codificação e REABERTO antes da conclusão
+        // — ativa de novo, mas numa sessão nova, sem captura pedida. Exibir a
+        // foto antiga aqui mostraria à criança uma imagem que ela não pediu
+        // (revisão F2 rodada final, P1). A posse dos DOIS buffers é nossa e
+        // morre aqui, senão vazariam megabytes de PSRAM.
+        ESP_LOGW(TAG, "Foto pronta sem tela esperando; descartada");
         heap_caps_free(capture.jpeg.data);
         if (capture.rgb != nullptr) {
             heap_caps_free(capture.rgb);
@@ -511,7 +515,10 @@ bool PvApp::HandleJpegReady() {
 }
 
 void PvApp::HandleJpegFailed() {
-    if (!camera_screen_.IsActive()) {
+    // Mesma guarda do JpegReady: uma tela reaberta (ativa, mas sem captura
+    // pedida NESTA sessão) não pode receber o aviso de falha de uma captura
+    // antiga (revisão F2 rodada final, P1).
+    if (!camera_screen_.IsCapturing()) {
         return;
     }
     camera_screen_.ShowCaptureFailed();

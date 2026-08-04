@@ -280,6 +280,20 @@ curtos/empréstimo do dump confirmados corretos. **Corrigidos:**
 Validação pós-correção: build PV verde (`xiaozhi.bin` 2.881.808 bytes);
 testes host 15 OK; PV host_test 155 OK; clang-format limpo.
 
+### Revisão independente — rodada final de verificação (2026-08-04, Codex thread 019fcd66)
+
+Reconciliação por volta e posse no ramo de falha do dump: **confirmadas
+corretas**. 1×P1 residual encontrado e corrigido: os handlers de conclusão
+aceitavam `IsActive()` — uma tela fechada durante a captura e REABERTA antes
+da conclusão receberia a foto antiga (ou a falha antiga) numa sessão nova.
+`HandleJpegReady`/`HandleJpegFailed` agora exigem `IsCapturing()`; resultado
+sem tela esperando é liberado no ato (consistente com a drenagem da
+reconciliação — `TakeCapture` move e esvazia, sem dupla liberação).
+Confirmação da correção pedida por `codex-reply` na mesma thread da rodada.
+
+Validação: build PV verde (`xiaozhi.bin` 2.881.792 bytes); testes host 15
+OK; PV host_test 155 OK; clang-format limpo.
+
 ### T5 — Regressão e medição (2026-08-04)
 
 - `release.py` PV verde:
