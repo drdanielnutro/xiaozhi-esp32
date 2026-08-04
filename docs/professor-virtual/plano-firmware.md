@@ -387,7 +387,7 @@ checklist final de validação física com o dono, tag de versão.
 | Fase | Status | Concluída em | Commit | Pendências físicas |
 |---|---|---|---|---|
 | F0 — Fundações | concluída | 2026-08-03 | c5fb376 | nenhuma — flash e tela "PV" validados no hardware em 2026-08-03 |
-| F1 — Rede e hidratação | concluída (implementação; T7 física aberta) | 2026-08-03 | 7aa82bf | flash da variante F1 + validação com backend na LAN (boot→hidrata→roteia; desconexão; 401/503 com token real; spikes: timeout Http com backend lento e acentos pt-BR na tela) |
+| F1 — Rede e hidratação | concluída | 2026-08-04 | 8ec52ad | nenhuma — validação física completa em 2026-08-04 (boot→hidrata→roteia, §9.7, 401/503, toque corrigido, gesto de recuperação); spike (a) parcial → F8 |
 | F2 — Câmera | não iniciada | — | — | — |
 | F3 — Turno por foto | não iniciada | — | — | — |
 | F4 — Turno por áudio | não iniciada | — | — | — |
