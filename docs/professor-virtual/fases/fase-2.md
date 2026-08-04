@@ -50,7 +50,7 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 
 ## Tasks
 
-- [ ] T1 — Decisões estruturais da F2 via Codex (acesso ao frame:
+- [x] T1 — Decisões estruturais da F2 via Codex (acesso ao frame:
       extensão aditiva do `EspVideo` vs pipeline V4L2 próprio; estratégia de
       preview: contínuo vs snapshot, task e fps; formato/resolução do sensor
       para A4 nas variantes PV; qualidade JPEG e caminho de validação da
@@ -89,3 +89,24 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 ## Notas da fase
 
 - Estado Git inicial: `3fe622f` (worktree limpo, 2026-08-04).
+
+### T1 — Decisões estruturais (2026-08-04, Codex thread 019fcc8b)
+
+- **F2-FrameAccess (Q1a):** `EspVideo` segue dono único do CSI; método
+  opcional `CaptureRaw(FrameOut&)` (default `false`) em `camera.h`,
+  implementado no `EspVideo`; sem `dynamic_cast` no PV. Lista fechada de
+  arquivos compartilhados expandida com justificativa: `camera.h` +
+  `esp_video.{h,cc}` (aditivo, upstream intacto).
+- **F2-Preview (Q2c):** operação dedicada de preview no `EspVideo` — um
+  DQBUF, conversão para buffer reutilizável (double-buffer, sem alloc/free
+  de 2,4 MB por frame), QBUF imediato. 5 fps inicial (máx. 10 se medido
+  estável); último-frame-vence; preview e captura JPEG mutuamente exclusivos
+  na task de câmera do PV. `Capture()` legado fora do fluxo PV.
+- **F2-SensorFormat (Q3b):** variantes PV passam a
+  `CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS` com seleção
+  explícita do default (RAW8 desabilitado explicitamente); upstream fica em
+  800×800. JPEG q85 inicial. Fallback físico: voltar a 800×800.
+- **F2-LegibilityValidation (Q4a+c):** dump base64 do JPEG codificado no
+  console serial (marcadores + comprimento + CRC32, streaming), acionado só
+  por gesto explícito e removível após a F2; conferência complementar na
+  tela decodificando o mesmo JPEG. `/api/prepare/*` rejeitado para teste.
