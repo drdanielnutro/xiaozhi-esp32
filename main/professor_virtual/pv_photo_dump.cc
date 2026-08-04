@@ -210,8 +210,14 @@ bool PvPhotoDump::Request(const uint8_t* jpeg, size_t len, uint16_t width, uint1
     if (xTaskCreate(DumpTask, "pv_dump", kStackSize, nullptr, kPriority, nullptr) != pdPASS) {
         ESP_LOGE(TAG, "Falha ao criar a task de dump");
         std::lock_guard<std::mutex> lock(g_mutex);
-        // Nada foi emprestado de fato: o buffer continua sendo do chamador e
-        // não pode ser liberado aqui.
+        // No caso normal nada foi emprestado de fato e o buffer continua sendo
+        // do chamador. MAS o contrato permite chamadas de qualquer task: entre
+        // a publicação acima e esta falha, um TryHandOff() concorrente pode já
+        // ter nos entregue a posse — aí liberar aqui é obrigatório, senão
+        // ninguém libera (revisão F2 rodada 2, P2).
+        if (g_owns && g_data != nullptr) {
+            heap_caps_free(const_cast<uint8_t*>(g_data));
+        }
         g_data = nullptr;
         g_owns = false;
         g_len = 0;

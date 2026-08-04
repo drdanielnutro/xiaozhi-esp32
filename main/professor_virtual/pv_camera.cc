@@ -263,6 +263,21 @@ void PvCamera::GrabPreviewFrame() {
 }
 
 void PvCamera::RunCaptureJpeg() {
+    {
+        // Slot limpo ANTES de começar: um resultado órfão de captura anterior
+        // (tela fechada + aviso perdido) não pode sobreviver ao início de uma
+        // captura nova — se ESTA falhar e o aviso de falha também se perder, o
+        // resultado antigo seria confundido com o dela (revisão F2 rodada 2,
+        // P1). A reconciliação do PvApp drena órfãos, mas este é o ponto que
+        // garante a invariante mesmo se a drenagem ainda não tiver rodado.
+        std::lock_guard<std::mutex> lock(capture_mutex_);
+        if (capture_.jpeg.data != nullptr || capture_.rgb != nullptr) {
+            ESP_LOGW(TAG, "Captura anterior não retirada; descartada antes da nova");
+            FreeCapture(capture_);
+            capture_ = PvCameraCaptureResult{};
+        }
+    }
+
     CameraRawFrame raw;
     if (!camera_->CaptureRaw(raw)) {
         ESP_LOGE(TAG, "Captura falhou: a câmera não entregou frame");

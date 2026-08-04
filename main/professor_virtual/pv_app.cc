@@ -133,18 +133,18 @@ void PvApp::Run() {
         if (event_queue_ != nullptr &&
             xQueueReceive(event_queue_, &event, kEventWaitTicks) == pdTRUE) {
             HandleEvent(event);
-            continue;
-        }
-        if (event_queue_ == nullptr) {
+        } else if (event_queue_ == nullptr) {
             vTaskDelay(kEventWaitTicks);
         }
         // Os disparos periódicos (health de 10 s, nova tentativa de hidratação
         // e roteamento §9.1) chegam como PvEventType::HealthTick, postado pelo
         // timer; este laço só consome a fila.
         //
-        // O timeout de 1 s também é o batimento da RECONCILIAÇÃO da câmera: os
-        // eventos continuam sendo o caminho rápido, mas não são garantidos (a
-        // fila é curta e PostEvent é best-effort). Ver ReconcileCameraState().
+        // A RECONCILIAÇÃO da câmera roda a CADA volta do laço — depois de cada
+        // evento E no timeout de 1 s —, nunca só no timeout: com o preview a
+        // 5 fps a fila não esvazia e o timeout pode simplesmente não acontecer
+        // (revisão F2 rodada 2, P1). Os eventos continuam sendo o caminho
+        // rápido; PostEvent é best-effort. Ver ReconcileCameraState().
         ReconcileCameraState();
     }
 }
@@ -535,6 +535,24 @@ void PvApp::ReconcileCameraState() {
         ESP_LOGW(TAG, "Reconciliação: conclusão de captura perdida; recuperando a tela");
         if (!HandleJpegReady()) {
             HandleJpegFailed();
+        }
+    }
+    // Resultado ÓRFÃO: a captura terminou, mas nenhuma tela espera por ela —
+    // a tela fechou durante a codificação e o aviso se perdeu. Sem esta
+    // drenagem, o par JPEG+RGB565 ficaria pendurado no slot (megabytes de
+    // PSRAM) e, pior, uma captura futura cujo aviso de FALHA também se
+    // perdesse faria HandleJpegReady() encontrar o resultado antigo e exibir a
+    // foto errada como se fosse a nova (revisão F2 rodada 2, P1). A condição
+    // !IsCapturing() garante que nunca drenamos um resultado que a tela ainda
+    // vai consumir: enquanto ela espera, o ramo acima é quem o retira.
+    if (!camera_screen_.IsCapturing() && !camera_.capture_in_flight()) {
+        PvCameraCaptureResult orphan;
+        if (camera_.TakeCapture(orphan)) {
+            ESP_LOGW(TAG, "Reconciliação: captura órfã drenada e liberada");
+            heap_caps_free(orphan.jpeg.data);
+            if (orphan.rgb != nullptr) {
+                heap_caps_free(orphan.rgb);
+            }
         }
     }
     // PROVISÓRIO DA F2: mesmo raciocínio para o dump serial.

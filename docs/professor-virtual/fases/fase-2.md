@@ -260,6 +260,26 @@ Validação pós-correção: build PV verde (`xiaozhi.bin` 2.881.488 bytes,
 11:51); testes host **15 OK** (8+7); PV host_test 155 OK; clang-format limpo
 (hunks novos).
 
+### Revisão independente — rodada 2 (2026-08-04, Codex thread 019fcd45)
+
+2×P1 + 1×P2 sobre as correções da rodada 1; decode/guarda de rota/frames
+curtos/empréstimo do dump confirmados corretos. **Corrigidos:**
+
+1. **P1** Reconciliação só rodava no timeout de 1 s — com o preview a 5 fps
+   a fila nunca esvazia e ela podia nunca executar: `ReconcileCameraState()`
+   agora roda a CADA volta do laço (depois de cada evento E no timeout).
+2. **P1** Resultado órfão (tela fechada durante a captura + aviso perdido)
+   vazava no slot e podia ser exibido como se fosse de captura posterior:
+   (a) `RunCaptureJpeg` limpa o slot ANTES de iniciar captura nova;
+   (b) a reconciliação drena e libera o órfão quando `!IsCapturing() &&
+   !capture_in_flight()` (nunca drena resultado que a tela ainda espera).
+3. **P2** `PvPhotoDump::Request` com falha de `xTaskCreate` após um
+   `TryHandOff` concorrente vazaria o JPEG: o ramo de falha agora libera o
+   buffer se `g_owns` já tiver sido transferido.
+
+Validação pós-correção: build PV verde (`xiaozhi.bin` 2.881.808 bytes);
+testes host 15 OK; PV host_test 155 OK; clang-format limpo.
+
 ### T5 — Regressão e medição (2026-08-04)
 
 - `release.py` PV verde:
