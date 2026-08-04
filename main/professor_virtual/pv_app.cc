@@ -55,6 +55,17 @@ void PvApp::Initialize() {
         OnSaveRequestedFromLvglTask(std::move(url), std::move(token));
     });
 
+    // Motor de câmera (F2). O handler roda NA TASK DA CÂMERA: só sinaliza.
+    // Placa sem câmera (ou sem as extensões opcionais) degrada para no-op —
+    // daí a tela de câmera simplesmente nunca abre.
+    if (!camera_.Start([this](PvCamera::Event event) { OnCameraEventFromCameraTask(event); })) {
+        ESP_LOGW(TAG, "Câmera indisponível; a tela de câmera fica desligada nesta placa");
+    }
+    // O handler de "Voltar" roda na task do LVGL e só posta na fila.
+    camera_screen_.Attach(&camera_, [this]() {
+        PostEvent(PvEventType::CameraScreenClosed, std::string(), PvConfigReason::Manual);
+    });
+
     // Task de rede do PV: executa as chamadas bloqueantes do PvBackendClient e
     // devolve só um aviso pela fila; o resultado é retirado aqui na task
     // principal, com Take*(). O handler roda NA TASK DO WORKER.
@@ -129,6 +140,10 @@ void PvApp::RequestConfigScreen(PvConfigReason reason) {
     PostEvent(PvEventType::ConfigScreenRequested, std::string(), reason);
 }
 
+void PvApp::RequestCameraScreen() {
+    PostEvent(PvEventType::CameraScreenRequested, std::string(), PvConfigReason::Manual);
+}
+
 void PvApp::RegisterNetworkCallback() {
     // Os callbacks chegam na task de eventos do Wi-Fi. Nada de LVGL nem de
     // máquina de estados aqui: só postam na fila do PvApp (decisão 3b).
@@ -160,9 +175,9 @@ void PvApp::RegisterNetworkCallback() {
     });
 }
 
-void PvApp::PostEvent(PvEventType type, const std::string& data, PvConfigReason reason) {
+bool PvApp::PostEvent(PvEventType type, const std::string& data, PvConfigReason reason) {
     if (event_queue_ == nullptr) {
-        return;
+        return false;
     }
     PvEvent event{};
     event.type = type;
@@ -172,7 +187,9 @@ void PvApp::PostEvent(PvEventType type, const std::string& data, PvConfigReason 
     }
     if (xQueueSend(event_queue_, &event, 0) != pdTRUE) {
         ESP_LOGW(TAG, "Fila de eventos cheia; evento %d descartado", static_cast<int>(type));
+        return false;
     }
+    return true;
 }
 
 void PvApp::HandleEvent(const PvEvent& event) {
@@ -219,7 +236,7 @@ void PvApp::HandleEvent(const PvEvent& event) {
                 // (só o indicador vira "desconectado"); a tela de status é
                 // carregada apenas quando ainda não houve roteamento.
                 if (!route_screens_.IsLoaded()) {
-                    status_screen_.Load();
+                    LoadStatusScreen();
                 }
             }
             break;
@@ -234,7 +251,7 @@ void PvApp::HandleEvent(const PvEvent& event) {
             status_screen_.SetStatus(PvStrings::kNetConfigModeExit);
             status_screen_.SetDetail(nullptr);
             if (!config_screen_.IsVisible()) {
-                status_screen_.Load();
+                LoadStatusScreen();
             }
             break;
 
@@ -256,6 +273,22 @@ void PvApp::HandleEvent(const PvEvent& event) {
 
         case PvEventType::HealthDone:
             HandleHealthDone();
+            break;
+
+        case PvEventType::CameraScreenRequested:
+            ShowCameraScreen();
+            break;
+
+        case PvEventType::CameraScreenClosed:
+            ReturnFromCameraScreen();
+            break;
+
+        case PvEventType::CameraPreviewFrame:
+            // Libera a coalescência ANTES de desenhar: um frame produzido
+            // durante o desenho já pode reagendar o próximo aviso, e o
+            // último-frame-vence do PvCamera garante que nada se acumula.
+            preview_frame_pending_.store(false);
+            camera_screen_.UpdateFrame();
             break;
     }
 }
@@ -315,10 +348,102 @@ void PvApp::HandleWifiConfigMode() {
         detail += PvStrings::kWifiApHintSuffix;
         status_screen_.SetDetail(detail.c_str());
     }
+    LoadStatusScreen();
+}
+
+void PvApp::LoadStatusScreen() {
+    // A tela de câmera é a única temporária do PV: qualquer coisa que carregue
+    // a tela de status precisa tirá-la de cena antes, senão o preview
+    // continuaria rodando (e desenhando) atrás.
+    LeaveCameraScreen();
     status_screen_.Load();
 }
 
+// ---------------------------------------------------------------------------
+// Câmera (F2/T3): preview no LVGL.
+//
+// Divisão de trabalho: a task da câmera produz frames e AVISA; esta task
+// decide e desenha; a PvCameraScreen é a dona da lv_image_dsc_t e do
+// empréstimo do frame. Nenhum buffer é copiado e nada é alocado por frame.
+// ---------------------------------------------------------------------------
+
+void PvApp::OnCameraEventFromCameraTask(PvCamera::Event event) {
+    switch (event) {
+        case PvCamera::Event::PreviewFrame: {
+            // COALESCÊNCIA (decisão F2-Preview): no máximo UM aviso de frame
+            // pendente na fila. A ~5 fps, sem isso, os 8 slots seriam tomados
+            // pelo preview e eventos de rede começariam a ser descartados.
+            bool expected = false;
+            if (!preview_frame_pending_.compare_exchange_strong(expected, true)) {
+                return;
+            }
+            if (!PostEvent(PvEventType::CameraPreviewFrame, std::string(),
+                           PvConfigReason::Manual)) {
+                // Fila cheia: sem limpar a flag aqui, o preview congelaria
+                // para sempre porque nenhum aviso novo seria postado.
+                preview_frame_pending_.store(false);
+            }
+            break;
+        }
+        case PvCamera::Event::JpegReady:
+        case PvCamera::Event::JpegFailed:
+            // T4 (captura da foto). Ignorados de propósito nesta task: nada
+            // foi pedido ao PvCamera, então não há resultado a retirar.
+            break;
+    }
+}
+
+void PvApp::ShowCameraScreen() {
+    if (!camera_.available()) {
+        ESP_LOGW(TAG, "Pedido de câmera ignorado: placa sem câmera disponível");
+        return;
+    }
+    if (config_screen_.IsVisible()) {
+        // O adulto está no meio da configuração; não roubar a tela.
+        return;
+    }
+    if (camera_screen_.IsActive()) {
+        return;
+    }
+    if (!camera_screen_.Show()) {
+        return;
+    }
+    // Só depois de a tela estar no ar: um frame que chegue antes disso viraria
+    // um empréstimo sem consumidor.
+    camera_.StartPreview();
+}
+
+void PvApp::LeaveCameraScreen() {
+    if (!camera_screen_.IsActive()) {
+        return;
+    }
+    // Ordem obrigatória: parar de produzir, depois soltar o empréstimo e
+    // esvaziar a imagem (a tela faz as duas coisas sob um único lock). Avisos
+    // de frame que já estejam na fila viram no-op, porque a tela sai de
+    // IsActive() aqui.
+    camera_.StopPreview();
+    camera_screen_.Hide();
+}
+
+void PvApp::ReturnFromCameraScreen() {
+    if (!camera_screen_.IsActive()) {
+        return;
+    }
+    LeaveCameraScreen();
+    // A tela de câmera é sobreposta à rota corrente. Sem rota carregada (só
+    // acontece se o botão for alcançado por um caminho futuro), volta ao
+    // status: nunca deixar a criança numa tela morta.
+    if (!route_screens_.Reload()) {
+        status_screen_.Load();
+    }
+}
+
 void PvApp::ShowConfigScreen(PvConfigReason reason) {
+    // A tela de câmera não pode ficar como "tela anterior" da configuração: ao
+    // voltar, ela estaria com o preview desligado e a imagem vazia. Sai dela
+    // primeiro, devolvendo a tela de baixo, e só então a configuração entra.
+    ReturnFromCameraScreen();
+
     phase_ = PvPhase::AwaitingBackendConfig;
     // Invalida qualquer resultado HTTP em voo (ressalva F1-ConfigGesture):
     // uma hidratação que termine agora não pode fechar/roubar a tela de
@@ -423,7 +548,7 @@ void PvApp::StartHydration() {
         status_screen_.SetStatusColor(PvUi::kColorText);
         status_screen_.SetStatus(PvStrings::kHydrating);
         status_screen_.SetDetail(detail.empty() ? nullptr : detail.c_str());
-        status_screen_.Load();
+        LoadStatusScreen();
     }
 
     StartHealthTimer();
@@ -463,7 +588,9 @@ void PvApp::HandleHydrationDone() {
         PvRoute route = DecideRoute(session_state_, lesson_);
         ESP_LOGI(TAG, "Hidratação concluída; rota de boot: %s", PvRouteName(route));
         // SetBackendHealthy já marcou o indicador; uma tela de rota criada
-        // agora nasce com o estado correto.
+        // agora nasce com o estado correto. Uma rota nova por cima da tela de
+        // câmera é saída de tela como qualquer outra: o preview precisa parar.
+        LeaveCameraScreen();
         route_screens_.Show(route, session_state_, lesson_);
 
         if (!Application::GetInstance().SetDeviceState(kDeviceStateIdle)) {
@@ -563,13 +690,14 @@ void PvApp::ShowBackendError(const char* message) {
     status_screen_.SetStatusColor(PvUi::kColorWarning);
     status_screen_.SetStatus(message);
     status_screen_.SetDetail(PvStrings::kHydrateRetryHint);
-    status_screen_.Load();
+    LoadStatusScreen();
 }
 
 void PvApp::SetBackendHealthy(bool healthy) {
     backend_healthy_ = healthy;
     status_screen_.SetConnected(healthy);
     route_screens_.SetConnected(healthy);
+    camera_screen_.SetConnected(healthy);
 }
 
 void PvApp::StartHealthTimer() {

@@ -78,6 +78,13 @@ inline constexpr const char* kRouteFailsafeBadge = "Atenção";
 inline constexpr const char* kRouteFailsafeSubtitle =
     "Em breve: a tela do adulto com senha para destravar a tarefa.";
 
+// Tela de câmera (F2). O botão de entrada vive na tela de preparação e é
+// provisório: os fluxos reais de foto chegam na F3/F7.
+inline constexpr const char* kCameraButton = "Ver a câmera";
+inline constexpr const char* kCameraTitle = "Câmera";
+inline constexpr const char* kCameraWarmup = "Preparando a câmera...";
+inline constexpr const char* kCameraBackButton = "Voltar";
+
 // Detalhe da tela de tutoria: prova de que o espelho foi hidratado de verdade.
 inline constexpr const char* kRouteItemPrefix = "Item atual: ";
 inline constexpr const char* kRouteTaskPrefix = "Tarefa atual: ";

@@ -8,6 +8,7 @@
 #include "board.h"
 #include "display/display.h"
 
+#include "pv_app.h"
 #include "pv_route_text.h"
 #include "pv_strings.h"
 #include "ui/pv_config_gesture.h"
@@ -16,6 +17,13 @@
 #define TAG "PvRouteScreens"
 
 namespace {
+
+// Roda na task do LVGL: só sinaliza o PvApp, que decide se abre a tela (e
+// liga o preview) na própria task dele.
+void OnCameraClicked(lv_event_t* e) {
+    LV_UNUSED(e);
+    PvApp::GetInstance().RequestCameraScreen();
+}
 
 int RouteIndex(PvRoute route) {
     switch (route) {
@@ -89,6 +97,18 @@ PvRouteScreens::Entry& PvRouteScreens::EnsureEntry(PvRoute route) {
     lv_label_set_text(detail, "");
     lv_obj_add_flag(detail, LV_OBJ_FLAG_HIDDEN);
 
+    if (route == PvRoute::Preparation) {
+        // ENTRADA PROVISÓRIA DA F2 para o preview da câmera, e só nesta rota.
+        // Não é a jornada real: fotografar as páginas da lição (F7) e a foto
+        // do exercício na tutoria (F3) chegam depois e substituem este botão.
+        auto* camera_button = lv_button_create(screen);
+        lv_obj_set_style_bg_color(camera_button, lv_color_hex(PvUi::kColorAccent), 0);
+        lv_obj_add_event_cb(camera_button, OnCameraClicked, LV_EVENT_CLICKED, nullptr);
+        auto* camera_label = lv_label_create(camera_button);
+        lv_label_set_text(camera_label, PvStrings::kCameraButton);
+        lv_obj_center(camera_label);
+    }
+
     // Rodapé com a versão: mesmo alvo do gesto de recuperação das outras
     // telas (long-press de 3 s abre a configuração — decisão F1-ConfigGesture).
     auto* version = lv_label_create(screen);
@@ -138,6 +158,25 @@ void PvRouteScreens::Show(PvRoute route, const PvSessionState& state, const PvLe
     route_ = route;
     loaded_ = true;
     lv_screen_load(entry.screen);
+}
+
+bool PvRouteScreens::Reload() {
+    if (!loaded_) {
+        return false;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        // Sem display a rota é só registro; considerar "recarregada" evita que
+        // o chamador tente a tela de status, que também é no-op.
+        return true;
+    }
+    DisplayLockGuard lock(display);
+    Entry& entry = entries_[RouteIndex(route_)];
+    if (entry.screen == nullptr) {
+        return false;
+    }
+    lv_screen_load(entry.screen);
+    return true;
 }
 
 void PvRouteScreens::SetConnected(bool connected) {

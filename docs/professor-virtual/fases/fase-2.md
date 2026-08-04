@@ -60,8 +60,8 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
       frame RGB565 + codificação JPEG com encoder HW/fallback SW; buffers em
       PSRAM com posse clara) · pronto quando: build PV verde e API do
       `pv_camera` consumível pelo `PvApp` sem tocar LVGL fora da task do LVGL.
-- [ ] T3 — Preview no LVGL em tela do PV (frame → `LvglAllocatedImage`
-      RGB565; start/stop ligado ao ciclo de vida da tela; sem vazamento nem
+- [x] T3 — Preview no LVGL em tela do PV (frame → imagem LVGL RGB565;
+      start/stop ligado ao ciclo de vida da tela; sem vazamento nem
       uso de buffer após liberação) · pronto quando: build verde; preview
       integrado ao fluxo de telas do PV.
 - [ ] T4 — Captura JPEG + exibição da foto capturada + medição de tamanho +
@@ -145,3 +145,35 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 - Pendências para T3/T4: tela LVGL consumindo o empréstimo de frame, fiação
   dos eventos no PvApp (handler roda na task da câmera e só posta), gesto do
   dump base64 e medições físicas (5 fps sustentado, PSRAM, tearing).
+
+### T3 — Tela de câmera com preview LVGL (2026-08-04, subagente opus)
+
+- `ui/pv_camera_screen.{h,cc}`: tela "Câmera" — área de preview flex_grow,
+  `lv_image` com `LV_IMAGE_ALIGN_CONTAIN` (escala calculada só quando a
+  geometria muda; nunca amplia), antialias off, rótulo "Preparando a
+  câmera..." até o 1º frame, barra de ações 68 px com o MEIO reservado ao
+  botão de captura da T4, Voltar + versão com `AttachConfigGesture` + badge.
+  A tela é a DONA da `lv_image_dsc_t` e do empréstimo (`frame_borrowed_`) —
+  um único dono elimina a janela LVGL-referencia-buffer-devolvido. Guarda de
+  premissa: `#error` se o cache de imagem do LVGL for ligado
+  (`LV_CACHE_DEF_SIZE>0`), pois o preview troca só o ponteiro da mesma dsc.
+- Swap por frame TODO sob um único `DisplayLockGuard`: Detach (src nula) →
+  `ReleaseDisplayFrame` → `AcquireDisplayFrame` → preencher dsc →
+  `lv_image_set_src` + invalidate. A task do LVGL só desenha segurando o
+  mesmo lock ⇒ nunca renderiza buffer já devolvido ao escritor.
+- `pv_app`: membro `PvCamera` + `PvCameraScreen`; eventos
+  `CameraScreenRequested/Closed/PreviewFrame`; coalescência com
+  `atomic<bool> preview_frame_pending_` (máx. 1 slot da fila de 8 para o
+  preview; flag limpa se o `xQueueSend` falhar, senão congela);
+  `LeaveCameraScreen()` é o ponto ÚNICO de saída (Voltar, config por gesto,
+  `LoadStatusScreen`, rota nova pós-hidratação); `ShowCameraScreen` recusa
+  sem câmera ou com config aberta; `ReturnFromCameraScreen` →
+  `PvRouteScreens::Reload()` (novo) ou tela de status.
+- `pv_route_screens`: botão provisório "Ver a câmera" SÓ na rota Preparação
+  (comentário: F3/F7 substituem); `Reload()` recarrega a rota corrente.
+- Validação: build PV verde (objs novos confirmados); testes host release OK
+  + PV 155 OK; clang-format limpo; `xiaozhi.bin` 2.794.304 bytes (+9.248;
+  33% livres na OTA).
+- Nota de ambiente: o board dir do release.py é
+  `waveshare/esp32-p4-wifi6-touch-lcd` (sem o prefixo o script pula
+  silenciosamente com exit 0).

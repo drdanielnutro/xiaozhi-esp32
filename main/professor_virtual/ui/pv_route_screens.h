@@ -27,6 +27,12 @@ public:
     // Preenche a tela da rota com o espelho recém-hidratado e a carrega.
     void Show(PvRoute route, const PvSessionState& state, const PvLesson& lesson);
 
+    // Recarrega a tela da rota corrente sem recalcular o conteúdo. Usada
+    // quando uma tela temporária (a câmera da F2) sai de cena e a criança
+    // precisa voltar exatamente para onde estava. false quando nenhuma rota
+    // foi carregada ainda — aí o chamador cai na tela de status.
+    bool Reload();
+
     // Atualiza o indicador de conexão em TODAS as telas já criadas: quando o
     // health volta a falhar, a tela que estiver no ar precisa refletir isso.
     void SetConnected(bool connected);

@@ -5,12 +5,15 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
 
+#include "pv_camera.h"
 #include "pv_session_mirror.h"
 #include "pv_worker.h"
+#include "ui/pv_camera_screen.h"
 #include "ui/pv_config_screen.h"
 #include "ui/pv_route_screens.h"
 #include "ui/pv_status_screen.h"
@@ -46,6 +49,10 @@ public:
     // Thread-safe (só posta na fila); é o ponto de entrada da T5 para 401/503.
     void RequestConfigScreen(PvConfigReason reason);
 
+    // Pede à task do PvApp que abra a tela de câmera (F2). Thread-safe (só
+    // posta na fila); chamada pelo botão provisório da tela de preparação.
+    void RequestCameraScreen();
+
     PvPhase phase() const { return phase_; }
 
 private:
@@ -64,6 +71,12 @@ private:
         HealthTick,
         HydrationDone,
         HealthDone,
+        // Câmera (F2). CameraPreviewFrame é postado pela TASK DA CÂMERA a ~5
+        // fps e por isso é coalescido em `preview_frame_pending_`: a fila de 8
+        // slots é compartilhada com os eventos de rede e não pode ser inundada.
+        CameraScreenRequested,
+        CameraScreenClosed,
+        CameraPreviewFrame,
     };
 
     // POD trafegado pela fila. `data` guarda o SSID (máx. 32 bytes + NUL) e
@@ -79,13 +92,26 @@ private:
     PvApp& operator=(const PvApp&) = delete;
 
     void RegisterNetworkCallback();
-    void PostEvent(PvEventType type, const std::string& data, PvConfigReason reason);
+    // false quando o evento não coube na fila (ou não há fila).
+    bool PostEvent(PvEventType type, const std::string& data, PvConfigReason reason);
     void HandleEvent(const PvEvent& event);
 
     void HandleNetworkConnected(const char* ssid);
     void HandleWifiConfigMode();
     void HandlePendingSave();
     void ShowConfigScreen(PvConfigReason reason);
+    // Carrega a tela de status garantindo que a tela de câmera saia antes.
+    void LoadStatusScreen();
+
+    // Câmera (F2). O handler roda NA TASK DA CÂMERA e só sinaliza.
+    void OnCameraEventFromCameraTask(PvCamera::Event event);
+    void ShowCameraScreen();
+    // Ponto ÚNICO de saída da tela de câmera: desliga o preview e faz a tela
+    // devolver o empréstimo. Todo caminho que carrega outra tela passa por
+    // aqui — inclusive os que não vêm do botão "Voltar".
+    void LeaveCameraScreen();
+    // LeaveCameraScreen + volta para a tela que estava por baixo.
+    void ReturnFromCameraScreen();
 
     // Hidratação (§9.1) e monitoramento de conectividade (§9.7). Tudo aqui
     // roda na task principal; só as chamadas HTTP vão para o PvWorker.
@@ -106,8 +132,16 @@ private:
     PvStatusScreen status_screen_;
     PvConfigScreen config_screen_;
     PvRouteScreens route_screens_;
+    PvCameraScreen camera_screen_;
 
     PvWorker worker_;
+    PvCamera camera_;
+
+    // Coalescência do aviso de frame de preview: no máximo UM evento
+    // CameraPreviewFrame pendente na fila. Setada na task da câmera ao postar,
+    // limpada na task principal ao tratar. Sem isso, 5 fps encheriam a fila de
+    // 8 slots e os eventos de rede começariam a ser descartados.
+    std::atomic<bool> preview_frame_pending_{false};
     esp_timer_handle_t health_timer_ = nullptr;
 
     // Espelho corrente da sessão e da lição. Só é substituído por uma
