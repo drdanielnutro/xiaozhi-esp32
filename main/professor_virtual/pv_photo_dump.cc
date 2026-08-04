@@ -11,7 +11,6 @@
 
 #include <cinttypes>
 #include <cstdio>
-#include <cstring>
 #include <mutex>
 #include <utility>
 
@@ -37,22 +36,32 @@ constexpr UBaseType_t kPriority = 1;
 
 std::mutex g_mutex;
 bool g_busy = false;
-uint8_t* g_data = nullptr;
+// EMPRÉSTIMO: `g_data` aponta para o buffer do chamador (a tela de câmera).
+// `g_owns` só vira true se o dono nos entregar a posse com TryHandOff() —
+// ver o protocolo em pv_photo_dump.h.
+const uint8_t* g_data = nullptr;
+bool g_owns = false;
 size_t g_len = 0;
 uint16_t g_width = 0;
 uint16_t g_height = 0;
 PvPhotoDump::DoneHandler g_done;
 
-// Libera o buffer, reabre o módulo para um novo pedido e avisa o consumidor.
+// Fecha o dump, reabre o módulo para um novo pedido e avisa o consumidor.
 // Chamada UMA vez por dump, sempre no fim da task (inclusive nos erros).
+//
+// Só libera o buffer se a posse tiver sido transferida para cá; no caso normal
+// (a tela ainda está com a foto) o dono continua sendo ela.
 void FinishAndNotify() {
     PvPhotoDump::DoneHandler done;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        if (g_data != nullptr) {
-            heap_caps_free(g_data);
-            g_data = nullptr;
+        if (g_owns && g_data != nullptr) {
+            // const_cast: o buffer é do heap (heap_caps_malloc na captura) e a
+            // posse é nossa agora; o `const` descrevia apenas o empréstimo.
+            heap_caps_free(const_cast<uint8_t*>(g_data));
         }
+        g_data = nullptr;
+        g_owns = false;
         g_len = 0;
         g_width = 0;
         g_height = 0;
@@ -67,7 +76,7 @@ void FinishAndNotify() {
 void DumpTask(void* arg) {
     (void)arg;
 
-    uint8_t* data = nullptr;
+    const uint8_t* data = nullptr;
     size_t len = 0;
     uint16_t width = 0;
     uint16_t height = 0;
@@ -157,37 +166,42 @@ bool PvPhotoDump::busy() {
     return g_busy;
 }
 
+bool PvPhotoDump::TryHandOff(const uint8_t* jpeg) {
+    if (jpeg == nullptr) {
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(g_mutex);
+    // O ponteiro precisa ser EXATAMENTE o que está sendo lido agora: aceitar a
+    // posse de um buffer que não é o do dump corrente faria o dump liberar
+    // memória alheia (e o dono da memória de verdade nunca a liberaria).
+    if (!g_busy || g_data == nullptr || g_data != jpeg || g_owns) {
+        return false;
+    }
+    g_owns = true;
+    ESP_LOGI(TAG, "Posse do JPEG transferida ao dump em andamento");
+    return true;
+}
+
 bool PvPhotoDump::Request(const uint8_t* jpeg, size_t len, uint16_t width, uint16_t height) {
     if (jpeg == nullptr || len == 0) {
         return false;
     }
     {
-        // Reserva a vaga ANTES de copiar: dois toques no botão não podem gerar
-        // duas tasks nem dois buffers.
+        // Reserva a vaga E registra o empréstimo de uma vez: dois toques no
+        // botão não podem gerar duas tasks, e a task que vai nascer precisa
+        // encontrar o ponteiro já publicado.
         std::lock_guard<std::mutex> lock(g_mutex);
         if (g_busy) {
             ESP_LOGW(TAG, "Dump já em andamento; pedido coalescido");
             return false;
         }
+        // EMPRÉSTIMO, SEM CÓPIA (decisão de streaming sem cópia extra): o JPEG
+        // tem centenas de KB e duplicá-lo em PSRAM só para desacoplar ciclos de
+        // vida é caro demais. O desacoplamento vem do handoff de posse — ver o
+        // protocolo em pv_photo_dump.h.
         g_busy = true;
-    }
-
-    // CÓPIA DE POSSE: o dump vive por dezenas de segundos e a tela pode soltar
-    // a foto nesse meio-tempo ("Nova foto"/"Voltar"). Copiar em PSRAM desacopla
-    // os dois ciclos de vida por completo.
-    uint8_t* copy =
-        static_cast<uint8_t*>(heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-    if (copy == nullptr) {
-        ESP_LOGE(TAG, "Sem PSRAM para copiar %u bytes de JPEG", (unsigned)len);
-        std::lock_guard<std::mutex> lock(g_mutex);
-        g_busy = false;
-        return false;
-    }
-    std::memcpy(copy, jpeg, len);
-
-    {
-        std::lock_guard<std::mutex> lock(g_mutex);
-        g_data = copy;
+        g_owns = false;
+        g_data = jpeg;
         g_len = len;
         g_width = width;
         g_height = height;
@@ -196,9 +210,13 @@ bool PvPhotoDump::Request(const uint8_t* jpeg, size_t len, uint16_t width, uint1
     if (xTaskCreate(DumpTask, "pv_dump", kStackSize, nullptr, kPriority, nullptr) != pdPASS) {
         ESP_LOGE(TAG, "Falha ao criar a task de dump");
         std::lock_guard<std::mutex> lock(g_mutex);
-        heap_caps_free(g_data);
+        // Nada foi emprestado de fato: o buffer continua sendo do chamador e
+        // não pode ser liberado aqui.
         g_data = nullptr;
+        g_owns = false;
         g_len = 0;
+        g_width = 0;
+        g_height = 0;
         g_busy = false;
         return false;
     }

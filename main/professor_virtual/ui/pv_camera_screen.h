@@ -19,10 +19,15 @@
 //    DisplayLockGuard: a descrição diz ao LVGL onde estão os pixels e o
 //    empréstimo é o que impede a task da câmera de sobrescrevê-los;
 //  - modo revisão: o JPEG retirado do PvCamera (`photo_`, liberado com
-//    heap_caps_free) e o RGB565 decodificado (`decoded_`, idem). O PvApp
-//    TRANSFERE a posse do JPEG em EnterReview() e não guarda cópia: um único
-//    dono elimina a classe de bug em que a tela desenha um buffer que outro
-//    dono já liberou.
+//    heap_caps_free) e o RGB565 já decodificado PELA TASK DA CÂMERA
+//    (`decoded_`, idem). O PvApp TRANSFERE a posse dos DOIS em EnterReview() e
+//    não guarda cópia: um único dono elimina a classe de bug em que a tela
+//    desenha um buffer que outro dono já liberou.
+//
+// EXCEÇÃO ÚNICA à posse do JPEG: o dump de diagnóstico (PROVISÓRIO DA F2)
+// trabalha por EMPRÉSTIMO, sem cópia. Ao soltar a foto, a tela oferece a posse
+// do JPEG ao dump em andamento (PvPhotoDump::TryHandOff); se ele aceitar,
+// quem libera passa a ser o dump. Ver pv_photo_dump.h.
 //
 // Liberação garantida em TODOS os caminhos de saída, porque todos passam por
 // Hide() ou ExitReview(): "Nova foto" (ExitReview), "Voltar", gesto de
@@ -78,6 +83,13 @@ public:
     bool IsActive() const { return active_; }
     bool IsReviewing() const { return active_ && mode_ == Mode::Review; }
 
+    // Estados "esperando uma conclusão que vem de outra task". O PvApp os lê na
+    // reconciliação periódica: se o aviso correspondente não coube na fila de
+    // eventos, a tela ficaria presa em "Processando..."/"Exportando..." para
+    // sempre (revisão F2, P1).
+    bool IsCapturing() const { return active_ && mode_ == Mode::Preview && capturing_; }
+    bool IsExporting() const { return active_ && exporting_; }
+
     // Consome o aviso de frame novo: devolve o frame exibido, pega o mais
     // recente e troca a fonte da imagem — tudo sob um único lock do display.
     // No-op em modo revisão: um aviso que sobrou na fila depois do StopPreview
@@ -89,10 +101,14 @@ public:
     // Captura falhou: volta o botão e explica, sem sair do modo preview.
     void ShowCaptureFailed();
 
-    // Entra em revisão TOMANDO A POSSE de `jpeg`: decodifica para RGB565 e
-    // exibe a foto no lugar do preview. Em qualquer caminho de falha o buffer
-    // do JPEG é liberado aqui mesmo — o chamador nunca precisa desfazer nada.
-    bool EnterReview(const PvCameraJpeg& jpeg);
+    // Entra em revisão TOMANDO A POSSE dos dois buffers de `result` (o JPEG e o
+    // RGB565 já decodificado pela task da câmera) e exibe a foto no lugar do
+    // preview. Em qualquer caminho de falha os DOIS buffers são liberados aqui
+    // mesmo — o chamador nunca precisa desfazer nada.
+    //
+    // Como a decodificação já veio pronta, tudo o que sobra é a troca de tela:
+    // o método é rápido e cabe inteiro sob um DisplayLockGuard.
+    bool EnterReview(const PvCameraCaptureResult& result);
 
     // Libera foto + decodificado e volta ao modo preview (imagem vazia). O
     // PvApp religa o preview depois.

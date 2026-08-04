@@ -27,7 +27,7 @@ struct PvCameraPreviewFrame {
     size_t stride = 0;  // bytes por linha (width * 2)
 };
 
-// Foto JPEG pronta, retirada com TakeJpeg().
+// Foto JPEG pronta.
 //
 // POSSE: transferida ao chamador — libere `data` com heap_caps_free().
 struct PvCameraJpeg {
@@ -35,6 +35,27 @@ struct PvCameraJpeg {
     size_t len = 0;
     uint16_t width = 0;
     uint16_t height = 0;
+};
+
+// Resultado COMPLETO de uma captura, retirado com TakeCapture(): o JPEG (o que
+// vai para o backend e para o dump de diagnóstico) e o MESMO quadro já
+// decodificado em RGB565 LE (o que a tela de revisão desenha).
+//
+// Por que os dois vêm juntos: a decodificação por software custa centenas de
+// milissegundos e produz ~2,4 MB. Fazê-la na task do PvApp travaria o laço de
+// eventos (revisão F2, P1); ela roda na TASK DA CÂMERA, que já é exclusiva com
+// o preview por construção, e o par chega pronto do outro lado.
+//
+// POSSE: os DOIS buffers são transferidos ao chamador — `jpeg.data` e `rgb`
+// se liberam com heap_caps_free(). Quem recebe true de TakeCapture() é
+// obrigado a liberar ambos em TODOS os caminhos, inclusive nos de erro.
+struct PvCameraCaptureResult {
+    PvCameraJpeg jpeg;
+    uint8_t* rgb = nullptr;  // RGB565 little endian, decodificado do `jpeg`
+    size_t rgb_len = 0;
+    uint16_t rgb_width = 0;
+    uint16_t rgb_height = 0;
+    size_t rgb_stride = 0;  // bytes por linha (pode exceder rgb_width * 2)
 };
 
 // Motor de câmera do Professor Virtual.
@@ -68,7 +89,7 @@ class PvCamera {
 public:
     enum class Event : uint8_t {
         PreviewFrame,  // há frame novo estável; use AcquireDisplayFrame()
-        JpegReady,     // há foto pronta; use TakeJpeg()
+        JpegReady,     // há foto pronta; use TakeCapture()
         JpegFailed,    // a captura falhou; nada a retirar
     };
 
@@ -104,8 +125,13 @@ public:
     bool AcquireDisplayFrame(PvCameraPreviewFrame& frame);
     void ReleaseDisplayFrame();
 
-    // Retira a foto pronta (transfere a posse). false quando não há nada novo.
-    bool TakeJpeg(PvCameraJpeg& jpeg);
+    // Retira a captura pronta (JPEG + RGB565 decodificado), transferindo a
+    // posse dos DOIS buffers. false quando não há nada novo.
+    //
+    // Também é o ponto de RECONCILIAÇÃO do PvApp: um aviso de conclusão que
+    // não coube na fila de eventos não perde a foto — ela continua aqui até
+    // alguém retirá-la (revisão F2, P1).
+    bool TakeCapture(PvCameraCaptureResult& result);
 
 private:
     enum class Job : uint8_t {
@@ -155,8 +181,10 @@ private:
 
     std::atomic<bool> capture_in_flight_{false};
 
-    std::mutex jpeg_mutex_;
-    PvCameraJpeg jpeg_;
+    // Slot de UMA captura pronta (JPEG + decodificado). Último-vence: publicar
+    // por cima de um resultado não retirado libera os dois buffers antigos.
+    std::mutex capture_mutex_;
+    PvCameraCaptureResult capture_;
 };
 
 #endif  // PV_CAMERA_H

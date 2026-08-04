@@ -9,6 +9,7 @@
 
 #include "board.h"
 #include "jpg/image_to_jpeg.h"
+#include "jpg/jpeg_to_image.h"
 
 #define TAG "PvCamera"
 
@@ -17,12 +18,14 @@ namespace {
 // Três tipos de pedido e coalescência ativa na captura: a fila nunca cresce.
 constexpr UBaseType_t kQueueLength = 4;
 
-// 6 KB de pilha (RAM interna). O caminho mais fundo é
+// 8 KB de pilha (RAM interna). O caminho mais fundo é
 // RunCaptureJpeg() -> image_to_jpeg() -> encoder de hardware (ou o fallback
-// esp_new_jpeg), que trabalham com buffers de heap, não de pilha; o preview é
-// só ioctl + esp_imgfx. 4 KB atenderiam, 6 KB deixam folga para os logs de
-// erro sem custar RAM interna relevante.
-constexpr uint32_t kStackSize = 6144;
+// esp_new_jpeg) e, desde a correção da revisão F2 (P1), também
+// jpeg_to_image() -> decodificador. Os dois trabalham com buffers de HEAP, não
+// de pilha; o preview é só ioctl + esp_imgfx. A folga extra em relação aos
+// 6 KB originais cobre o decodificador que passou a rodar aqui, e custa RAM
+// interna irrelevante frente aos megabytes de PSRAM em jogo.
+constexpr uint32_t kStackSize = 8192;
 
 // Acima da task de rede (2) e abaixo das tasks de UI/áudio: a câmera precisa
 // acordar no ritmo certo, mas nunca à frente do desenho da tela ou do áudio.
@@ -39,6 +42,19 @@ constexpr uint8_t kJpegQuality = 85;
 // O preview falha em série durante o warm-up de ~5 s do ISP (25 tentativas a
 // 5 fps). Loga uma vez a cada 25 falhas para não afogar o console.
 constexpr uint32_t kPreviewFailureLogInterval = 25;
+
+// Libera os DOIS buffers de uma captura e zera a estrutura. Ponto único: com a
+// posse do JPEG e a do decodificado andando juntas, esquecer uma delas num
+// caminho de erro é a forma mais fácil de vazar megabytes de PSRAM.
+void FreeCapture(PvCameraCaptureResult& result) {
+    if (result.jpeg.data != nullptr) {
+        heap_caps_free(result.jpeg.data);
+    }
+    if (result.rgb != nullptr) {
+        heap_caps_free(result.rgb);
+    }
+    result = PvCameraCaptureResult{};
+}
 
 }  // namespace
 
@@ -280,24 +296,60 @@ void PvCamera::RunCaptureJpeg() {
         return;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(jpeg_mutex_);
-        if (jpeg_.data != nullptr) {
-            // Último-vence: a foto anterior nunca foi retirada. Liberar aqui é
-            // o único jeito de não vazar alguns megabytes de PSRAM.
-            ESP_LOGW(TAG, "Foto anterior não retirada; descartada");
-            heap_caps_free(jpeg_.data);
+    // DECODIFICAÇÃO AQUI, NA TASK DA CÂMERA (correção da revisão F2, P1). São
+    // centenas de milissegundos de CPU e ~2,4 MB de saída: rodar isso na task
+    // do PvApp travaria o laço de eventos (rede, health, toques) pelo mesmo
+    // tempo. Esta task já é exclusiva com o preview por construção, então o
+    // custo cai exatamente onde não atrapalha ninguém.
+    PvCameraCaptureResult result;
+    size_t rgb_len = 0;
+    size_t rgb_width = 0;
+    size_t rgb_height = 0;
+    size_t rgb_stride = 0;
+    const int64_t decode_started_us = esp_timer_get_time();
+    const esp_err_t decode_err = jpeg_to_image(jpeg_data, jpeg_len, &result.rgb, &rgb_len,
+                                               &rgb_width, &rgb_height, &rgb_stride);
+    const int64_t decode_ms = (esp_timer_get_time() - decode_started_us) / 1000;
+    if (decode_err != ESP_OK || result.rgb == nullptr || rgb_width == 0 || rgb_height == 0 ||
+        rgb_stride == 0) {
+        // Sem o decodificado não há o que mostrar à criança: a captura INTEIRA
+        // falhou. Não adianta guardar o JPEG — a tela de revisão é o único
+        // consumidor dele nesta fase.
+        ESP_LOGE(TAG, "Falha ao decodificar a foto para exibição (err %d)", (int)decode_err);
+        if (result.rgb != nullptr) {
+            heap_caps_free(result.rgb);
+            result.rgb = nullptr;
         }
-        jpeg_.data = jpeg_data;
-        jpeg_.len = jpeg_len;
-        jpeg_.width = width;
-        jpeg_.height = height;
+        heap_caps_free(jpeg_data);
+        Notify(Event::JpegFailed);
+        return;
+    }
+
+    result.jpeg.data = jpeg_data;
+    result.jpeg.len = jpeg_len;
+    result.jpeg.width = width;
+    result.jpeg.height = height;
+    result.rgb_len = rgb_len;
+    result.rgb_width = static_cast<uint16_t>(rgb_width);
+    result.rgb_height = static_cast<uint16_t>(rgb_height);
+    result.rgb_stride = rgb_stride;
+
+    {
+        std::lock_guard<std::mutex> lock(capture_mutex_);
+        if (capture_.jpeg.data != nullptr || capture_.rgb != nullptr) {
+            // Último-vence: a captura anterior nunca foi retirada. Liberar aqui
+            // (os DOIS buffers) é o único jeito de não vazar megabytes de PSRAM.
+            ESP_LOGW(TAG, "Captura anterior não retirada; descartada");
+            FreeCapture(capture_);
+        }
+        capture_ = result;  // posse transferida ao slot
     }
     ESP_LOGI(TAG,
-             "Foto pronta: %ux%u, %u bytes de JPEG (qualidade %u), codificação %u ms; "
-             "PSRAM livre %u B, maior bloco %u B",
+             "Foto pronta: %ux%u, %u bytes de JPEG (qualidade %u), codificação %u ms, "
+             "decodificação %u ms (%u bytes de RGB565); PSRAM livre %u B, maior bloco %u B",
              (unsigned)width, (unsigned)height, (unsigned)jpeg_len, (unsigned)kJpegQuality,
-             (unsigned)encode_ms, (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)encode_ms, (unsigned)decode_ms, (unsigned)rgb_len,
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
     Notify(Event::JpegReady);
 }
@@ -331,12 +383,13 @@ void PvCamera::ReleaseDisplayFrame() {
     display_index_ = -1;
 }
 
-bool PvCamera::TakeJpeg(PvCameraJpeg& jpeg) {
-    std::lock_guard<std::mutex> lock(jpeg_mutex_);
-    if (jpeg_.data == nullptr) {
+bool PvCamera::TakeCapture(PvCameraCaptureResult& result) {
+    std::lock_guard<std::mutex> lock(capture_mutex_);
+    if (capture_.jpeg.data == nullptr) {
         return false;
     }
-    jpeg = jpeg_;  // posse transferida ao chamador (heap_caps_free)
-    jpeg_ = PvCameraJpeg{};
+    // Posse dos DOIS buffers transferida ao chamador (heap_caps_free em ambos).
+    result = capture_;
+    capture_ = PvCameraCaptureResult{};
     return true;
 }

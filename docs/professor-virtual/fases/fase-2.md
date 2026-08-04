@@ -137,6 +137,8 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
   (`atomic`), exclusão mútua com preview por rodarem na mesma task,
   resultado retirado com `TakeJpeg` (posse transferida; last-wins sem vazar).
   Sem câmera/sem extensões → no-op logado. Nunca toca LVGL/DSM/HTTP.
+  *(Atualizado na revisão rodada 1: pilha 8 KB; `TakeJpeg` → `TakeCapture`,
+  que entrega JPEG + RGB565 decodificado na própria task da câmera.)*
 - `config.json`: só as 2 variantes PV → RAW8 800×800 `=n`, RAW10 1280×960
   binning `=y` + default fmt explícito (sdkconfig gerado confirma, índice 4).
 - Validação: release.py PV verde; `pv_camera.cc.obj` no mapa; testes host
@@ -183,10 +185,11 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 
 - Tela de câmera ganhou modo REVISÃO: botão "Tirar foto" (meio da barra, cor
   de destaque) → `RequestCaptureJpeg` (coalescido) → "Processando..." →
-  `JpegReady` → `TakeJpeg` na task principal → preview PARADO → JPEG
-  decodificado FORA do lock do display (`jpeg_to_image`, decoder SW do
-  esp_new_jpeg já linkado — decoder HW desligado, nenhum Kconfig novo) →
-  foto exibida no lugar do preview. Barra em revisão: "Nova foto",
+  `JpegReady` → resultado retirado na task principal → preview PARADO →
+  foto exibida no lugar do preview (decode `jpeg_to_image` com decoder SW do
+  esp_new_jpeg já linkado — decoder HW desligado, nenhum Kconfig novo;
+  *desde a revisão rodada 1 o decode roda na task da câmera, não na
+  principal*). Barra em revisão: "Nova foto",
   "100%"/"Ajustar" (1:1 com pan pelo scroll nativo do LVGL, abre pelo centro)
   e "Exportar (diagnóstico)". Rótulo único de estado/medições
   ("1280×960 · N KB") — altura da área nunca muda.
@@ -218,6 +221,44 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 - Para a T6 física: tamanho típico/p95 do JPEG por página, tempos de
   encode/decode/dump reais, PSRAM com preview+foto+decodificado coexistindo,
   glifos `×`/`·`, pan 1:1, botões desabilitados durante processos.
+
+### Revisão independente — rodada 1 (2026-08-04, Codex thread 019fcd21)
+
+4×P1 + 2×P2, nenhum P0. Todas as alegações verificadas no código antes da
+correção. **P1 corrigidos:**
+
+1. Decode do JPEG (centenas de ms, ~2,4 MB) rodava na task principal do
+   PvApp: movido para a task da câmera (`RunCaptureJpeg` codifica E
+   decodifica; `TakeJpeg` virou `TakeCapture` com posse dos DOIS buffers;
+   `EnterReview` agora só troca a tela sob o lock; pilha da task da câmera
+   6→8 KB por prudência).
+2. Conclusões (`JpegReady/Failed/ExportDone`) eram best-effort — fila cheia
+   deixava a tela presa em "Processando...": `ReconcileCameraState()` no
+   batimento de 1 s do loop compara ESTADO da tela com
+   `capture_in_flight()`/`PvPhotoDump::busy()` e recupera pelos fluxos
+   normais (eventos seguem sendo o caminho rápido).
+3. `ShowCameraScreen` sem guarda de rota — pedido obsoleto pós-re-hidratação
+   podia abrir a câmera por cima de Failsafe/Tutoria: agora exige
+   `IsLoaded() && route()==Preparation`.
+4. `CaptureRaw` aceitava frame curto do driver e o encoder lê w×h×bpp
+   ignorando `src_len` (leitura fora da alocação): `ExpectedFrameBytes` por
+   FOURCC + rejeição de `V4L2_BUF_FLAG_ERROR` + alocação/cópia do tamanho
+   EXATO esperado; preview RGB565 recusa cópia parcial.
+
+**P2 corrigidos/parciais:**
+
+5. Dump copiava o JPEG inteiro (contra a decisão de streaming): agora é
+   EMPRÉSTIMO com transferência condicional de posse (`TryHandOff` sob o
+   mesmo mutex — ou o dump libera, ou o dono libera; nunca os dois).
+6. Cobertura host da F2: `scripts/tests/test_pv_f2.py` (7 testes — script de
+   extração com bloco íntegro/CRC corrompido/truncado/ruído/dois blocos +
+   exclusividade RAW10 das variantes PV no config.json). **Cobertura C++ com
+   fakes de Camera/fila: registrada e adiada para a F8** (fora do escopo da
+   F2; exigiria harness novo de host para FreeRTOS/LVGL).
+
+Validação pós-correção: build PV verde (`xiaozhi.bin` 2.881.488 bytes,
+11:51); testes host **15 OK** (8+7); PV host_test 155 OK; clang-format limpo
+(hunks novos).
 
 ### T5 — Regressão e medição (2026-08-04)
 

@@ -141,6 +141,11 @@ void PvApp::Run() {
         // Os disparos periódicos (health de 10 s, nova tentativa de hidratação
         // e roteamento §9.1) chegam como PvEventType::HealthTick, postado pelo
         // timer; este laço só consome a fila.
+        //
+        // O timeout de 1 s também é o batimento da RECONCILIAÇÃO da câmera: os
+        // eventos continuam sendo o caminho rápido, mas não são garantidos (a
+        // fila é curta e PostEvent é best-effort). Ver ReconcileCameraState().
+        ReconcileCameraState();
     }
 }
 
@@ -425,9 +430,11 @@ void PvApp::OnCameraEventFromCameraTask(PvCamera::Event event) {
             break;
         }
         case PvCamera::Event::JpegReady:
-            // Só sinaliza: o resultado pesado (o JPEG) NÃO vai pela fila; é
-            // retirado com TakeJpeg() já na task principal, como o padrão
-            // Take* do PvWorker. Evento raro, sem coalescência.
+            // Só sinaliza: o resultado pesado (JPEG + RGB565 decodificado) NÃO
+            // vai pela fila; é retirado com TakeCapture() já na task principal,
+            // como o padrão Take* do PvWorker. Evento raro, sem coalescência.
+            // Se este aviso não couber na fila, a reconciliação periódica
+            // (ReconcileCameraState) recupera a tela.
             PostEvent(PvEventType::CameraJpegReady, std::string(), PvConfigReason::Manual);
             break;
         case PvCamera::Event::JpegFailed:
@@ -473,29 +480,34 @@ void PvApp::HandleCaptureRequested() {
     camera_screen_.SetCapturing(true);
 }
 
-void PvApp::HandleJpegReady() {
-    PvCameraJpeg jpeg;
-    if (!camera_.TakeJpeg(jpeg)) {
-        // Aviso duplicado de uma foto já retirada.
-        return;
+bool PvApp::HandleJpegReady() {
+    PvCameraCaptureResult capture;
+    if (!camera_.TakeCapture(capture)) {
+        // Aviso duplicado de uma captura já retirada (ou, na reconciliação,
+        // sinal de que a captura terminou em falha).
+        return false;
     }
     if (!camera_screen_.IsActive()) {
-        // A tela saiu enquanto a codificação rodava: a posse é nossa e morre
-        // aqui, senão vazariam centenas de KB de PSRAM.
+        // A tela saiu enquanto a codificação rodava: a posse dos DOIS buffers é
+        // nossa e morre aqui, senão vazariam megabytes de PSRAM.
         ESP_LOGW(TAG, "Foto pronta fora da tela de câmera; descartada");
-        heap_caps_free(jpeg.data);
-        return;
+        heap_caps_free(capture.jpeg.data);
+        if (capture.rgb != nullptr) {
+            heap_caps_free(capture.rgb);
+        }
+        return true;
     }
 
     // Preview e revisão são mutuamente exclusivos (decisão F2-Preview): com a
     // foto na tela, o motor da câmera para de produzir frames.
     camera_.StopPreview();
-    if (!camera_screen_.EnterReview(jpeg)) {
-        // EnterReview já liberou o JPEG em qualquer caminho de falha; aqui só
-        // resta explicar e voltar ao preview.
+    if (!camera_screen_.EnterReview(capture)) {
+        // EnterReview já liberou os dois buffers em qualquer caminho de falha;
+        // aqui só resta explicar e voltar ao preview.
         camera_screen_.ShowCaptureFailed();
         camera_.StartPreview();
     }
+    return true;
 }
 
 void PvApp::HandleJpegFailed() {
@@ -503,6 +515,33 @@ void PvApp::HandleJpegFailed() {
         return;
     }
     camera_screen_.ShowCaptureFailed();
+}
+
+void PvApp::ReconcileCameraState() {
+    // Por que existe: CameraJpegReady/JpegFailed/ExportDone são postados com
+    // PostEvent(), que é BEST-EFFORT — a fila tem 8 slots e é compartilhada com
+    // os eventos de rede. Perder um desses avisos deixaria a tela presa em
+    // "Processando..." (botão de captura desabilitado) ou em "Exportando..."
+    // para sempre, sem nenhum caminho de recuperação além de sair da tela
+    // (revisão F2, P1). Os eventos continuam sendo o caminho rápido; isto aqui
+    // é a rede de segurança, verificada a cada timeout de 1 s do laço.
+    //
+    // Todas as condições são de ESTADO (não de aviso), então executar isto
+    // depois de um evento já tratado é apenas um no-op.
+    if (camera_screen_.IsCapturing() && !camera_.capture_in_flight()) {
+        // A captura terminou e a tela continua esperando. Sucesso e falha se
+        // distinguem pelo próprio slot de resultado: se havia captura a
+        // retirar, o fluxo é o do JpegReady; senão, o do JpegFailed.
+        ESP_LOGW(TAG, "Reconciliação: conclusão de captura perdida; recuperando a tela");
+        if (!HandleJpegReady()) {
+            HandleJpegFailed();
+        }
+    }
+    // PROVISÓRIO DA F2: mesmo raciocínio para o dump serial.
+    if (camera_screen_.IsExporting() && !PvPhotoDump::busy()) {
+        ESP_LOGW(TAG, "Reconciliação: conclusão de exportação perdida; recuperando a tela");
+        camera_screen_.ShowExportDone();
+    }
 }
 
 void PvApp::HandleRetakeRequested() {
@@ -540,6 +579,16 @@ void PvApp::ShowCameraScreen() {
     }
     if (config_screen_.IsVisible()) {
         // O adulto está no meio da configuração; não roubar a tela.
+        return;
+    }
+    // GUARDA DE ROTA (revisão F2, P1): o botão que pede a câmera só existe na
+    // tela de Preparação. Um pedido que ficou na fila e é processado DEPOIS de
+    // uma re-hidratação trocar a rota abriria a câmera por cima de Failsafe ou
+    // de Tutoria — e o failsafe existe justamente para tirar a criança do
+    // dispositivo. A rota corrente é a autoridade, não a origem do pedido.
+    if (!route_screens_.IsLoaded() || route_screens_.route() != PvRoute::Preparation) {
+        ESP_LOGW(TAG, "Pedido de câmera recusado: rota corrente é %s (só Preparação abre a câmera)",
+                 route_screens_.IsLoaded() ? PvRouteName(route_screens_.route()) : "(nenhuma)");
         return;
     }
     if (camera_screen_.IsActive()) {

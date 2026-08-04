@@ -952,6 +952,36 @@ uint32_t NormalizeSensorFormat(uint32_t fourcc) {
     }
 }
 
+// Tamanho MÍNIMO, em bytes, de um frame completo no formato dado. 0 quando o
+// formato não é um dos normalizados por NormalizeSensorFormat().
+//
+// Por que isso importa: o codificador JPEG e o conversor de cor trabalham a
+// partir de width x height x bpp e IGNORAM o tamanho declarado do buffer de
+// origem. Um frame curto entregue pelo driver (erro de pipeline, DQBUF
+// interrompido) viraria leitura fora da alocação — não um pixel errado
+// (revisão F2, P1). Aqui é onde o frame curto é recusado.
+size_t ExpectedFrameBytes(uint32_t fourcc, uint16_t width, uint16_t height) {
+    const size_t pixels = (size_t)width * (size_t)height;
+    if (pixels == 0) {
+        return 0;
+    }
+    switch (fourcc) {
+        case V4L2_PIX_FMT_RGB565:
+        case V4L2_PIX_FMT_RGB565X:
+        case V4L2_PIX_FMT_YUYV:
+        case V4L2_PIX_FMT_UYVY:
+            return pixels * 2;
+        case V4L2_PIX_FMT_YUV420:
+            return pixels * 3 / 2;
+        case V4L2_PIX_FMT_RGB24:
+            return pixels * 3;
+        case V4L2_PIX_FMT_GREY:
+            return pixels;
+        default:
+            return 0;
+    }
+}
+
 // Os valores do enum do esp_imgfx são FOURCCs, mas não coincidem todos com os
 // do V4L2 (RGB565 é 'RGBP' lá e 'RGBL' aqui). A tradução explícita evita o
 // cast direto do código legado.
@@ -1024,6 +1054,19 @@ bool EspVideo::CaptureRaw(CameraRawFrame& frame) {
     const uint32_t out_format =
         native_format == V4L2_PIX_FMT_RGB565X ? V4L2_PIX_FMT_RGB565 : native_format;
 
+    // Tamanho EXATO que o consumidor (o codificador JPEG) vai ler, calculado a
+    // partir de width x height x bpp. É ele — e não o bytesused do driver — que
+    // define a alocação e a cópia.
+    const size_t expected = ExpectedFrameBytes(native_format, capture_width_, capture_height_);
+    if (expected == 0) {
+        ESP_LOGE(TAG, "CaptureRaw: tamanho esperado desconhecido para o formato 0x%08lx",
+                 (unsigned long)native_format);
+        return false;
+    }
+
+    // Frame recusado depois do DQBUF: precisa passar pelo QBUF antes de sair.
+    bool rejected = false;
+
     for (int i = 0; i <= kFreshFrameDiscards; i++) {
         struct v4l2_buffer buf = {};
         buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -1034,33 +1077,50 @@ bool EspVideo::CaptureRaw(CameraRawFrame& frame) {
         }
 
         if (i == kFreshFrameDiscards) {
-            // Clampa pelo tamanho do mmap: bytesused é do driver e o buffer de
-            // destino tem exatamente o tamanho copiado (o Capture() legado usa
-            // os dois tamanhos misturados).
-            const size_t len = MIN((size_t)buf.bytesused, mmap_buffers_[buf.index].length);
-            uint8_t* data = (uint8_t*)heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-            if (data == nullptr) {
-                ESP_LOGE(TAG, "CaptureRaw: falha ao alocar %u bytes em PSRAM", (unsigned)len);
+            // Clampa pelo tamanho do mmap: bytesused é do driver e pode até
+            // exceder o frame útil (padding); o que importa é quanto dele é
+            // realmente legível.
+            const size_t available = MIN((size_t)buf.bytesused, mmap_buffers_[buf.index].length);
+            if ((buf.flags & V4L2_BUF_FLAG_ERROR) != 0) {
+                // O driver marcou o frame como defeituoso: os bytes podem ser
+                // parciais mesmo com bytesused cheio.
+                ESP_LOGE(TAG, "CaptureRaw: driver marcou o frame com V4L2_BUF_FLAG_ERROR");
+                rejected = true;
+            } else if (available < expected) {
+                ESP_LOGE(TAG, "CaptureRaw: frame curto (%u < %u bytes); descartado",
+                         (unsigned)available, (unsigned)expected);
+                rejected = true;
             } else {
-                const uint8_t* src = (const uint8_t*)mmap_buffers_[buf.index].start;
-                if (swap_bytes) {
-                    SwapBytes16(src, data, len);
+                uint8_t* data =
+                    (uint8_t*)heap_caps_malloc(expected, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+                if (data == nullptr) {
+                    ESP_LOGE(TAG, "CaptureRaw: falha ao alocar %u bytes em PSRAM",
+                             (unsigned)expected);
                 } else {
-                    memcpy(data, src, len);
+                    const uint8_t* src = (const uint8_t*)mmap_buffers_[buf.index].start;
+                    if (swap_bytes) {
+                        SwapBytes16(src, data, expected);
+                    } else {
+                        memcpy(data, src, expected);
+                    }
+                    // Posse transferida ao chamador: heap_caps_free().
+                    frame.data = data;
+                    frame.len = expected;
+                    frame.width = capture_width_;
+                    frame.height = capture_height_;
+                    frame.format = out_format;
                 }
-                // Posse transferida ao chamador: heap_caps_free().
-                frame.data = data;
-                frame.len = len;
-                frame.width = capture_width_;
-                frame.height = capture_height_;
-                frame.format = out_format;
             }
         }
 
-        // O buffer volta para a fila SEMPRE, inclusive quando a cópia falhou:
-        // segurar um buffer do driver trava o pipeline.
+        // O buffer volta para a fila SEMPRE, inclusive quando a cópia falhou ou
+        // o frame foi recusado: segurar um buffer do driver trava o pipeline.
         if (ioctl(video_fd_, VIDIOC_QBUF, &buf) != 0) {
             ESP_LOGE(TAG, "CaptureRaw: VIDIOC_QBUF falhou, errno=%d(%s)", errno, strerror(errno));
+        }
+
+        if (rejected) {
+            return false;
         }
     }
 
@@ -1076,11 +1136,20 @@ bool EspVideo::ConvertPreviewToRgb565(const uint8_t* src, size_t src_len, uint32
                                       uint8_t* dst, size_t dst_len) {
     // Caminho direto: o sensor já entrega RGB565 e só falta a ordem dos bytes.
     if (src_format == V4L2_PIX_FMT_RGB565 || src_format == V4L2_PIX_FMT_RGB565X) {
-        const size_t n = MIN(src_len, dst_len);
+        // `dst_len` é exatamente width*height*2 (o chamador o calcula assim). Um
+        // frame curto NÃO pode virar cópia parcial publicada como frame inteiro:
+        // a tela desenharia lixo do buffer anterior e, pior, o mesmo padrão de
+        // "confia no bytesused" é o que gera leitura fora dos limites no
+        // caminho da foto (revisão F2, P1).
+        if (src_len < dst_len) {
+            ESP_LOGE(TAG, "Preview: frame RGB565 curto (%u < %u bytes)", (unsigned)src_len,
+                     (unsigned)dst_len);
+            return false;
+        }
         if (src_format == V4L2_PIX_FMT_RGB565X || kSwapPixelBytes) {
-            SwapBytes16(src, dst, n);
+            SwapBytes16(src, dst, dst_len);
         } else {
-            memcpy(dst, src, n);
+            memcpy(dst, src, dst_len);
         }
         return true;
     }
@@ -1210,9 +1279,18 @@ bool EspVideo::AcquirePreviewFrame(CameraPreviewFrame& frame) {
         return false;
     }
 
+    // Frame marcado como defeituoso pelo driver: nem tenta converter. O
+    // conversor lê width*height*bpp e não olha o tamanho de origem.
+    const bool buffer_error = (buf.flags & V4L2_BUF_FLAG_ERROR) != 0;
     const size_t src_len = MIN((size_t)buf.bytesused, mmap_buffers_[buf.index].length);
-    const bool ok = ConvertPreviewToRgb565((const uint8_t*)mmap_buffers_[buf.index].start, src_len,
-                                           src_format, frame.buffer, needed);
+    const bool ok =
+        !buffer_error && ConvertPreviewToRgb565((const uint8_t*)mmap_buffers_[buf.index].start,
+                                                src_len, src_format, frame.buffer, needed);
+    if (buffer_error) {
+        // DEBUG e não ERROR: durante o warm-up isto pode se repetir a 5 fps, e
+        // o chamador já conta e loga as falhas em série.
+        ESP_LOGD(TAG, "Preview: driver marcou o frame com V4L2_BUF_FLAG_ERROR");
+    }
 
     // Devolve o buffer ao driver IMEDIATAMENTE — o pipeline só tem dois; segurar
     // um deles durante o desenho da tela derrubaria a taxa de quadros.

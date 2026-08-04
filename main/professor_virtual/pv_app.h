@@ -121,8 +121,15 @@ private:
     void ShowCameraScreen();
     // Captura e revisão (T4). Tudo aqui roda na task do PvApp.
     void HandleCaptureRequested();
-    void HandleJpegReady();
+    // false quando não havia captura a retirar (aviso duplicado, ou a captura
+    // na verdade falhou) — é o que a reconciliação usa para decidir.
+    bool HandleJpegReady();
     void HandleJpegFailed();
+    // REDE DE SEGURANÇA para os avisos de conclusão da câmera e do dump: os
+    // eventos continuam sendo o caminho rápido, mas a fila é curta e um evento
+    // que não coube deixaria a tela presa em "Processando..."/"Exportando..."
+    // (revisão F2, P1). Roda no timeout do laço principal.
+    void ReconcileCameraState();
     void HandleRetakeRequested();
     void HandleExportRequested();  // PROVISÓRIO DA F2
     // Ponto ÚNICO de saída da tela de câmera: desliga o preview e faz a tela

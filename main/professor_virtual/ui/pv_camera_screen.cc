@@ -1,18 +1,16 @@
 #include "ui/pv_camera_screen.h"
 
 #include <esp_app_desc.h>
-#include <esp_err.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
-#include <esp_timer.h>
 
 #include <cstdio>
 #include <utility>
 
 #include "board.h"
 #include "display/display.h"
-#include "jpg/jpeg_to_image.h"
 #include "pv_camera.h"
+#include "pv_photo_dump.h"  // PROVISÓRIO DA F2 (handoff de posse do JPEG)
 #include "pv_strings.h"
 #include "ui/pv_config_gesture.h"
 #include "ui/pv_ui_theme.h"
@@ -69,6 +67,18 @@ void SetHidden(lv_obj_t* obj, bool hidden) {
         lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// Libera os DOIS buffers de uma captura cuja posse já é da tela. Existe para
+// que nenhum caminho de erro do EnterReview() esqueça um deles: com o JPEG e o
+// RGB565 andando juntos, meia liberação vaza centenas de KB ou megabytes.
+void ReleaseCaptureResult(const PvCameraCaptureResult& result) {
+    if (result.jpeg.data != nullptr) {
+        heap_caps_free(result.jpeg.data);
+    }
+    if (result.rgb != nullptr) {
+        heap_caps_free(result.rgb);
     }
 }
 
@@ -369,38 +379,24 @@ void PvCameraScreen::ShowCaptureFailed() {
     UpdateActionBarLocked();
 }
 
-bool PvCameraScreen::EnterReview(const PvCameraJpeg& jpeg) {
-    // POSSE: entra aqui e não sai. Todo `return false` abaixo libera o buffer.
-    if (jpeg.data == nullptr || jpeg.len == 0) {
+bool PvCameraScreen::EnterReview(const PvCameraCaptureResult& result) {
+    // POSSE: os DOIS buffers entram aqui e não saem. Todo `return false` abaixo
+    // libera ambos — nunca só um.
+    if (result.jpeg.data == nullptr || result.jpeg.len == 0 || result.rgb == nullptr ||
+        result.rgb_width == 0 || result.rgb_height == 0 || result.rgb_stride == 0) {
+        ReleaseCaptureResult(result);
         return false;
     }
     auto display = Board::GetInstance().GetDisplay();
     if (!active_ || screen_ == nullptr || image_ == nullptr || display == nullptr) {
-        heap_caps_free(jpeg.data);
+        ReleaseCaptureResult(result);
         return false;
     }
 
-    // A DECODIFICAÇÃO RODA FORA DO LOCK DO DISPLAY. São centenas de
-    // milissegundos de CPU (decodificador por software do esp_new_jpeg, ~2,4
-    // MB de saída): segurar o lock aqui congelaria a task do LVGL e, com ela,
-    // o toque na tela inteira.
-    uint8_t* rgb = nullptr;
-    size_t rgb_len = 0;
-    size_t width = 0;
-    size_t height = 0;
-    size_t stride = 0;
-    const int64_t decode_started_us = esp_timer_get_time();
-    const esp_err_t err =
-        jpeg_to_image(jpeg.data, jpeg.len, &rgb, &rgb_len, &width, &height, &stride);
-    const int64_t decode_ms = (esp_timer_get_time() - decode_started_us) / 1000;
-    if (err != ESP_OK || rgb == nullptr || width == 0 || height == 0 || stride == 0) {
-        ESP_LOGE(TAG, "Falha ao decodificar a foto para exibição (err %d)", (int)err);
-        heap_caps_free(jpeg.data);
-        return false;
-    }
-    ESP_LOGI(TAG, "Foto decodificada: %ux%u, %u bytes de RGB565, %u ms", (unsigned)width,
-             (unsigned)height, (unsigned)rgb_len, (unsigned)decode_ms);
-
+    // A DECODIFICAÇÃO NÃO ACONTECE MAIS AQUI: ela roda na task da câmera e
+    // chega pronta em `result` (correção da revisão F2, P1). O que sobra é uma
+    // troca de tela — barata o bastante para caber inteira sob o lock do
+    // display sem congelar a task do LVGL.
     DisplayLockGuard lock(display);
 
     // Sai do preview: o LVGL para de referenciar o frame emprestado e o buffer
@@ -411,17 +407,17 @@ bool PvCameraScreen::EnterReview(const PvCameraJpeg& jpeg) {
     // mas liberar aqui é o que torna o dono único inquebrável).
     ReleasePhotoLocked();
 
-    photo_ = jpeg;
+    photo_ = result.jpeg;
     // Só DEPOIS do ReleasePhotoLocked acima, que zera este mesmo buffer: as
     // medições que a T6 vai ler na tela são o tamanho do JPEG e as dimensões.
     const unsigned kib = static_cast<unsigned>((photo_.len + 512) / 1024);
     std::snprintf(info_text_, sizeof(info_text_), "%u×%u · %u KB", (unsigned)photo_.width,
                   (unsigned)photo_.height, kib);
-    decoded_ = rgb;
-    decoded_len_ = rgb_len;
-    decoded_width_ = static_cast<uint16_t>(width);
-    decoded_height_ = static_cast<uint16_t>(height);
-    decoded_stride_ = stride;
+    decoded_ = result.rgb;
+    decoded_len_ = result.rgb_len;
+    decoded_width_ = result.rgb_width;
+    decoded_height_ = result.rgb_height;
+    decoded_stride_ = result.rgb_stride;
 
     photo_dsc_.header.magic = LV_IMAGE_HEADER_MAGIC;
     photo_dsc_.header.cf = LV_COLOR_FORMAT_RGB565;
@@ -573,7 +569,8 @@ void PvCameraScreen::ReleaseFrameLocked() {
 void PvCameraScreen::ReleasePhotoLocked() {
     if (decoded_ != nullptr) {
         // Alocado pelo jpeg_to_image (jpeg_calloc_align, que por baixo é
-        // heap_caps_*): a liberação documentada é heap_caps_free.
+        // heap_caps_*): a liberação documentada é heap_caps_free. O
+        // decodificado NUNCA é emprestado a ninguém fora da tela.
         heap_caps_free(decoded_);
         decoded_ = nullptr;
     }
@@ -582,7 +579,15 @@ void PvCameraScreen::ReleasePhotoLocked() {
     decoded_height_ = 0;
     decoded_stride_ = 0;
     if (photo_.data != nullptr) {
-        heap_caps_free(photo_.data);
+        // PROVISÓRIO DA F2 — HANDOFF DE POSSE: o dump serial lê este mesmo
+        // buffer por dezenas de segundos, SEM cópia. Se ele ainda estiver
+        // usando exatamente este ponteiro, a posse passa para ele e quem libera
+        // é o dump, no fim da task; caso contrário (nenhum dump, ou dump de
+        // outra foto, ou dump já terminado) a liberação é nossa, aqui. Ver o
+        // protocolo em pv_photo_dump.h.
+        if (!PvPhotoDump::TryHandOff(photo_.data)) {
+            heap_caps_free(photo_.data);
+        }
     }
     photo_ = PvCameraJpeg{};
     info_text_[0] = '\0';
@@ -695,8 +700,9 @@ void PvCameraScreen::UpdateActionBarLocked() {
     SetHidden(zoom_button_, !review);
     SetHidden(export_button_, !review);
     SetEnabled(export_button_, !exporting_);
-    // "Nova foto" durante uma exportação é seguro: o dump trabalha sobre uma
-    // CÓPIA própria do JPEG (pv_photo_dump), não sobre o buffer da tela.
+    // "Nova foto" durante uma exportação é seguro: soltar a foto entrega a
+    // POSSE do JPEG ao dump em andamento (PvPhotoDump::TryHandOff), então o
+    // buffer que ele está lendo continua vivo até o dump acabar.
     SetEnabled(retake_button_, true);
 
     if (zoom_label_ != nullptr) {
