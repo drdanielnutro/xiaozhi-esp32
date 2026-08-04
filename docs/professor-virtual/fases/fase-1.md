@@ -33,14 +33,18 @@ dono).**
 
 ## Pendências físicas (hardware)
 
-- Flash da variante F1 e validação na placa real com backend na LAN:
-  boot → conexão Wi-Fi → hidratação → roteamento; desconexão mostra estado
-  correto (ação do proprietário).
-- Spike (a): comportamento do timeout do wrapper `Http` com resposta
-  lenta/queda do backend, observado na placa.
-- Spike (b): confirmação visual dos acentos pt-BR na tela.
-- Exercício real de `401`/`503` com `DEVICE_API_TOKEN` configurado no
-  backend (pendência herdada da F0).
+- ~~Flash + validação com backend na LAN~~ **RESOLVIDO (2026-08-04):**
+  boot → Wi-Fi → hidratação → rota Preparação sem nenhum toque; queda do
+  backend com rota no ar → badge "servidor: desconectado" e tela mantida;
+  volta do backend → re-hidratação e badge "conectado" sozinhos (§9.7).
+- ~~Spike (b) acentos pt-BR~~ **RESOLVIDO (2026-08-04):** todas as telas
+  pt-BR legíveis com acentuação correta na fonte da 7B.
+- ~~401/503 reais~~ **RESOLVIDO (2026-08-04):** backend sem token → 503 →
+  tela de config; token errado → 401 → "Token recusado"; token certo →
+  hidratação completa (log do uvicorn confirmando cada caso).
+- Spike (a) **parcial → F8:** timeouts exercitados com backend ausente/IP
+  morto (recuperação ok); resposta lenta artificial e roteiro completo da
+  ressalva F1-HttpTimeout ficam para a F8.
 
 ## Tasks
 
@@ -78,9 +82,10 @@ dono).**
       (`python3 -m unittest discover -s scripts/tests`) + tamanho do binário
       vs OTA 4 MB registrado
       · pronto quando: tudo verde e medição nas notas.
-- [ ] T7 — Validação física com backend real na LAN (flash pelo dono):
+- [x] T7 — Validação física com backend real na LAN (flash pelo dono):
       boot → hidrata → roteia; desconexão correta; spikes (a) e (b)
       observados · pronto quando: confirmado pelo proprietário na placa.
+      (Concluída em 2026-08-04; spike (a) coberto parcialmente — resto → F8.)
 
 ## Contexto de retomada
 
@@ -230,6 +235,35 @@ health/hidratação em voo; lição > 8 KiB; logs em build DEBUG sem token.
 **NO_FINDINGS — fase aprovada.** Correções dos 5 P1 verificadas pelo
 revisor; nenhuma regressão nova. Encerramento com a T7 (validação física)
 aberta como pendência do proprietário.
+
+### T7 — Validação física (2026-08-03/04, Mac + backend real na LAN)
+
+Além dos cenários do checklist (todos ✓), a validação revelou e corrigiu
+dois problemas reais e registrou observações:
+
+1. **Toque invertido 180° no painel 7B** (decisão F1-TouchMirror): GT911
+   com origem oposta à do display; driver upstream nunca compensou (toque
+   quase não usado pelo assistente). Correção com gate duplo
+   PV+7B no board file (upstream binariamente idêntico). Dívida upstream
+   registrada (recomendar issue com a 7B original). Validado: teclado
+   preciso nos quatro cantos e centro.
+2. **Sem caminho manual para a tela de configuração** (decisão
+   F1-ConfigGesture): dispositivo ficou preso apontando para IP morto
+   quando o roteador reciclou o IP do Mac. Long-press 3 s no indicador de
+   servidor (preferência do proprietário) e no rótulo da versão, nas cinco
+   telas; `net_generation_++` ao abrir. Exceção registrada para a F6 (PIN
+   não pode ser o único caminho de recuperação). Validado no cenário real.
+3. **Strings ajustadas na validação:** mensagem do 503 diferenciada do erro
+   de rede; badge ganhou prefixo "servidor:" (era ambíguo com o Wi-Fi).
+4. **Observação → F8/F3:** hidratação intermitentemente parou na abertura
+   da 3ª conexão (`/api/lesson` nem chegou ao uvicorn; 2× em rajada de
+   tentativas, autocura no tick de 10 s). Hipótese: esgotamento transitório
+   de sockets (TIME_WAIT) no LWIP. Investigar com instrumentação na F8;
+   relevante para os downloads de mídia da F3 (mesmo caminho HTTP).
+5. Armadilha de ambiente: backend lê o `.env` da RAIZ do `licao_casa`
+   (`config.py:32`), não de `backend/.env`. Recomendação ao proprietário:
+   reservar IP fixo para o Mac no roteador (IP reciclado foi a causa raiz
+   do cenário 2).
 
 **P2 adiado com registro:** `ResolveUrl` aceita URL absoluta de qualquer
 origem; sem download de mídia na F1 não há exposição, mas ANTES da F3 o

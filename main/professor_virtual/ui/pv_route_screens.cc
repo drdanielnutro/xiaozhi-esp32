@@ -4,10 +4,13 @@
 
 #include <string>
 
+#include <esp_app_desc.h>
 #include "board.h"
 #include "display/display.h"
+
 #include "pv_route_text.h"
 #include "pv_strings.h"
+#include "ui/pv_config_gesture.h"
 #include "ui/pv_ui_theme.h"
 
 #define TAG "PvRouteScreens"
@@ -85,6 +88,16 @@ PvRouteScreens::Entry& PvRouteScreens::EnsureEntry(PvRoute route) {
     lv_obj_set_style_pad_all(detail, 16, 0);
     lv_label_set_text(detail, "");
     lv_obj_add_flag(detail, LV_OBJ_FLAG_HIDDEN);
+
+    // Rodapé com a versão: mesmo alvo do gesto de recuperação das outras
+    // telas (long-press de 3 s abre a configuração — decisão F1-ConfigGesture).
+    auto* version = lv_label_create(screen);
+    lv_obj_set_style_text_color(version, lv_color_hex(PvUi::kColorMuted), 0);
+    lv_label_set_text_fmt(version, "v%s", esp_app_get_description()->version);
+    lv_obj_align(version, LV_ALIGN_BOTTOM_MID, 0, -16);
+    lv_obj_add_flag(version, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_set_ext_click_area(version, 40);
+    PvUi::AttachConfigGesture(version);
 
     entry.screen = screen;
     entry.detail = detail;

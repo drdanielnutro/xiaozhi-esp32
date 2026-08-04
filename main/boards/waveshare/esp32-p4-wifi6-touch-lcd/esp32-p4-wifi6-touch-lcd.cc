@@ -370,8 +370,19 @@ private:
             },
             .flags = {
                 .swap_xy = 0,
+#if defined(CONFIG_PROFESSOR_VIRTUAL) && defined(CONFIG_BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_7B)
+                // Painel 7B: o GT911 é montado com a origem oposta à do
+                // display, e o toque chega invertido 180° (validado no
+                // hardware em 2026-08-03, T7 da F1). Gate duplo de propósito:
+                // builds upstream ficam binariamente idênticos, e uma futura
+                // variante PV de outro painel da família não herda a inversão
+                // sem validação física própria (decisão F1-TouchMirror).
+                .mirror_x = 1,
+                .mirror_y = 1,
+#else
                 .mirror_x = 0,
                 .mirror_y = 0,
+#endif
             },
         };
         esp_lcd_panel_io_handle_t tp_io_handle = NULL;

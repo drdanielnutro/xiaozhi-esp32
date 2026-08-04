@@ -47,12 +47,12 @@ inline constexpr const char* kCfgErrTokenEmpty = "Informe o token do dispositivo
 inline constexpr const char* kCfgReasonMissing = "Faltam os dados do servidor para começar.";
 inline constexpr const char* kCfgReasonUnauthorized = "Token recusado. Digite o token de novo.";
 inline constexpr const char* kCfgReasonUnavailable =
-    "Não consegui falar com o servidor. Confira o endereço.";
+    "O servidor respondeu, mas ainda não tem o token do dispositivo configurado.";
 inline constexpr const char* kCfgReasonManual = "Confira os dados do servidor.";
 
 // Indicador de conexão com o backend, presente em todas as telas do PV.
-inline constexpr const char* kConnOnline = "conectado";
-inline constexpr const char* kConnOffline = "desconectado";
+inline constexpr const char* kConnOnline = "servidor: conectado";
+inline constexpr const char* kConnOffline = "servidor: desconectado";
 
 // Hidratação (§9.1): health + state + lesson depois que a rede sobe.
 inline constexpr const char* kHydrating = "Falando com o professor...";

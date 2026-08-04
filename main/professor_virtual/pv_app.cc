@@ -320,6 +320,10 @@ void PvApp::HandleWifiConfigMode() {
 
 void PvApp::ShowConfigScreen(PvConfigReason reason) {
     phase_ = PvPhase::AwaitingBackendConfig;
+    // Invalida qualquer resultado HTTP em voo (ressalva F1-ConfigGesture):
+    // uma hidratação que termine agora não pode fechar/roubar a tela de
+    // configuração que o adulto acabou de abrir.
+    net_generation_++;
     // Enquanto o adulto configura, nada de bater no backend com a credencial
     // que acabou de ser recusada.
     StopHealthTimer();

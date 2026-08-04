@@ -1,6 +1,7 @@
 #include "ui/pv_ui_theme.h"
 
 #include "pv_strings.h"
+#include "ui/pv_config_gesture.h"
 
 LV_FONT_DECLARE(BUILTIN_TEXT_FONT);
 
@@ -54,6 +55,11 @@ ConnectionBadge CreateConnectionBadge(lv_obj_t* parent) {
     lv_obj_add_flag(container, LV_OBJ_FLAG_IGNORE_LAYOUT);
     lv_obj_remove_flag(container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(container, LV_ALIGN_TOP_RIGHT, -16, 16);
+    // Porta intuitiva do gesto de recuperação (preferência do proprietário,
+    // 2026-08-04): segurar 3 s no indicador de servidor abre a configuração.
+    // O rótulo da versão mantém o mesmo gesto como caminho alternativo.
+    lv_obj_set_ext_click_area(container, 40);
+    AttachConfigGesture(container);
 
     auto* dot = lv_obj_create(container);
     lv_obj_remove_style_all(dot);

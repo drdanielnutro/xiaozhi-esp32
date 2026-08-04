@@ -6,6 +6,7 @@
 #include "board.h"
 #include "display/display.h"
 #include "pv_strings.h"
+#include "ui/pv_config_gesture.h"
 #include "ui/pv_ui_theme.h"
 
 #define TAG "PvStatusScreen"
@@ -52,6 +53,9 @@ void PvStatusScreen::Create() {
     lv_label_set_text_fmt(version, "v%s", esp_app_get_description()->version);
     lv_obj_align(version, LV_ALIGN_BOTTOM_MID, 0, -16);
     lv_obj_add_flag(version, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    // Área de toque confortável ao redor do texto (ressalva F1-ConfigGesture).
+    lv_obj_set_ext_click_area(version, 40);
+    PvUi::AttachConfigGesture(version);
 
     badge_ = PvUi::CreateConnectionBadge(screen);
 
