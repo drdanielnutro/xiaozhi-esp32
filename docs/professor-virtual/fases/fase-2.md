@@ -56,7 +56,7 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
       para A4 nas variantes PV; qualidade JPEG e caminho de validação da
       legibilidade off-device) · pronto quando: decisões registradas no
       decision-log.
-- [ ] T2 — Infra de captura conforme T1 + `pv_camera.cc/.h` (captura de
+- [x] T2 — Infra de captura conforme T1 + `pv_camera.cc/.h` (captura de
       frame RGB565 + codificação JPEG com encoder HW/fallback SW; buffers em
       PSRAM com posse clara) · pronto quando: build PV verde e API do
       `pv_camera` consumível pelo `PvApp` sem tocar LVGL fora da task do LVGL.
@@ -110,3 +110,38 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
   console serial (marcadores + comprimento + CRC32, streaming), acionado só
   por gesto explícito e removível após a F2; conferência complementar na
   tela decodificando o mesmo JPEG. `/api/prepare/*` rejeitado para teste.
+
+### T2 — Infra de captura + pv_camera (2026-08-04, subagente opus)
+
+- `camera.h`: extensões opcionais aditivas com default `false` —
+  `GetSensorResolution` (dimensiona buffers do chamador antes do 1º frame),
+  `CaptureRaw(CameraRawFrame&)` (frame fresco full-res no formato nativo,
+  posse do buffer PSRAM transferida ao chamador) e
+  `AcquirePreviewFrame(CameraPreviewFrame&)` (um DQBUF → RGB565 LE no buffer
+  reutilizável do chamador → QBUF imediato). `Esp32Camera`/`SscmaCamera`
+  intocadas; sem `dynamic_cast` no PV.
+- `esp_video.{h,cc}`: implementação dos três métodos; `Capture()`/`Explain()`
+  intactos. Endianness sob a mesma Kconfig do legado (uma troca só; RGB565X
+  vira RGB565 LE); clamp `MIN(bytesused, mmap length)` (o legado mistura os
+  dois tamanhos); conversor esp_imgfx e intermediário de swap são membros
+  reutilizáveis (zero alocação por frame); `capture_width_/height_` guardam a
+  geometria real do driver; recusa educada durante o warm-up de 5 s do ISP.
+- `pv_camera.{h,cc}`: task própria (`pv_camera`, 6 KB, prio 3) é a ÚNICA a
+  falar com a câmera (serialização por construção); preview ~5 fps
+  (`pdMS_TO_TICKS(200)`, atraso acumulado descartado) em double-buffer PSRAM
+  alinhado a 64 (2× w·h·2, alocado uma vez); sincronização por três índices
+  sob mutex leve (writing/ready/display), invalidação do ready ANTES de
+  reusar o buffer, conversão fora do mutex; empréstimo
+  `AcquireDisplayFrame/ReleaseDisplayFrame`; captura JPEG q85 coalescida
+  (`atomic`), exclusão mútua com preview por rodarem na mesma task,
+  resultado retirado com `TakeJpeg` (posse transferida; last-wins sem vazar).
+  Sem câmera/sem extensões → no-op logado. Nunca toca LVGL/DSM/HTTP.
+- `config.json`: só as 2 variantes PV → RAW8 800×800 `=n`, RAW10 1280×960
+  binning `=y` + default fmt explícito (sdkconfig gerado confirma, índice 4).
+- Validação: release.py PV verde; `pv_camera.cc.obj` no mapa; testes host
+  release OK + PV 155 verificações OK; clang-format limpo nos arquivos novos
+  (violações pré-existentes do esp_video não tocadas; hunks novos limpos);
+  `xiaozhi.bin` 2.785.056 bytes (34% livres na OTA 4 MB).
+- Pendências para T3/T4: tela LVGL consumindo o empréstimo de frame, fiação
+  dos eventos no PvApp (handler roda na task da câmera e só posta), gesto do
+  dump base64 e medições físicas (5 fps sustentado, PSRAM, tearing).

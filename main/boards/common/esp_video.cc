@@ -278,6 +278,9 @@ EspVideo::EspVideo(const esp_video_init_config_t& config) {
     frame_.width = setformat.fmt.pix.width;
     frame_.height = setformat.fmt.pix.height;
 #endif
+    // Sem rotação: é a geometria que o driver realmente entrega em cada DQBUF.
+    capture_width_ = setformat.fmt.pix.width;
+    capture_height_ = setformat.fmt.pix.height;
 
     // 申请缓冲并mmap
     struct v4l2_requestbuffers req = {};
@@ -368,6 +371,17 @@ EspVideo::EspVideo(const esp_video_init_config_t& config) {
 }
 
 EspVideo::~EspVideo() {
+    if (preview_convert_handle_ != nullptr) {
+        esp_imgfx_color_convert_close(
+            static_cast<esp_imgfx_color_convert_handle_t>(preview_convert_handle_));
+        preview_convert_handle_ = nullptr;
+        preview_convert_format_ = 0;
+    }
+    if (preview_swap_buffer_ != nullptr) {
+        heap_caps_free(preview_swap_buffer_);
+        preview_swap_buffer_ = nullptr;
+        preview_swap_size_ = 0;
+    }
     if (streaming_on_ && video_fd_ >= 0) {
         int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         ioctl(video_fd_, VIDIOC_STREAMOFF, &type);
@@ -882,6 +896,336 @@ bool EspVideo::SetVFlip(bool enabled) {
         ESP_LOGE(TAG, "set VFLIP failed");
         return false;
     }
+    return true;
+}
+
+// ===========================================================================
+// Extensões opcionais da interface Camera (decisões F2-FrameAccess/F2-Preview)
+//
+// Por que existem: o EspVideo é o dono ÚNICO do device CSI (a placa o instancia
+// incondicionalmente e um segundo open não é viável). Em vez de expor o frame
+// privado — cujo tempo de vida é frágil — ou de obrigar o aplicativo a um
+// dynamic_cast, o acesso é feito por dois métodos aditivos com posse de buffer
+// explícita. Nada aqui altera Capture()/Explain(), que continuam sendo o
+// caminho do assistente XiaoZhi.
+//
+// NENHUM dos métodos abaixo é thread-safe: eles compartilham o mesmo fd e os
+// mesmos buffers mmap do Capture(). O chamador (no Professor Virtual, a task
+// do PvCamera) é responsável por serializar tudo numa única task.
+// ===========================================================================
+
+namespace {
+
+// Quantos frames são descartados antes da foto. Os buffers mmap guardam
+// imagens já expostas quando o preview estava rodando (ou desde o warm-up do
+// ISP); com REQBUFS count=2, dois descartes garantem que o terceiro DQBUF
+// devolva um frame capturado DEPOIS do pedido. Mesmo número usado por
+// Capture().
+constexpr int kFreshFrameDiscards = 2;
+
+// O sensor desta placa entrega os pixels de 16 bits em ordem trocada; o
+// Capture() legado corrige isso sob a mesma Kconfig. Como constexpr (e não
+// #ifdef espalhado) para o código continuar legível e sempre compilado.
+#ifdef CONFIG_XIAOZHI_ENABLE_CAMERA_ENDIANNESS_SWAP
+constexpr bool kSwapPixelBytes = true;
+#else
+constexpr bool kSwapPixelBytes = false;
+#endif  // CONFIG_XIAOZHI_ENABLE_CAMERA_ENDIANNESS_SWAP
+
+// O esp_video 1.x devolvia YUYV empacotado sob o FOURCC 'YU16' (YUV422P).
+// Normaliza para o FOURCC que descreve o conteúdo real — é ele que vai para o
+// codificador JPEG e para o conversor de cor.
+uint32_t NormalizeSensorFormat(uint32_t fourcc) {
+    switch (fourcc) {
+        case V4L2_PIX_FMT_YUV422P:
+            return V4L2_PIX_FMT_YUYV;
+        case V4L2_PIX_FMT_YUYV:
+        case V4L2_PIX_FMT_UYVY:
+        case V4L2_PIX_FMT_YUV420:
+        case V4L2_PIX_FMT_RGB565:
+        case V4L2_PIX_FMT_RGB565X:
+        case V4L2_PIX_FMT_RGB24:
+        case V4L2_PIX_FMT_GREY:
+            return fourcc;
+        default:
+            return 0;  // sem tradução conhecida
+    }
+}
+
+// Os valores do enum do esp_imgfx são FOURCCs, mas não coincidem todos com os
+// do V4L2 (RGB565 é 'RGBP' lá e 'RGBL' aqui). A tradução explícita evita o
+// cast direto do código legado.
+bool V4l2ToImgfxFormat(uint32_t fourcc, esp_imgfx_pixel_fmt_t& out) {
+    switch (fourcc) {
+        case V4L2_PIX_FMT_YUYV:
+            out = ESP_IMGFX_PIXEL_FMT_YUYV;
+            return true;
+        case V4L2_PIX_FMT_UYVY:
+            out = ESP_IMGFX_PIXEL_FMT_UYVY;
+            return true;
+        case V4L2_PIX_FMT_YUV420:
+            out = ESP_IMGFX_PIXEL_FMT_I420;
+            return true;
+        case V4L2_PIX_FMT_RGB24:
+            out = ESP_IMGFX_PIXEL_FMT_RGB888;
+            return true;
+        case V4L2_PIX_FMT_GREY:
+            out = ESP_IMGFX_PIXEL_FMT_Y;
+            return true;
+        default:
+            return false;
+    }
+}
+
+void SwapBytes16(const uint8_t* src, uint8_t* dst, size_t len) {
+    auto src16 = reinterpret_cast<const uint16_t*>(src);
+    auto dst16 = reinterpret_cast<uint16_t*>(dst);
+    const size_t count = len / 2;
+    for (size_t i = 0; i < count; i++) {
+        dst16[i] = __builtin_bswap16(src16[i]);
+    }
+    if (len & 1) {
+        dst[len - 1] = src[len - 1];  // cauda ímpar: copiada como está
+    }
+}
+
+}  // namespace
+
+bool EspVideo::GetSensorResolution(uint16_t& width, uint16_t& height) {
+    if (video_fd_ < 0 || capture_width_ == 0 || capture_height_ == 0) {
+        return false;
+    }
+    width = capture_width_;
+    height = capture_height_;
+    return true;
+}
+
+bool EspVideo::CaptureRaw(CameraRawFrame& frame) {
+    frame = CameraRawFrame{};
+
+    if (video_fd_ < 0 || !streaming_on_) {
+        // Enquanto o ISP não terminou o warm-up de 5 s, streaming_on_ é false:
+        // recusar educadamente é melhor do que devolver uma foto sem AWB/AE.
+        ESP_LOGW(TAG, "CaptureRaw: câmera indisponível (fd=%d, streaming=%d)", video_fd_,
+                 (int)streaming_on_);
+        return false;
+    }
+
+    const uint32_t native_format = NormalizeSensorFormat(sensor_format_);
+    if (native_format == 0) {
+        ESP_LOGE(TAG, "CaptureRaw: formato de sensor não suportado: 0x%08lx",
+                 (unsigned long)sensor_format_);
+        return false;
+    }
+    // RGB565 big endian vira RGB565 little endian com a MESMA troca de 16 bits
+    // que a Kconfig de endianness pede — uma troca só, nunca duas (é assim que
+    // o Capture() legado trata o caso).
+    const bool swap_bytes = kSwapPixelBytes || native_format == V4L2_PIX_FMT_RGB565X;
+    const uint32_t out_format =
+        native_format == V4L2_PIX_FMT_RGB565X ? V4L2_PIX_FMT_RGB565 : native_format;
+
+    for (int i = 0; i <= kFreshFrameDiscards; i++) {
+        struct v4l2_buffer buf = {};
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        if (ioctl(video_fd_, VIDIOC_DQBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "CaptureRaw: VIDIOC_DQBUF falhou, errno=%d(%s)", errno, strerror(errno));
+            return false;
+        }
+
+        if (i == kFreshFrameDiscards) {
+            // Clampa pelo tamanho do mmap: bytesused é do driver e o buffer de
+            // destino tem exatamente o tamanho copiado (o Capture() legado usa
+            // os dois tamanhos misturados).
+            const size_t len = MIN((size_t)buf.bytesused, mmap_buffers_[buf.index].length);
+            uint8_t* data = (uint8_t*)heap_caps_malloc(len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+            if (data == nullptr) {
+                ESP_LOGE(TAG, "CaptureRaw: falha ao alocar %u bytes em PSRAM", (unsigned)len);
+            } else {
+                const uint8_t* src = (const uint8_t*)mmap_buffers_[buf.index].start;
+                if (swap_bytes) {
+                    SwapBytes16(src, data, len);
+                } else {
+                    memcpy(data, src, len);
+                }
+                // Posse transferida ao chamador: heap_caps_free().
+                frame.data = data;
+                frame.len = len;
+                frame.width = capture_width_;
+                frame.height = capture_height_;
+                frame.format = out_format;
+            }
+        }
+
+        // O buffer volta para a fila SEMPRE, inclusive quando a cópia falhou:
+        // segurar um buffer do driver trava o pipeline.
+        if (ioctl(video_fd_, VIDIOC_QBUF, &buf) != 0) {
+            ESP_LOGE(TAG, "CaptureRaw: VIDIOC_QBUF falhou, errno=%d(%s)", errno, strerror(errno));
+        }
+    }
+
+    if (frame.data == nullptr) {
+        return false;
+    }
+    ESP_LOGI(TAG, "CaptureRaw: %ux%u, %u bytes, formato 0x%08lx", (unsigned)frame.width,
+             (unsigned)frame.height, (unsigned)frame.len, (unsigned long)frame.format);
+    return true;
+}
+
+bool EspVideo::ConvertPreviewToRgb565(const uint8_t* src, size_t src_len, uint32_t src_format,
+                                      uint8_t* dst, size_t dst_len) {
+    // Caminho direto: o sensor já entrega RGB565 e só falta a ordem dos bytes.
+    if (src_format == V4L2_PIX_FMT_RGB565 || src_format == V4L2_PIX_FMT_RGB565X) {
+        const size_t n = MIN(src_len, dst_len);
+        if (src_format == V4L2_PIX_FMT_RGB565X || kSwapPixelBytes) {
+            SwapBytes16(src, dst, n);
+        } else {
+            memcpy(dst, src, n);
+        }
+        return true;
+    }
+
+    esp_imgfx_pixel_fmt_t in_fmt = ESP_IMGFX_PIXEL_FMT_YUYV;
+    if (!V4l2ToImgfxFormat(src_format, in_fmt)) {
+        ESP_LOGE(TAG, "Preview: formato sem conversão para RGB565: 0x%08lx",
+                 (unsigned long)src_format);
+        return false;
+    }
+
+    esp_imgfx_resolution_t res = {
+        .width = static_cast<int16_t>(capture_width_),
+        .height = static_cast<int16_t>(capture_height_),
+    };
+    uint32_t expected_in = 0;
+    if (esp_imgfx_get_image_size(in_fmt, &res, &expected_in) != ESP_IMGFX_ERR_OK ||
+        expected_in == 0) {
+        ESP_LOGE(TAG, "Preview: esp_imgfx_get_image_size falhou");
+        return false;
+    }
+    if (src_len < expected_in) {
+        ESP_LOGE(TAG, "Preview: frame curto (%u < %u bytes)", (unsigned)src_len,
+                 (unsigned)expected_in);
+        return false;
+    }
+
+    const uint8_t* convert_src = src;
+    if (kSwapPixelBytes) {
+        // O conversor de cor não sabe desfazer a troca de endianness, então ela
+        // acontece antes, num intermediário REUTILIZÁVEL (alocado uma única vez
+        // no primeiro frame). Trocar direto no buffer mmap corromperia a
+        // próxima captura DMA do driver.
+        if (preview_swap_size_ < expected_in) {
+            if (preview_swap_buffer_ != nullptr) {
+                heap_caps_free(preview_swap_buffer_);
+            }
+            preview_swap_buffer_ =
+                (uint8_t*)heap_caps_malloc(expected_in, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+            if (preview_swap_buffer_ == nullptr) {
+                preview_swap_size_ = 0;
+                ESP_LOGE(TAG, "Preview: falha ao alocar %u bytes de buffer intermediário",
+                         (unsigned)expected_in);
+                return false;
+            }
+            preview_swap_size_ = expected_in;
+        }
+        SwapBytes16(src, preview_swap_buffer_, expected_in);
+        convert_src = preview_swap_buffer_;
+    }
+
+    if (preview_convert_handle_ != nullptr && preview_convert_format_ != src_format) {
+        esp_imgfx_color_convert_close(
+            static_cast<esp_imgfx_color_convert_handle_t>(preview_convert_handle_));
+        preview_convert_handle_ = nullptr;
+        preview_convert_format_ = 0;
+    }
+    if (preview_convert_handle_ == nullptr) {
+        esp_imgfx_color_convert_cfg_t cfg = {
+            .in_res = res,
+            .in_pixel_fmt = in_fmt,
+            .out_pixel_fmt = ESP_IMGFX_PIXEL_FMT_RGB565_LE,
+            .color_space_std = ESP_IMGFX_COLOR_SPACE_STD_BT601,
+        };
+        esp_imgfx_color_convert_handle_t handle = nullptr;
+        if (esp_imgfx_color_convert_open(&cfg, &handle) != ESP_IMGFX_ERR_OK || handle == nullptr) {
+            ESP_LOGE(TAG, "Preview: esp_imgfx_color_convert_open falhou");
+            return false;
+        }
+        preview_convert_handle_ = handle;
+        preview_convert_format_ = src_format;
+    }
+
+    esp_imgfx_data_t in_data = {
+        .data = const_cast<uint8_t*>(convert_src),
+        .data_len = expected_in,
+    };
+    esp_imgfx_data_t out_data = {
+        .data = dst,
+        .data_len = static_cast<uint32_t>(dst_len),
+    };
+    esp_imgfx_err_t err = esp_imgfx_color_convert_process(
+        static_cast<esp_imgfx_color_convert_handle_t>(preview_convert_handle_), &in_data,
+        &out_data);
+    if (err != ESP_IMGFX_ERR_OK) {
+        ESP_LOGE(TAG, "Preview: esp_imgfx_color_convert_process falhou: %d", (int)err);
+        return false;
+    }
+    return true;
+}
+
+bool EspVideo::AcquirePreviewFrame(CameraPreviewFrame& frame) {
+    frame.width = 0;
+    frame.height = 0;
+    frame.len = 0;
+
+    if (video_fd_ < 0 || !streaming_on_) {
+        // Warm-up do ISP: acontece ~25 vezes a 5 fps, por isso DEBUG.
+        ESP_LOGD(TAG, "Preview: câmera ainda indisponível (fd=%d, streaming=%d)", video_fd_,
+                 (int)streaming_on_);
+        return false;
+    }
+    if (frame.buffer == nullptr) {
+        ESP_LOGE(TAG, "Preview: buffer de destino nulo");
+        return false;
+    }
+
+    const size_t needed = (size_t)capture_width_ * (size_t)capture_height_ * 2;
+    if (needed == 0 || frame.buffer_size < needed) {
+        ESP_LOGE(TAG, "Preview: buffer de %u bytes é menor que os %u exigidos",
+                 (unsigned)frame.buffer_size, (unsigned)needed);
+        return false;
+    }
+
+    const uint32_t src_format = NormalizeSensorFormat(sensor_format_);
+    if (src_format == 0) {
+        ESP_LOGE(TAG, "Preview: formato de sensor não suportado: 0x%08lx",
+                 (unsigned long)sensor_format_);
+        return false;
+    }
+
+    struct v4l2_buffer buf = {};
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    if (ioctl(video_fd_, VIDIOC_DQBUF, &buf) != 0) {
+        ESP_LOGE(TAG, "Preview: VIDIOC_DQBUF falhou, errno=%d(%s)", errno, strerror(errno));
+        return false;
+    }
+
+    const size_t src_len = MIN((size_t)buf.bytesused, mmap_buffers_[buf.index].length);
+    const bool ok = ConvertPreviewToRgb565((const uint8_t*)mmap_buffers_[buf.index].start, src_len,
+                                           src_format, frame.buffer, needed);
+
+    // Devolve o buffer ao driver IMEDIATAMENTE — o pipeline só tem dois; segurar
+    // um deles durante o desenho da tela derrubaria a taxa de quadros.
+    if (ioctl(video_fd_, VIDIOC_QBUF, &buf) != 0) {
+        ESP_LOGE(TAG, "Preview: VIDIOC_QBUF falhou, errno=%d(%s)", errno, strerror(errno));
+    }
+
+    if (!ok) {
+        return false;
+    }
+    frame.width = capture_width_;
+    frame.height = capture_height_;
+    frame.len = needed;
     return true;
 }
 
