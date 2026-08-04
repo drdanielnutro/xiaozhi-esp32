@@ -68,7 +68,7 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
       caminho de validação off-device da legibilidade · pronto quando: build
       verde; tamanho típico por página registrado nas notas (instrumentação
       pronta; o número em si sai na validação física da T6).
-- [ ] T5 — Regressão e medição: build
+- [x] T5 — Regressão e medição: build
       `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` + build
       `esp32-p4-wifi6-touch-lcd-7b` original + testes host
       (`python3 -m unittest discover -s scripts/tests`) + tamanho do binário
@@ -218,3 +218,15 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 - Para a T6 física: tamanho típico/p95 do JPEG por página, tempos de
   encode/decode/dump reais, PSRAM com preview+foto+decodificado coexistindo,
   glifos `×`/`·`, pan 1:1, botões desabilitados durante processos.
+
+### T5 — Regressão e medição (2026-08-04)
+
+- `release.py` PV verde:
+  `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual.zip`.
+- `release.py` 7b original verde:
+  `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b.zip` (o upstream
+  continua em 800×800 RAW8 — a troca de sensor é exclusiva das variantes PV).
+- Testes host: release 8 OK; PV `host_test/run.sh` 155 verificações, 0 falhas.
+- `xiaozhi.bin` da variante PV: **2.879.696 bytes** (0x2bf0d0) — 31% livres
+  na partição de app de 4 MB. Delta da fase: +100.672 bytes sobre a F1
+  (2.779.024).
