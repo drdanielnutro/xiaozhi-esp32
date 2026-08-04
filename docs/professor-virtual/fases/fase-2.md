@@ -85,7 +85,30 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-(vazio)
+- Task em andamento: T6 — validação física (flash = ação do proprietário).
+- Último passo concluído: implementação T1–T5 commitada; revisão
+  independente concluída (rodada 1: 4P1+2P2 corrigidos; rodada 2: 2P1+1P2
+  corrigidos; rodada final: 1P1 corrigido e CONFIRMADO pelo revisor).
+  Último commit de implementação: 46db44b. Binário PV pronto:
+  `releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual.zip`
+  (xiaozhi.bin 2.881.792 bytes).
+- Próximo passo exato: proprietário flasha a placa (degrau 1, flat 10 cm) e
+  roda o roteiro: rota Preparação → "Ver a câmera" → preview ~5 fps estável
+  ≥10 min → "Tirar foto" de caderno A4 → revisão com zoom 100%/pan →
+  "Exportar (diagnóstico)" → capturar console → `python3
+  scripts/pv/extract_jpeg_dump.py <log>` → legibilidade a 100% no Mac.
+  Registrar: fps, tamanho do JPEG, tempos de encode/decode/dump, PSRAM
+  livre/maior bloco (log da captura), tearing/toque. Depois degrau 2 (flat
+  50 cm ou CSI→HDMI) repetindo o roteiro — a fase só fecha no degrau 2.
+- Decisões já tomadas: F2-FrameAccess/Preview/SensorFormat/
+  LegibilityValidation no decision-log (2026-08-04). Fallback físico do
+  sensor: voltar a 800×800 por config (nunca 1920×1080 sem novo ensaio).
+- Estado do worktree / armadilhas: limpo após 46db44b + commit de
+  encerramento. Wi-Fi da placa "quarto_2.4GHz"; backend
+  `http://192.168.15.9:8001`; porta `/dev/cu.usbmodem5B3E0883401`; builds
+  fora do export.sh oficial exigem `ESP_IDF_VERSION=6.0`; board dir do
+  release.py é `waveshare/esp32-p4-wifi6-touch-lcd`; zip existente em
+  `releases/` faz o release.py PULAR o build (exit 0).
 
 ## Notas da fase
 

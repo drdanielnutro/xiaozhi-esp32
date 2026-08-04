@@ -388,7 +388,7 @@ checklist final de validação física com o dono, tag de versão.
 |---|---|---|---|---|
 | F0 — Fundações | concluída | 2026-08-03 | c5fb376 | nenhuma — flash e tela "PV" validados no hardware em 2026-08-03 |
 | F1 — Rede e hidratação | concluída | 2026-08-04 | 8ec52ad | nenhuma — validação física completa em 2026-08-04 (boot→hidrata→roteia, §9.7, 401/503, toque corrigido, gesto de recuperação); spike (a) parcial → F8 |
-| F2 — Câmera | não iniciada | — | — | — |
+| F2 — Câmera | implementação concluída — aprovada na revisão independente; aguarda validação física (T6) | — | 46db44b | T6 em dois degraus (combinado 2026-08-04): degrau 1 flat 10 cm (bring-up: preview 5 fps, foto, legibilidade, medições); degrau 2 configuração de produção — flat 50 cm ou CSI→HDMI (a fase só fecha aqui). Medir tamanho típico do JPEG/página. Flash = ação do dono |
 | F3 — Turno por foto | não iniciada | — | — | — |
 | F4 — Turno por áudio | não iniciada | — | — | — |
 | F5 — Máquina de fases | não iniciada | — | — | — |
