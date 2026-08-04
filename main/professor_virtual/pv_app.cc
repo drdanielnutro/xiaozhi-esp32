@@ -1,6 +1,7 @@
 #include "pv_app.h"
 
 #include <esp_app_desc.h>
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -13,6 +14,7 @@
 #include "application.h"
 #include "board.h"
 #include "pv_backend_client.h"
+#include "pv_photo_dump.h"  // PROVISÓRIO DA F2
 #include "pv_settings.h"
 #include "pv_strings.h"
 #include "ui/pv_ui_theme.h"
@@ -61,9 +63,15 @@ void PvApp::Initialize() {
     if (!camera_.Start([this](PvCamera::Event event) { OnCameraEventFromCameraTask(event); })) {
         ESP_LOGW(TAG, "Câmera indisponível; a tela de câmera fica desligada nesta placa");
     }
-    // O handler de "Voltar" roda na task do LVGL e só posta na fila.
-    camera_screen_.Attach(&camera_, [this]() {
-        PostEvent(PvEventType::CameraScreenClosed, std::string(), PvConfigReason::Manual);
+    // Os handlers dos botões da tela de câmera rodam na task do LVGL e só
+    // postam na fila; quem decide (e mexe em tela) é sempre este Run().
+    camera_screen_.Attach(
+        &camera_, [this](PvCameraScreen::Action action) { OnCameraActionFromLvglTask(action); });
+
+    // PROVISÓRIO DA F2: conclusão do dump serial de diagnóstico. O handler roda
+    // NA TASK DO DUMP e só sinaliza — mesmo contrato do PvWorker/PvCamera.
+    PvPhotoDump::SetDoneHandler([this]() {
+        PostEvent(PvEventType::CameraExportDone, std::string(), PvConfigReason::Manual);
     });
 
     // Task de rede do PV: executa as chamadas bloqueantes do PvBackendClient e
@@ -290,6 +298,35 @@ void PvApp::HandleEvent(const PvEvent& event) {
             preview_frame_pending_.store(false);
             camera_screen_.UpdateFrame();
             break;
+
+        case PvEventType::CameraCaptureRequested:
+            HandleCaptureRequested();
+            break;
+
+        case PvEventType::CameraJpegReady:
+            HandleJpegReady();
+            break;
+
+        case PvEventType::CameraJpegFailed:
+            HandleJpegFailed();
+            break;
+
+        case PvEventType::CameraRetakeRequested:
+            HandleRetakeRequested();
+            break;
+
+        case PvEventType::CameraZoomToggle:
+            camera_screen_.ToggleZoom();
+            break;
+
+        case PvEventType::CameraExportRequested:
+            HandleExportRequested();
+            break;
+
+        case PvEventType::CameraExportDone:
+            // PROVISÓRIO DA F2: reabilita o botão de exportação.
+            camera_screen_.ShowExportDone();
+            break;
     }
 }
 
@@ -360,11 +397,13 @@ void PvApp::LoadStatusScreen() {
 }
 
 // ---------------------------------------------------------------------------
-// Câmera (F2/T3): preview no LVGL.
+// Câmera (F2): preview no LVGL (T3) e captura/revisão da foto (T4).
 //
 // Divisão de trabalho: a task da câmera produz frames e AVISA; esta task
-// decide e desenha; a PvCameraScreen é a dona da lv_image_dsc_t e do
-// empréstimo do frame. Nenhum buffer é copiado e nada é alocado por frame.
+// decide e desenha; a PvCameraScreen é a dona da lv_image_dsc_t, do empréstimo
+// do frame e — na revisão — do JPEG e do RGB565 decodificado. No preview
+// nenhum buffer é copiado e nada é alocado por frame; na revisão a alocação é
+// pontual e liberada por LeaveCameraScreen()/ExitReview().
 // ---------------------------------------------------------------------------
 
 void PvApp::OnCameraEventFromCameraTask(PvCamera::Event event) {
@@ -386,11 +425,112 @@ void PvApp::OnCameraEventFromCameraTask(PvCamera::Event event) {
             break;
         }
         case PvCamera::Event::JpegReady:
+            // Só sinaliza: o resultado pesado (o JPEG) NÃO vai pela fila; é
+            // retirado com TakeJpeg() já na task principal, como o padrão
+            // Take* do PvWorker. Evento raro, sem coalescência.
+            PostEvent(PvEventType::CameraJpegReady, std::string(), PvConfigReason::Manual);
+            break;
         case PvCamera::Event::JpegFailed:
-            // T4 (captura da foto). Ignorados de propósito nesta task: nada
-            // foi pedido ao PvCamera, então não há resultado a retirar.
+            PostEvent(PvEventType::CameraJpegFailed, std::string(), PvConfigReason::Manual);
             break;
     }
+}
+
+void PvApp::OnCameraActionFromLvglTask(PvCameraScreen::Action action) {
+    switch (action) {
+        case PvCameraScreen::Action::Back:
+            PostEvent(PvEventType::CameraScreenClosed, std::string(), PvConfigReason::Manual);
+            break;
+        case PvCameraScreen::Action::Capture:
+            PostEvent(PvEventType::CameraCaptureRequested, std::string(), PvConfigReason::Manual);
+            break;
+        case PvCameraScreen::Action::Retake:
+            PostEvent(PvEventType::CameraRetakeRequested, std::string(), PvConfigReason::Manual);
+            break;
+        case PvCameraScreen::Action::ZoomToggle:
+            PostEvent(PvEventType::CameraZoomToggle, std::string(), PvConfigReason::Manual);
+            break;
+        case PvCameraScreen::Action::Export:
+            PostEvent(PvEventType::CameraExportRequested, std::string(), PvConfigReason::Manual);
+            break;
+    }
+}
+
+void PvApp::HandleCaptureRequested() {
+    // A tela de câmera precisa estar no ar: um toque que sobrou na fila depois
+    // de a tela sair não pode disparar uma codificação de meio segundo.
+    if (!camera_screen_.IsActive() || camera_screen_.IsReviewing()) {
+        return;
+    }
+    if (!camera_.RequestCaptureJpeg()) {
+        // Coalescido (já havia captura em voo) ou câmera indisponível: o botão
+        // já está desabilitado no primeiro caso e a tela nem abre no segundo.
+        ESP_LOGI(TAG, "Captura ignorada: pedido coalescido ou câmera indisponível");
+        return;
+    }
+    // Feedback imediato: o botão fica desabilitado e o rótulo de estado passa
+    // a "Processando..." até JpegReady/JpegFailed.
+    camera_screen_.SetCapturing(true);
+}
+
+void PvApp::HandleJpegReady() {
+    PvCameraJpeg jpeg;
+    if (!camera_.TakeJpeg(jpeg)) {
+        // Aviso duplicado de uma foto já retirada.
+        return;
+    }
+    if (!camera_screen_.IsActive()) {
+        // A tela saiu enquanto a codificação rodava: a posse é nossa e morre
+        // aqui, senão vazariam centenas de KB de PSRAM.
+        ESP_LOGW(TAG, "Foto pronta fora da tela de câmera; descartada");
+        heap_caps_free(jpeg.data);
+        return;
+    }
+
+    // Preview e revisão são mutuamente exclusivos (decisão F2-Preview): com a
+    // foto na tela, o motor da câmera para de produzir frames.
+    camera_.StopPreview();
+    if (!camera_screen_.EnterReview(jpeg)) {
+        // EnterReview já liberou o JPEG em qualquer caminho de falha; aqui só
+        // resta explicar e voltar ao preview.
+        camera_screen_.ShowCaptureFailed();
+        camera_.StartPreview();
+    }
+}
+
+void PvApp::HandleJpegFailed() {
+    if (!camera_screen_.IsActive()) {
+        return;
+    }
+    camera_screen_.ShowCaptureFailed();
+}
+
+void PvApp::HandleRetakeRequested() {
+    if (!camera_screen_.IsReviewing()) {
+        return;
+    }
+    // Libera a foto e o decodificado ANTES de religar o preview: os buffers de
+    // preview já existem, mas manter 2,4 MB de RGB565 pendurado por engano
+    // seria o começo da fragmentação que o log de PSRAM da captura denuncia.
+    camera_screen_.ExitReview();
+    camera_.StartPreview();
+}
+
+void PvApp::HandleExportRequested() {
+    // PROVISÓRIO DA F2 (decisão F2-LegibilityValidation): dump serial do JPEG
+    // só por acionamento explícito, nunca automático.
+    if (!camera_screen_.IsReviewing()) {
+        return;
+    }
+    const PvCameraJpeg* photo = camera_screen_.photo();
+    if (photo == nullptr) {
+        return;
+    }
+    if (!PvPhotoDump::Request(photo->data, photo->len, photo->width, photo->height)) {
+        camera_screen_.ShowExportBusy();
+        return;
+    }
+    camera_screen_.SetExporting(true);
 }
 
 void PvApp::ShowCameraScreen() {
@@ -417,10 +557,13 @@ void PvApp::LeaveCameraScreen() {
     if (!camera_screen_.IsActive()) {
         return;
     }
-    // Ordem obrigatória: parar de produzir, depois soltar o empréstimo e
-    // esvaziar a imagem (a tela faz as duas coisas sob um único lock). Avisos
-    // de frame que já estejam na fila viram no-op, porque a tela sai de
-    // IsActive() aqui.
+    // Ordem obrigatória: parar de produzir, depois soltar o empréstimo,
+    // esvaziar a imagem e LIBERAR a foto em revisão (a tela faz as três coisas
+    // sob um único lock). Avisos de frame que já estejam na fila viram no-op,
+    // porque a tela sai de IsActive() aqui. Este é o ponto por onde passam
+    // TODOS os caminhos de saída — "Voltar", gesto de configuração, rota nova
+    // por re-hidratação e tela de status —, e por isso é a única garantia de
+    // liberação de que o JPEG e o RGB565 decodificado precisam.
     camera_.StopPreview();
     camera_screen_.Hide();
 }

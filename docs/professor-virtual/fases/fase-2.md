@@ -64,9 +64,10 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
       start/stop ligado ao ciclo de vida da tela; sem vazamento nem
       uso de buffer após liberação) · pronto quando: build verde; preview
       integrado ao fluxo de telas do PV.
-- [ ] T4 — Captura JPEG + exibição da foto capturada + medição de tamanho +
+- [x] T4 — Captura JPEG + exibição da foto capturada + medição de tamanho +
       caminho de validação off-device da legibilidade · pronto quando: build
-      verde; tamanho típico por página registrado nas notas.
+      verde; tamanho típico por página registrado nas notas (instrumentação
+      pronta; o número em si sai na validação física da T6).
 - [ ] T5 — Regressão e medição: build
       `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` + build
       `esp32-p4-wifi6-touch-lcd-7b` original + testes host
@@ -177,3 +178,43 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 - Nota de ambiente: o board dir do release.py é
   `waveshare/esp32-p4-wifi6-touch-lcd` (sem o prefixo o script pula
   silenciosamente com exit 0).
+
+### T4 — Captura, revisão da foto e dump de diagnóstico (2026-08-04, subagente opus)
+
+- Tela de câmera ganhou modo REVISÃO: botão "Tirar foto" (meio da barra, cor
+  de destaque) → `RequestCaptureJpeg` (coalescido) → "Processando..." →
+  `JpegReady` → `TakeJpeg` na task principal → preview PARADO → JPEG
+  decodificado FORA do lock do display (`jpeg_to_image`, decoder SW do
+  esp_new_jpeg já linkado — decoder HW desligado, nenhum Kconfig novo) →
+  foto exibida no lugar do preview. Barra em revisão: "Nova foto",
+  "100%"/"Ajustar" (1:1 com pan pelo scroll nativo do LVGL, abre pelo centro)
+  e "Exportar (diagnóstico)". Rótulo único de estado/medições
+  ("1280×960 · N KB") — altura da área nunca muda.
+- POSSE: `PvCameraScreen` é a dona única também do JPEG (`photo_`) e do
+  RGB565 decodificado (`decoded_`); `EnterReview` toma a posse e libera em
+  TODO caminho de falha; liberação garantida por `Hide()`/`ExitReview()`
+  (todos os caminhos de saída passam por `LeaveCameraScreen`). Foto pronta
+  com a tela já fechada → liberada no `HandleJpegReady`.
+- `pv_photo_dump.{h,cc}` (PROVISÓRIO da F2, decisão F2-LegibilityValidation):
+  task one-shot prio 1; CÓPIA de posse do JPEG em PSRAM (desacopla do ciclo
+  da tela); formato `PV-JPEG-BEGIN len= crc32= w= h=` + base64 em linhas de
+  120 (blocos de 2880 B, sem padding intermediário) + `PV-JPEG-END`;
+  `printf`/`fwrite` (imune a log level); `vTaskDelay(1)` por bloco;
+  coalescido; CRC32 = `esp_rom_crc32_le(0,...)` (= zlib). Só por toque
+  explícito no botão — nunca automático.
+- `scripts/pv/extract_jpeg_dump.py` (PROVISÓRIO): pega o ÚLTIMO bloco
+  completo, tolera linhas de log intercaladas, confere len+CRC32, salva
+  `foto_<w>x<h>.jpg`. Validado pelo orquestrador com CRC bom (rc=0) e
+  corrompido (rc=1, mensagem clara).
+- Medições por captura no `pv_camera`: tamanho, qualidade, tempo de
+  codificação (ms), PSRAM livre e maior bloco livre.
+- 7 eventos novos no PvApp (raros, sem coalescência — a coalescência real
+  está no PvCamera/PvPhotoDump); handlers só na task principal.
+- Validação: build PV verde (bin regravado); testes host release 8 OK + PV
+  155 OK; clang-format limpo; `xiaozhi.bin` 2.879.696 bytes (+85.392; 31%
+  livres na OTA). Nota: o subagente rodou com um aviso de segurança do
+  harness (ação bloqueada); diff inteiro revisado pelo orquestrador —
+  escopo, conteúdo e validações conferidos manualmente.
+- Para a T6 física: tamanho típico/p95 do JPEG por página, tempos de
+  encode/decode/dump reais, PSRAM com preview+foto+decodificado coexistindo,
+  glifos `×`/`·`, pan 1:1, botões desabilitados durante processos.

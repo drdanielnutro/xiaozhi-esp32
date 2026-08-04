@@ -85,6 +85,23 @@ inline constexpr const char* kCameraTitle = "Câmera";
 inline constexpr const char* kCameraWarmup = "Preparando a câmera...";
 inline constexpr const char* kCameraBackButton = "Voltar";
 
+// Captura e revisão da foto (F2/T4). Os textos de estado ficam todos na MESMA
+// linha da tela (um rótulo só), para que trocar de estado nunca mude a altura
+// da área de preview — e, portanto, nunca invalide a escala já calculada.
+inline constexpr const char* kCameraPreviewHint = "Enquadre a página e toque em Tirar foto.";
+inline constexpr const char* kCameraCaptureButton = "Tirar foto";
+inline constexpr const char* kCameraCapturing = "Processando...";
+inline constexpr const char* kCameraCaptureFailed = "Não consegui tirar a foto. Tente de novo.";
+inline constexpr const char* kCameraDecodeFailed = "Não consegui mostrar a foto. Tente de novo.";
+inline constexpr const char* kCameraRetakeButton = "Nova foto";
+inline constexpr const char* kCameraZoomActual = "100%";
+inline constexpr const char* kCameraZoomFit = "Ajustar";
+// PROVISÓRIO DA F2: o botão de exportação some junto com o pv_photo_dump.
+inline constexpr const char* kCameraExportButton = "Exportar (diagnóstico)";
+inline constexpr const char* kCameraExporting = "Exportando...";
+inline constexpr const char* kCameraExportDone = "Exportação concluída.";
+inline constexpr const char* kCameraExportBusy = "Exportação indisponível agora.";
+
 // Detalhe da tela de tutoria: prova de que o espelho foi hidratado de verdade.
 inline constexpr const char* kRouteItemPrefix = "Item atual: ";
 inline constexpr const char* kRouteTaskPrefix = "Tarefa atual: ";

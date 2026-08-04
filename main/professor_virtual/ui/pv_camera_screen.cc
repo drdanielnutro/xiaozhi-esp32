@@ -1,12 +1,17 @@
 #include "ui/pv_camera_screen.h"
 
 #include <esp_app_desc.h>
+#include <esp_err.h>
+#include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
+#include <cstdio>
 #include <utility>
 
 #include "board.h"
 #include "display/display.h"
+#include "jpg/jpeg_to_image.h"
 #include "pv_camera.h"
 #include "pv_strings.h"
 #include "ui/pv_config_gesture.h"
@@ -28,19 +33,61 @@
 
 namespace {
 
-// Altura fixa da barra de ações. Fixa DE PROPÓSITO: o botão de captura da T4
-// entra no espaço vazio do meio sem mudar a altura da área de preview — e,
-// portanto, sem mudar a escala calculada para a imagem.
+// Altura fixa da barra de ações. Fixa DE PROPÓSITO: os botões de captura e de
+// revisão entram e saem sem mudar a altura da área de preview — e, portanto,
+// sem mudar a escala calculada para a imagem.
 constexpr int32_t kActionBarHeight = 68;
 
 constexpr int32_t kScreenPad = 16;
 constexpr int32_t kRowGap = 12;
 
+// Botão do PV: cor de superfície, e um estado desabilitado explícito. Sem esta
+// última parte um botão desabilitado continuaria com a mesma cor do habilitado
+// (o estilo é aplicado ao estado padrão) e a criança não veria diferença.
+lv_obj_t* CreateActionButton(lv_obj_t* parent, const char* text, lv_event_cb_t cb, void* user_data,
+                             lv_obj_t** out_label) {
+    auto* button = lv_button_create(parent);
+    lv_obj_set_style_bg_color(button, lv_color_hex(PvUi::kColorSurface), 0);
+    lv_obj_set_style_bg_color(button, lv_color_hex(PvUi::kColorSurface), LV_STATE_DISABLED);
+    lv_obj_set_style_bg_opa(button, LV_OPA_40, LV_STATE_DISABLED);
+    lv_obj_set_style_text_color(button, lv_color_hex(PvUi::kColorMuted), LV_STATE_DISABLED);
+    lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, user_data);
+    auto* label = lv_label_create(button);
+    lv_label_set_text(label, text);
+    lv_obj_center(label);
+    if (out_label != nullptr) {
+        *out_label = label;
+    }
+    return button;
+}
+
+void SetHidden(lv_obj_t* obj, bool hidden) {
+    if (obj == nullptr) {
+        return;
+    }
+    if (hidden) {
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void SetEnabled(lv_obj_t* obj, bool enabled) {
+    if (obj == nullptr) {
+        return;
+    }
+    if (enabled) {
+        lv_obj_remove_state(obj, LV_STATE_DISABLED);
+    } else {
+        lv_obj_add_state(obj, LV_STATE_DISABLED);
+    }
+}
+
 }  // namespace
 
-void PvCameraScreen::Attach(PvCamera* camera, BackHandler on_back) {
+void PvCameraScreen::Attach(PvCamera* camera, ActionHandler on_action) {
     camera_ = camera;
-    back_handler_ = std::move(on_back);
+    action_handler_ = std::move(on_action);
 }
 
 bool PvCameraScreen::EnsureScreenLocked() {
@@ -57,9 +104,21 @@ bool PvCameraScreen::EnsureScreenLocked() {
     auto* title = lv_label_create(screen);
     lv_label_set_text(title, PvStrings::kCameraTitle);
 
-    // Área do preview: ocupa toda a altura que sobra entre o título e a barra
-    // de ações. Sem layout próprio — a imagem e o aviso são centralizados na
-    // mão, e ambos ocupam o mesmo lugar (um por vez).
+    // Rótulo ÚNICO de estado/medições. Fica sempre visível e sempre com uma
+    // linha (LONG_CLIP): mudar de estado — "Processando...", "1280×960 · 342
+    // KB", "Exportando..." — nunca muda a altura da área de preview, e por
+    // isso nunca invalida a escala já aplicada à imagem.
+    auto* status = lv_label_create(screen);
+    lv_label_set_long_mode(status, LV_LABEL_LONG_CLIP);
+    lv_obj_set_width(status, LV_PCT(100));
+    lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(status, lv_color_hex(PvUi::kColorMuted), 0);
+    lv_label_set_text(status, PvStrings::kCameraPreviewHint);
+    status_label_ = status;
+
+    // Área do preview/foto: ocupa toda a altura que sobra entre o rótulo de
+    // estado e a barra de ações. Sem layout próprio — a imagem e o aviso são
+    // centralizados na mão, e ambos ocupam o mesmo lugar (um por vez).
     auto* area = lv_obj_create(screen);
     lv_obj_remove_flag(area, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_width(area, LV_PCT(100));
@@ -69,6 +128,8 @@ bool PvCameraScreen::EnsureScreenLocked() {
     lv_obj_set_style_border_width(area, 0, 0);
     lv_obj_set_style_radius(area, 12, 0);
     lv_obj_set_style_pad_all(area, 0, 0);
+    lv_obj_set_scroll_dir(area, LV_DIR_ALL);
+    lv_obj_set_scrollbar_mode(area, LV_SCROLLBAR_MODE_AUTO);
     preview_area_ = area;
 
     auto* hint = lv_label_create(area);
@@ -83,7 +144,7 @@ bool PvCameraScreen::EnsureScreenLocked() {
     auto* image = lv_image_create(area);
     // CONTAIN calcula sozinho a escala que faz o frame caber no tamanho do
     // objeto preservando a proporção; o tamanho do objeto é definido em
-    // ApplyGeometryLocked() e o objeto fica centralizado na área.
+    // ApplyGeometryLocked()/ApplyZoomLocked() e o objeto fica centralizado.
     lv_image_set_inner_align(image, LV_IMAGE_ALIGN_CONTAIN);
     // Sem antialias: reduzir 1280x960 para caber na área já custa uma
     // transformação por frame (~2,4 MB lidos); filtrar em cima disso não
@@ -93,8 +154,9 @@ bool PvCameraScreen::EnsureScreenLocked() {
     lv_obj_center(image);
     image_ = image;
 
-    // Barra de ações. SPACE_BETWEEN com dois filhos deixa o MEIO livre: é ali
-    // que o botão de captura da T4 entra, sem mexer no resto do layout.
+    // Barra de ações. SPACE_BETWEEN distribui os botões visíveis; o flex do
+    // LVGL IGNORA filhos com LV_OBJ_FLAG_HIDDEN, então trocar de modo é só
+    // esconder/mostrar botões — o layout se refaz sozinho.
     auto* bar = lv_obj_create(screen);
     lv_obj_remove_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(bar, LV_PCT(100), kActionBarHeight);
@@ -106,12 +168,23 @@ bool PvCameraScreen::EnsureScreenLocked() {
                           LV_FLEX_ALIGN_CENTER);
     action_bar_ = bar;
 
-    auto* back_button = lv_button_create(bar);
-    lv_obj_set_style_bg_color(back_button, lv_color_hex(PvUi::kColorSurface), 0);
-    lv_obj_add_event_cb(back_button, OnBackClicked, LV_EVENT_CLICKED, this);
-    auto* back_label = lv_label_create(back_button);
-    lv_label_set_text(back_label, PvStrings::kCameraBackButton);
-    lv_obj_center(back_label);
+    CreateActionButton(bar, PvStrings::kCameraBackButton, OnBackClicked, this, nullptr);
+
+    // Captura no MEIO da barra (modo preview), em cor de destaque: é a ação
+    // principal da tela.
+    capture_button_ = CreateActionButton(bar, PvStrings::kCameraCaptureButton, OnCaptureClicked,
+                                         this, &capture_label_);
+    lv_obj_set_style_bg_color(capture_button_, lv_color_hex(PvUi::kColorAccent), 0);
+
+    // Modo revisão: nascem escondidos e só aparecem com a foto na tela.
+    retake_button_ =
+        CreateActionButton(bar, PvStrings::kCameraRetakeButton, OnRetakeClicked, this, nullptr);
+    lv_obj_set_style_bg_color(retake_button_, lv_color_hex(PvUi::kColorAccent), 0);
+    zoom_button_ =
+        CreateActionButton(bar, PvStrings::kCameraZoomActual, OnZoomClicked, this, &zoom_label_);
+    // PROVISÓRIO DA F2: caminho de validação off-device (pv_photo_dump).
+    export_button_ = CreateActionButton(bar, PvStrings::kCameraExportButton, OnExportClicked, this,
+                                        &export_label_);
 
     // Rodapé com a versão: mesmo alvo do gesto de recuperação das outras telas
     // (long-press de 3 s abre a configuração — decisão F1-ConfigGesture). O
@@ -127,6 +200,7 @@ bool PvCameraScreen::EnsureScreenLocked() {
     PvUi::SetConnectionBadge(badge_, connected_);
 
     screen_ = screen;
+    UpdateActionBarLocked();
     return true;
 }
 
@@ -149,9 +223,21 @@ bool PvCameraScreen::Show() {
     // ISP demora alguns segundos para entregar o primeiro frame.
     DetachImageLocked();
     ReleaseFrameLocked();
+    ReleasePhotoLocked();
+    mode_ = Mode::Preview;
+    capturing_ = false;
+    exporting_ = false;
+    zoom_actual_size_ = false;
+    applied_width_ = 0;
+    applied_height_ = 0;
+    lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
+    lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
     if (hint_label_ != nullptr) {
         lv_obj_remove_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     }
+    SetStatusLocked(PvStrings::kCameraPreviewHint);
+    UpdateActionBarLocked();
 
     active_ = true;
     lv_screen_load(screen_);
@@ -162,24 +248,36 @@ void PvCameraScreen::Hide() {
     active_ = false;
     auto display = Board::GetInstance().GetDisplay();
     if (display == nullptr || screen_ == nullptr) {
+        // Sem tela criada não há nada emprestado nem decodificado; a foto,
+        // porém, pode ter sido tomada num caminho degradado.
+        ReleasePhotoLocked();
+        mode_ = Mode::Preview;
+        capturing_ = false;
+        exporting_ = false;
         return;
     }
 
     DisplayLockGuard lock(display);
-    // ORDEM OBRIGATÓRIA: primeiro o LVGL para de referenciar o buffer, só
-    // depois ele volta a ser do escritor. Ainda sob o lock, portanto sem
-    // nenhuma janela em que a task do LVGL desenhe um buffer já devolvido.
+    // ORDEM OBRIGATÓRIA: primeiro o LVGL para de referenciar os buffers, só
+    // depois eles voltam a ser do escritor (preview) ou são liberados (foto).
+    // Ainda sob o lock, portanto sem nenhuma janela em que a task do LVGL
+    // desenhe memória já devolvida.
     DetachImageLocked();
     ReleaseFrameLocked();
+    ReleasePhotoLocked();
+    mode_ = Mode::Preview;
+    capturing_ = false;
+    exporting_ = false;
     if (hint_label_ != nullptr) {
         lv_obj_remove_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
 void PvCameraScreen::UpdateFrame() {
-    if (camera_ == nullptr || !active_ || image_ == nullptr) {
-        // Aviso que sobrou na fila depois de sair da tela: nada foi
-        // emprestado, então não há nada a devolver.
+    if (camera_ == nullptr || !active_ || image_ == nullptr || mode_ != Mode::Preview) {
+        // Aviso que sobrou na fila depois de sair da tela ou de entrar em
+        // revisão: nada foi emprestado agora, então não há nada a devolver — e
+        // a foto em revisão NÃO pode ser substituída por um frame atrasado.
         return;
     }
     auto display = Board::GetInstance().GetDisplay();
@@ -235,6 +333,213 @@ void PvCameraScreen::UpdateFrame() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Captura e revisão (F2/T4).
+// ---------------------------------------------------------------------------
+
+void PvCameraScreen::SetCapturing(bool capturing) {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    capturing_ = capturing;
+    if (capturing) {
+        SetStatusLocked(PvStrings::kCameraCapturing);
+    } else if (mode_ == Mode::Preview) {
+        SetStatusLocked(PvStrings::kCameraPreviewHint);
+    }
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::ShowCaptureFailed() {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    capturing_ = false;
+    SetStatusLocked(PvStrings::kCameraCaptureFailed);
+    UpdateActionBarLocked();
+}
+
+bool PvCameraScreen::EnterReview(const PvCameraJpeg& jpeg) {
+    // POSSE: entra aqui e não sai. Todo `return false` abaixo libera o buffer.
+    if (jpeg.data == nullptr || jpeg.len == 0) {
+        return false;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (!active_ || screen_ == nullptr || image_ == nullptr || display == nullptr) {
+        heap_caps_free(jpeg.data);
+        return false;
+    }
+
+    // A DECODIFICAÇÃO RODA FORA DO LOCK DO DISPLAY. São centenas de
+    // milissegundos de CPU (decodificador por software do esp_new_jpeg, ~2,4
+    // MB de saída): segurar o lock aqui congelaria a task do LVGL e, com ela,
+    // o toque na tela inteira.
+    uint8_t* rgb = nullptr;
+    size_t rgb_len = 0;
+    size_t width = 0;
+    size_t height = 0;
+    size_t stride = 0;
+    const int64_t decode_started_us = esp_timer_get_time();
+    const esp_err_t err =
+        jpeg_to_image(jpeg.data, jpeg.len, &rgb, &rgb_len, &width, &height, &stride);
+    const int64_t decode_ms = (esp_timer_get_time() - decode_started_us) / 1000;
+    if (err != ESP_OK || rgb == nullptr || width == 0 || height == 0 || stride == 0) {
+        ESP_LOGE(TAG, "Falha ao decodificar a foto para exibição (err %d)", (int)err);
+        heap_caps_free(jpeg.data);
+        return false;
+    }
+    ESP_LOGI(TAG, "Foto decodificada: %ux%u, %u bytes de RGB565, %u ms", (unsigned)width,
+             (unsigned)height, (unsigned)rgb_len, (unsigned)decode_ms);
+
+    DisplayLockGuard lock(display);
+
+    // Sai do preview: o LVGL para de referenciar o frame emprestado e o buffer
+    // volta a ser do escritor. O PvApp já mandou parar o preview antes.
+    DetachImageLocked();
+    ReleaseFrameLocked();
+    // Revisão anterior que não tenha passado por ExitReview (não acontece hoje,
+    // mas liberar aqui é o que torna o dono único inquebrável).
+    ReleasePhotoLocked();
+
+    photo_ = jpeg;
+    // Só DEPOIS do ReleasePhotoLocked acima, que zera este mesmo buffer: as
+    // medições que a T6 vai ler na tela são o tamanho do JPEG e as dimensões.
+    const unsigned kib = static_cast<unsigned>((photo_.len + 512) / 1024);
+    std::snprintf(info_text_, sizeof(info_text_), "%u×%u · %u KB", (unsigned)photo_.width,
+                  (unsigned)photo_.height, kib);
+    decoded_ = rgb;
+    decoded_len_ = rgb_len;
+    decoded_width_ = static_cast<uint16_t>(width);
+    decoded_height_ = static_cast<uint16_t>(height);
+    decoded_stride_ = stride;
+
+    photo_dsc_.header.magic = LV_IMAGE_HEADER_MAGIC;
+    photo_dsc_.header.cf = LV_COLOR_FORMAT_RGB565;
+    photo_dsc_.header.flags = 0;
+    photo_dsc_.header.w = decoded_width_;
+    photo_dsc_.header.h = decoded_height_;
+    photo_dsc_.header.stride = static_cast<uint32_t>(decoded_stride_);
+    photo_dsc_.data = decoded_;
+    photo_dsc_.data_size = static_cast<uint32_t>(decoded_len_);
+
+    mode_ = Mode::Review;
+    capturing_ = false;
+    exporting_ = false;
+    zoom_actual_size_ = false;
+
+    lv_image_set_src(image_, &photo_dsc_);
+    lv_obj_remove_flag(image_, LV_OBJ_FLAG_HIDDEN);
+    ApplyZoomLocked();
+    if (hint_label_ != nullptr) {
+        lv_obj_add_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
+    }
+    SetStatusLocked(info_text_);
+    UpdateActionBarLocked();
+    return true;
+}
+
+void PvCameraScreen::ExitReview() {
+    auto display = Board::GetInstance().GetDisplay();
+    if (screen_ == nullptr || display == nullptr) {
+        ReleasePhotoLocked();
+        mode_ = Mode::Preview;
+        capturing_ = false;
+        zoom_actual_size_ = false;
+        return;
+    }
+    DisplayLockGuard lock(display);
+    DetachImageLocked();
+    ReleasePhotoLocked();
+
+    mode_ = Mode::Preview;
+    capturing_ = false;
+    zoom_actual_size_ = false;
+    // A revisão mexeu no tamanho, no alinhamento interno e no scroll do
+    // objeto: zerar a geometria aplicada obriga o próximo frame de preview a
+    // recalcular tudo do zero.
+    applied_width_ = 0;
+    applied_height_ = 0;
+    lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
+    lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
+    lv_obj_center(image_);
+    if (hint_label_ != nullptr) {
+        lv_obj_remove_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
+    }
+    SetStatusLocked(PvStrings::kCameraPreviewHint);
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::ToggleZoom() {
+    if (!IsReviewing() || screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    zoom_actual_size_ = !zoom_actual_size_;
+    ApplyZoomLocked();
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::SetExporting(bool exporting) {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    exporting_ = exporting;
+    if (exporting) {
+        SetStatusLocked(PvStrings::kCameraExporting);
+    } else if (mode_ == Mode::Review) {
+        SetStatusLocked(info_text_);
+    }
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::ShowExportDone() {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    exporting_ = false;
+    if (mode_ == Mode::Review) {
+        SetStatusLocked(PvStrings::kCameraExportDone);
+    }
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::ShowExportBusy() {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    SetStatusLocked(PvStrings::kCameraExportBusy);
+}
+
 void PvCameraScreen::SetConnected(bool connected) {
     connected_ = connected;
     auto display = Board::GetInstance().GetDisplay();
@@ -253,6 +558,8 @@ void PvCameraScreen::DetachImageLocked() {
     lv_obj_add_flag(image_, LV_OBJ_FLAG_HIDDEN);
     image_dsc_.data = nullptr;
     image_dsc_.data_size = 0;
+    photo_dsc_.data = nullptr;
+    photo_dsc_.data_size = 0;
 }
 
 void PvCameraScreen::ReleaseFrameLocked() {
@@ -261,6 +568,24 @@ void PvCameraScreen::ReleaseFrameLocked() {
     }
     frame_borrowed_ = false;
     camera_->ReleaseDisplayFrame();
+}
+
+void PvCameraScreen::ReleasePhotoLocked() {
+    if (decoded_ != nullptr) {
+        // Alocado pelo jpeg_to_image (jpeg_calloc_align, que por baixo é
+        // heap_caps_*): a liberação documentada é heap_caps_free.
+        heap_caps_free(decoded_);
+        decoded_ = nullptr;
+    }
+    decoded_len_ = 0;
+    decoded_width_ = 0;
+    decoded_height_ = 0;
+    decoded_stride_ = 0;
+    if (photo_.data != nullptr) {
+        heap_caps_free(photo_.data);
+    }
+    photo_ = PvCameraJpeg{};
+    info_text_[0] = '\0';
 }
 
 void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
@@ -304,11 +629,101 @@ void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
              (unsigned)width, (unsigned)height, area_w, area_h, scale);
 }
 
-void PvCameraScreen::OnBackClicked(lv_event_t* e) {
-    auto* self = static_cast<PvCameraScreen*>(lv_event_get_user_data(e));
-    // Roda na task do LVGL: só sinaliza o PvApp, que troca a tela e desliga o
-    // preview na própria task dele.
-    if (self != nullptr && self->back_handler_) {
-        self->back_handler_();
+void PvCameraScreen::ApplyZoomLocked() {
+    if (image_ == nullptr || preview_area_ == nullptr || decoded_width_ == 0 ||
+        decoded_height_ == 0) {
+        return;
+    }
+    lv_obj_update_layout(screen_);
+    const int32_t area_w = lv_obj_get_content_width(preview_area_);
+    const int32_t area_h = lv_obj_get_content_height(preview_area_);
+    if (area_w <= 0 || area_h <= 0) {
+        return;
+    }
+
+    if (zoom_actual_size_) {
+        // 1:1 — nenhuma transformação, o pixel do sensor vira pixel do painel.
+        // A imagem passa a ser maior que a área e o SCROLL NATIVO do LVGL
+        // resolve o pan: basta a área virar rolável e a imagem ficar ancorada
+        // no canto (alinhamento centralizado colocaria conteúdo à esquerda do
+        // zero e confundiria os limites de rolagem).
+        lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_DEFAULT);
+        lv_obj_set_size(image_, decoded_width_, decoded_height_);
+        const bool overflows = decoded_width_ > area_w || decoded_height_ > area_h;
+        if (overflows) {
+            lv_obj_add_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_align(image_, LV_ALIGN_TOP_LEFT);
+            lv_obj_set_pos(image_, 0, 0);
+            lv_obj_update_layout(screen_);
+            // Abre a foto pelo MEIO: é onde está o texto da página na prática.
+            const int32_t to_x = decoded_width_ > area_w ? (decoded_width_ - area_w) / 2 : 0;
+            const int32_t to_y = decoded_height_ > area_h ? (decoded_height_ - area_h) / 2 : 0;
+            lv_obj_scroll_to(preview_area_, to_x, to_y, LV_ANIM_OFF);
+        } else {
+            lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_center(image_);
+        }
+    } else {
+        // "Ajustar": a foto inteira cabe na área, com a mesma escala inteira do
+        // preview.
+        lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
+        lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
+        int32_t scale_x = area_w * LV_SCALE_NONE / decoded_width_;
+        int32_t scale_y = area_h * LV_SCALE_NONE / decoded_height_;
+        int32_t scale = scale_x < scale_y ? scale_x : scale_y;
+        if (scale > LV_SCALE_NONE) {
+            scale = LV_SCALE_NONE;
+        }
+        if (scale < 1) {
+            scale = 1;
+        }
+        lv_obj_set_size(image_, decoded_width_ * scale / LV_SCALE_NONE,
+                        decoded_height_ * scale / LV_SCALE_NONE);
+        lv_obj_center(image_);
+    }
+    lv_obj_invalidate(image_);
+}
+
+void PvCameraScreen::UpdateActionBarLocked() {
+    const bool review = mode_ == Mode::Review;
+
+    SetHidden(capture_button_, review);
+    SetEnabled(capture_button_, !capturing_);
+
+    SetHidden(retake_button_, !review);
+    SetHidden(zoom_button_, !review);
+    SetHidden(export_button_, !review);
+    SetEnabled(export_button_, !exporting_);
+    // "Nova foto" durante uma exportação é seguro: o dump trabalha sobre uma
+    // CÓPIA própria do JPEG (pv_photo_dump), não sobre o buffer da tela.
+    SetEnabled(retake_button_, true);
+
+    if (zoom_label_ != nullptr) {
+        lv_label_set_text(zoom_label_, zoom_actual_size_ ? PvStrings::kCameraZoomFit
+                                                         : PvStrings::kCameraZoomActual);
     }
 }
+
+void PvCameraScreen::SetStatusLocked(const char* text) {
+    if (status_label_ == nullptr) {
+        return;
+    }
+    lv_label_set_text(status_label_,
+                      text != nullptr && text[0] != '\0' ? text : PvStrings::kCameraPreviewHint);
+}
+
+void PvCameraScreen::Dispatch(lv_event_t* e, Action action) {
+    auto* self = static_cast<PvCameraScreen*>(lv_event_get_user_data(e));
+    // Roda na task do LVGL: só sinaliza o PvApp, que decide e mexe nas telas na
+    // própria task dele. NENHUMA ação de botão altera estado aqui.
+    if (self != nullptr && self->action_handler_) {
+        self->action_handler_(action);
+    }
+}
+
+void PvCameraScreen::OnBackClicked(lv_event_t* e) { Dispatch(e, Action::Back); }
+void PvCameraScreen::OnCaptureClicked(lv_event_t* e) { Dispatch(e, Action::Capture); }
+void PvCameraScreen::OnRetakeClicked(lv_event_t* e) { Dispatch(e, Action::Retake); }
+void PvCameraScreen::OnZoomClicked(lv_event_t* e) { Dispatch(e, Action::ZoomToggle); }
+void PvCameraScreen::OnExportClicked(lv_event_t* e) { Dispatch(e, Action::Export); }

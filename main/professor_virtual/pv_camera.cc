@@ -2,6 +2,7 @@
 
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <freertos/task.h>
 
 #include <utility>
@@ -255,8 +256,15 @@ void PvCamera::RunCaptureJpeg() {
 
     uint8_t* jpeg_data = nullptr;
     size_t jpeg_len = 0;
+    // Medições da decisão F2-SensorFormat: tempo de codificação e pressão de
+    // PSRAM a CADA captura. São o insumo da medição física da T6 (tamanho
+    // típico por página) e o alarme precoce de fragmentação: o maior bloco
+    // livre importa mais que o total, porque a foto e o decodificado da tela
+    // de revisão são alocações contíguas de centenas de KB / megabytes.
+    const int64_t encode_started_us = esp_timer_get_time();
     const bool ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format,
                                   kJpegQuality, &jpeg_data, &jpeg_len);
+    const int64_t encode_ms = (esp_timer_get_time() - encode_started_us) / 1000;
     const uint16_t width = raw.width;
     const uint16_t height = raw.height;
     // Posse do frame bruto era nossa desde o CaptureRaw; o JPEG já foi gerado.
@@ -285,8 +293,12 @@ void PvCamera::RunCaptureJpeg() {
         jpeg_.width = width;
         jpeg_.height = height;
     }
-    ESP_LOGI(TAG, "Foto pronta: %ux%u, %u bytes de JPEG (qualidade %u)", (unsigned)width,
-             (unsigned)height, (unsigned)jpeg_len, (unsigned)kJpegQuality);
+    ESP_LOGI(TAG,
+             "Foto pronta: %ux%u, %u bytes de JPEG (qualidade %u), codificação %u ms; "
+             "PSRAM livre %u B, maior bloco %u B",
+             (unsigned)width, (unsigned)height, (unsigned)jpeg_len, (unsigned)kJpegQuality,
+             (unsigned)encode_ms, (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
     Notify(Event::JpegReady);
 }
 

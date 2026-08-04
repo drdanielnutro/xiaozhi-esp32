@@ -77,6 +77,17 @@ private:
         CameraScreenRequested,
         CameraScreenClosed,
         CameraPreviewFrame,
+        // Captura e revisão da foto (F2/T4). Todos raros (um toque de dedo ou
+        // uma foto pronta), por isso NENHUM deles é coalescido na fila: a
+        // coalescência que importa está um nível abaixo, no
+        // PvCamera::RequestCaptureJpeg e no PvPhotoDump::Request.
+        CameraCaptureRequested,
+        CameraJpegReady,
+        CameraJpegFailed,
+        CameraRetakeRequested,
+        CameraZoomToggle,
+        CameraExportRequested,  // PROVISÓRIO DA F2
+        CameraExportDone,       // PROVISÓRIO DA F2
     };
 
     // POD trafegado pela fila. `data` guarda o SSID (máx. 32 bytes + NUL) e
@@ -105,7 +116,15 @@ private:
 
     // Câmera (F2). O handler roda NA TASK DA CÂMERA e só sinaliza.
     void OnCameraEventFromCameraTask(PvCamera::Event event);
+    // Roda NA TASK DO LVGL (toque nos botões da barra): só posta na fila.
+    void OnCameraActionFromLvglTask(PvCameraScreen::Action action);
     void ShowCameraScreen();
+    // Captura e revisão (T4). Tudo aqui roda na task do PvApp.
+    void HandleCaptureRequested();
+    void HandleJpegReady();
+    void HandleJpegFailed();
+    void HandleRetakeRequested();
+    void HandleExportRequested();  // PROVISÓRIO DA F2
     // Ponto ÚNICO de saída da tela de câmera: desliga o preview e faz a tela
     // devolver o empréstimo. Todo caminho que carrega outra tela passa por
     // aqui — inclusive os que não vêm do botão "Voltar".
