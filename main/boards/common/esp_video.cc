@@ -377,11 +377,6 @@ EspVideo::~EspVideo() {
         preview_convert_handle_ = nullptr;
         preview_convert_format_ = 0;
     }
-    if (preview_swap_buffer_ != nullptr) {
-        heap_caps_free(preview_swap_buffer_);
-        preview_swap_buffer_ = nullptr;
-        preview_swap_size_ = 0;
-    }
     if (streaming_on_ && video_fd_ >= 0) {
         int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         ioctl(video_fd_, VIDIOC_STREAMOFF, &type);
@@ -1047,10 +1042,16 @@ bool EspVideo::CaptureRaw(CameraRawFrame& frame) {
                  (unsigned long)sensor_format_);
         return false;
     }
-    // RGB565 big endian vira RGB565 little endian com a MESMA troca de 16 bits
-    // que a Kconfig de endianness pede — uma troca só, nunca duas (é assim que
-    // o Capture() legado trata o caso).
-    const bool swap_bytes = kSwapPixelBytes || native_format == V4L2_PIX_FMT_RGB565X;
+    // A troca de 16 bits da Kconfig de endianness só tem sentido para RGB565:
+    // ela corrige a ordem das PALAVRAS de cor. O FOURCC dos formatos YUV já
+    // define a ordem dos BYTES na memória — trocar bytes de UYVY produz YUYV
+    // válido com o rótulo errado, e croma/luma saem invertidos (verde/magenta;
+    // validado fisicamente na 7B em 2026-08-04 com o dump reconstruído: o
+    // pipeline negocia UYVY nesta placa). O Capture() legado aplica a troca a
+    // todo formato — bug latente do upstream registrado como dívida; aqui a
+    // troca fica restrita ao caso em que ela é a correção.
+    const bool swap_bytes = (kSwapPixelBytes && native_format == V4L2_PIX_FMT_RGB565) ||
+                            native_format == V4L2_PIX_FMT_RGB565X;
     const uint32_t out_format =
         native_format == V4L2_PIX_FMT_RGB565X ? V4L2_PIX_FMT_RGB565 : native_format;
 
@@ -1177,29 +1178,13 @@ bool EspVideo::ConvertPreviewToRgb565(const uint8_t* src, size_t src_len, uint32
         return false;
     }
 
+    // SEM troca de endianness aqui: só formatos não-RGB565 chegam a este
+    // caminho, e o FOURCC deles já define a ordem dos bytes na memória — a
+    // troca da Kconfig é uma correção exclusiva de RGB565 (feita no caminho
+    // direto acima). Aplicá-la ao UYVY desta placa produzia YUYV com rótulo
+    // UYVY: croma/luma invertidos, o verde/magenta visto na validação física
+    // de 2026-08-04.
     const uint8_t* convert_src = src;
-    if (kSwapPixelBytes) {
-        // O conversor de cor não sabe desfazer a troca de endianness, então ela
-        // acontece antes, num intermediário REUTILIZÁVEL (alocado uma única vez
-        // no primeiro frame). Trocar direto no buffer mmap corromperia a
-        // próxima captura DMA do driver.
-        if (preview_swap_size_ < expected_in) {
-            if (preview_swap_buffer_ != nullptr) {
-                heap_caps_free(preview_swap_buffer_);
-            }
-            preview_swap_buffer_ =
-                (uint8_t*)heap_caps_malloc(expected_in, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-            if (preview_swap_buffer_ == nullptr) {
-                preview_swap_size_ = 0;
-                ESP_LOGE(TAG, "Preview: falha ao alocar %u bytes de buffer intermediário",
-                         (unsigned)expected_in);
-                return false;
-            }
-            preview_swap_size_ = expected_in;
-        }
-        SwapBytes16(src, preview_swap_buffer_, expected_in);
-        convert_src = preview_swap_buffer_;
-    }
 
     if (preview_convert_handle_ != nullptr && preview_convert_format_ != src_format) {
         esp_imgfx_color_convert_close(

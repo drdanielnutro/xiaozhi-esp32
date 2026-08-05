@@ -114,6 +114,36 @@ produção** — flat de 50 cm ou, se houver ruído/artefato, adaptador CSI→HD
 
 - Estado Git inicial: `3fe622f` (worktree limpo, 2026-08-04).
 
+### T6 degrau 1 — validação física parcial (2026-08-04/05, flat 10 cm)
+
+- **Bug real encontrado e corrigido — cores verde/magenta:** o pipeline
+  negocia **UYVY** (FOURCC 0x59565955, visto no log físico), e o
+  `CONFIG_XIAOZHI_ENABLE_CAMERA_ENDIANNESS_SWAP=y` da 7B aplicava a troca de
+  16 bits (correção exclusiva de RGB565) ao UYVY — produzindo YUYV com
+  rótulo UYVY (croma/luma invertidos). Diagnóstico confirmado com o dump
+  reconstruído (cena nítida, cores trocadas). Correção nos métodos aditivos:
+  swap restrito a RGB565/RGB565X; YUV passa intacto (preview ainda perdeu
+  uma cópia de 2,4 MB/frame — o intermediário de swap foi removido).
+  **Cores confirmadas corretas pelo proprietário na placa (2026-08-04).**
+  **Dívida upstream registrada:** o `Capture()` legado tem o mesmo bug
+  latente na 7B (câmera nunca usada de verdade; mesmo padrão do toque 180°
+  da F1) — recomendar issue no 78/xiaozhi-esp32 sem expor o PV.
+- **Medições reais do degrau 1** (log físico): boot com sensor no modo novo
+  (226 frames/5 s ≈ 45 fps de init); `CaptureRaw` 1280×960 UYVY 2.457.600 B;
+  JPEG q85 = **202.103 bytes** (dentro do alvo de centenas de KB);
+  codificação 555 ms; decodificação 395 ms; PSRAM livre 12,78 MB (maior
+  bloco 10,2 MB); dump serial 24 s com CRC íntegro; extração no Mac OK na
+  primeira tentativa real.
+- Preview em 992×378 px úteis (escala 100/256). Fluidez percebida OK no
+  degrau 1 (medição formal de fps pendente).
+- **F2B criada (2026-08-05, decisão direta do proprietário):** risco de
+  resolução insuficiente para extração completa do manuscrito (piloto
+  Windows: resolução baixa → conteúdo incompleto SEM erro). Ver
+  plano-firmware.md §F2B e decision-log `F2B-ExtractionResolution`. O teste
+  de legibilidade do degrau atual prossegue como linha de base.
+- Pendente no degrau 2 (flat 50 cm/produção): repetir preview + foto de
+  página A4 real no suporte + exportação + legibilidade a 100%.
+
 ### T1 — Decisões estruturais (2026-08-04, Codex thread 019fcc8b)
 
 - **F2-FrameAccess (Q1a):** `EspVideo` segue dono único do CSI; método

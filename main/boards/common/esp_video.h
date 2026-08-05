@@ -52,11 +52,6 @@ private:
     // como void* para manter este header livre dos headers do esp_imgfx.
     void* preview_convert_handle_ = nullptr;
     uint32_t preview_convert_format_ = 0;
-    // Só é alocado quando o sensor exige troca de endianness E o formato
-    // precisa de conversão de cor: aí o byte-swap não cabe no buffer de
-    // destino (que é RGB565) e precisa de um intermediário reutilizável.
-    uint8_t* preview_swap_buffer_ = nullptr;
-    size_t preview_swap_size_ = 0;
 
     // Converte um frame do driver para RGB565 LE dentro do buffer do chamador.
     bool ConvertPreviewToRgb565(const uint8_t* src, size_t src_len, uint32_t src_format,
