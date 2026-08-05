@@ -257,13 +257,20 @@ Garantir resolução de captura suficiente para a API extrair o manuscrito
 COMPLETO antes da F3. Motivação (evidência do piloto Windows, pré-firmware):
 em resoluções baixas a extração não erra — devolve conteúdo **incompleto**,
 sobretudo na escrita à mão (falha silenciosa que invalidaria o produto); a
-faixa ~1280 px não foi testada no piloto. Rotas: **(a)** contornar o teto
-Full HD via CSI — investigar se o limite é do ISP do ESP32-P4 ou apenas dos
-modos expostos pelo driver `esp_cam_sensor` (o OV5647 tem modo full-frame
-2592×1944 sem crop; há relatos de comunidade de resolução superior no P4;
-para foto parada, fps baixo basta); **(b)** câmera UVC industrial validada no
+faixa ~1280 px não foi testada no piloto. Rotas: **(a)** CSI acima de Full
+HD — **DESCARTADA pela pesquisa de 2026-08-05**: o ISP do ESP32-P4 tem
+entrada máxima de 1920×1080 (limite de silício; doc oficial do camera
+driver do P4). Sensores RAW como o OV5647 dependem do ISP, logo o
+full-frame 2592×1944 não tem caminho pelo CSI; relatos de comunidade acima
+de 1080p usam câmeras com ISP próprio (YUV/JPEG direto). Máximo honesto no
+CSI: 1920×1080 (+12% de linhas sobre o atual — plano B interino);
+**(b) rota principal** — câmera UVC industrial validada no
 piloto do `licao_casa` (3 exemplos de UVC no repo: `esp-s3-lcd-ev-board{,-2}`,
-`esp-vocat`). Nada da F2 se perde: muda só a fonte do frame sob o mesmo
+`esp-vocat`); UVC entrega MJPEG comprimido pela USB — sem passar pelo ISP,
+sem o teto de 1080p; fps baixo basta para foto parada, e o JPEG da câmera
+pode subir ao backend sem reencode. Questões da F2B: alimentação/porta USB
+da 7B, formatos/resoluções da câmera industrial no `esp_video`-UVC, decode
+para preview. Nada da F2 se perde: muda só a fonte do frame sob o mesmo
 `pv_camera`. **Pronto quando:** teste A/B físico com a mesma página define a
 rota; foto capturada tem extração completa comprovada (com o backend real)
 ou legibilidade a 100% aprovada pelo proprietário como proxy até a F3.
