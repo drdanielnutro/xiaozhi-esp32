@@ -47,16 +47,17 @@ if (existsSync(planoPath)) {
   out.push("plano-firmware.md ainda não existe.");
 }
 
-// 2. Checklist da fase corrente (fase-N.md de maior N)
+// 2. Checklist da fase corrente (fase-N.md de maior N; sufixo alfabético
+// opcional para adendos — fase-2b vem depois de fase-2)
 let faseFile = null;
 if (existsSync(fasesDir)) {
   const fases = readdirSync(fasesDir)
     .map((f) => {
-      const m = f.match(/^fase-(\d+)\.md$/);
-      return m ? { f, n: Number(m[1]) } : null;
+      const m = f.match(/^fase-(\d+)([a-z]?)\.md$/);
+      return m ? { f, n: Number(m[1]), s: m[2] } : null;
     })
     .filter(Boolean)
-    .sort((a, b) => a.n - b.n);
+    .sort((a, b) => a.n - b.n || a.s.localeCompare(b.s));
   if (fases.length > 0) {
     faseFile = fases[fases.length - 1].f;
   }

@@ -31,11 +31,16 @@ function listFases() {
   if (!existsSync(fasesDir)) return [];
   return readdirSync(fasesDir)
     .map((f) => {
-      const m = f.match(/^fase-(\d+)\.md$/);
-      return m ? { file: f, n: Number(m[1]) } : null;
+      const m = f.match(/^fase-(\d+)([a-z]?)\.md$/);
+      return m ? { file: f, n: Number(m[1]), s: m[2] } : null;
     })
     .filter(Boolean)
-    .sort((a, b) => a.n - b.n);
+    .sort((a, b) => a.n - b.n || a.s.localeCompare(b.s));
+}
+
+// Rótulo humano da fase: F2, F2B, ... (sufixo do adendo em maiúscula).
+function faseLabel(n, s) {
+  return `F${n}${(s || "").toUpperCase()}`;
 }
 
 function checkboxes(text) {
@@ -55,9 +60,14 @@ function parseStatusTable() {
     .filter((l) => /^\|\s*F\d+/.test(l))
     .map((l) => {
       const cols = l.split("|").map((c) => c.trim());
-      const m = (cols[1] || "").match(/^F(\d+)/);
+      const m = (cols[1] || "").match(/^F(\d+)([A-Za-z]?)/);
       return m
-        ? { n: Number(m[1]), status: cols[2] || "", commit: cols[4] || "" }
+        ? {
+            n: Number(m[1]),
+            s: (m[2] || "").toLowerCase(),
+            status: cols[2] || "",
+            commit: cols[4] || "",
+          }
         : null;
     })
     .filter(Boolean);
@@ -80,25 +90,27 @@ const rows = parseStatusTable();
 // e hash de commit real.
 for (const row of rows) {
   if (!/conclu/i.test(row.status)) continue;
-  const fasePath = join(fasesDir, `fase-${row.n}.md`);
+  const rowLabel = faseLabel(row.n, row.s);
+  const rowFile = `fase-${row.n}${row.s}.md`;
+  const fasePath = join(fasesDir, rowFile);
   if (!existsSync(fasePath)) {
     problems.push(
-      `F${row.n}: tabela diz "${row.status}", mas fases/fase-${row.n}.md não existe.`
+      `${rowLabel}: tabela diz "${row.status}", mas fases/${rowFile} não existe.`
     );
   } else {
     const { open } = checkboxes(readFileSync(fasePath, "utf8"));
     if (open > 0) {
       problems.push(
-        `F${row.n}: tabela diz "${row.status}", mas há ${open} checkbox(es) aberto(s) em fase-${row.n}.md.`
+        `${rowLabel}: tabela diz "${row.status}", mas há ${open} checkbox(es) aberto(s) em ${rowFile}.`
       );
     }
   }
   const hash = (row.commit.match(/[0-9a-f]{7,40}/i) || [])[0];
   if (!hash) {
-    problems.push(`F${row.n}: fase concluída sem hash de commit na tabela.`);
+    problems.push(`${rowLabel}: fase concluída sem hash de commit na tabela.`);
   } else if (sh(`git cat-file -t ${hash}`) !== "commit") {
     problems.push(
-      `F${row.n}: hash "${hash}" da tabela não existe neste repositório.`
+      `${rowLabel}: hash "${hash}" da tabela não existe neste repositório.`
     );
   }
 }
@@ -109,14 +121,15 @@ for (const fase of fases) {
     readFileSync(join(fasesDir, fase.file), "utf8")
   );
   if (done === 0 || open > 0) continue;
-  const row = rows.find((r) => r.n === fase.n);
+  const label = faseLabel(fase.n, fase.s);
+  const row = rows.find((r) => r.n === fase.n && r.s === fase.s);
   if (!row) {
     problems.push(
-      `F${fase.n}: checklist 100% fechado, mas não há linha F${fase.n} na tabela "Status das fases" do plano-firmware.md.`
+      `${label}: checklist 100% fechado, mas não há linha ${label} na tabela "Status das fases" do plano-firmware.md.`
     );
   } else if (!/conclu/i.test(row.status)) {
     problems.push(
-      `F${fase.n}: checklist 100% fechado, mas tabela diz "${row.status}" — atualizar plano-firmware.md.`
+      `${label}: checklist 100% fechado, mas tabela diz "${row.status}" — atualizar plano-firmware.md.`
     );
   }
 }
@@ -149,7 +162,7 @@ for (const fase of fases) {
     );
     if (!touchesWork && !isClosure) {
       problems.push(
-        `F${fase.n}: commit ${hash.slice(0, 7)} marca checkbox sem nenhum outro arquivo de trabalho no commit.`
+        `${faseLabel(fase.n, fase.s)}: commit ${hash.slice(0, 7)} marca checkbox sem nenhum outro arquivo de trabalho no commit.`
       );
     }
   }
@@ -172,7 +185,7 @@ const untracked = sh(
   "git ls-files --others --exclude-standard -- docs/professor-virtual/fases/"
 )
   .split("\n")
-  .filter((f) => /fase-\d+\.md$/.test(f));
+  .filter((f) => /fase-\d+[a-z]?\.md$/.test(f));
 for (const f of untracked) {
   try {
     const { done } = checkboxes(readFileSync(join(root, f), "utf8"));

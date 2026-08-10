@@ -70,6 +70,27 @@ test("não imprime a seção quando está vazia", () => {
   assert.doesNotMatch(r.stdout, /Preencha ao interromper/);
 });
 
+test("adendo com sufixo (fase-2b) vira a fase corrente sobre fase-2", () => {
+  const dir = makeProject();
+  const fases = join(dir, "docs", "professor-virtual", "fases");
+  writeFileSync(
+    join(fases, "fase-2.md"),
+    `# Fase F2\n\n## Tasks\n\n- [ ] T6 — validação física\n\n` +
+      `## Contexto de retomada\n\n${INSTRUCAO}\n(vazio)\n\n## Notas da fase\n`
+  );
+  writeFileSync(
+    join(fases, "fase-2b.md"),
+    `# Fase F2B\n\n## Tasks\n\n- [ ] T1 — inspeção da API\n\n` +
+      `## Contexto de retomada\n\n${INSTRUCAO}\n` +
+      `- Task em andamento: T1\n\n${COMENTARIO}\n## Notas da fase\n`
+  );
+  const r = run(dir);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /Checklist da fase corrente \(fase-2b\.md\)/);
+  assert.match(r.stdout, /T1 — inspeção da API/);
+  assert.match(r.stdout, /Task em andamento: T1/);
+});
+
 test("reporta problemas de integridade na abertura da sessão", () => {
   const dir = makeProject();
   const g = (cmd) =>
