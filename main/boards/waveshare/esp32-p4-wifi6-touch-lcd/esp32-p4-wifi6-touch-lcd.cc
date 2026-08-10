@@ -355,6 +355,17 @@ private:
 
         display_ = new MipiLcdDisplay(io, disp_panel, DISPLAY_WIDTH, DISPLAY_HEIGHT,
                                        DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
+#if defined(CONFIG_PROFESSOR_VIRTUAL) && defined(CONFIG_BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_7B)
+        // No gabinete do PV o painel 7B fica montado de cabeça para baixo.
+        // Gira a UI 180° via sw_rotate do esp_lvgl_port (os flags
+        // DISPLAY_MIRROR_X/Y são ignorados nesse caminho). O LVGL 9 aplica a
+        // mesma rotação às coordenadas do toque (lv_display_rotate_point),
+        // então o mirror do GT911 validado na F1 (F1-TouchMirror) permanece.
+        if (lv_display_t* pv_disp = lv_display_get_default()) {
+            DisplayLockGuard lock(display_);
+            lv_display_set_rotation(pv_disp, LV_DISPLAY_ROTATION_180);
+        }
+#endif
     }
     void InitializeTouch()
     {
