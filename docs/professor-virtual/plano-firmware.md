@@ -275,6 +275,19 @@ para preview. Nada da F2 se perde: muda só a fonte do frame sob o mesmo
 rota; foto capturada tem extração completa comprovada (com o backend real)
 ou legibilidade a 100% aprovada pelo proprietário como proxy até a F3.
 
+**Atualização 2026-08-10 — fase aberta (`fases/fase-2b.md`):** o A/B físico
+(evidências em `evidencias/f2b/`) confirmou a rota (b) como **necessária**:
+a CSI 1280×960, mesmo com boa luz, entrega ~metade dos pixels lineares por
+letra da baseline UVC do piloto — que roda em modo reduzido e tem extração
+comprovada no mesmo backend; no piloto, essa classe de resolução já causava
+extração incompleta silenciosa até em impresso (veredito do proprietário).
+O plano B interino CSI 1920×1080 foi descartado (não fecha gap de
+óptica/foco). Próximo passo: spike de bancada na 7B com a NE-HD362 (desenho
+"A-sem-board" na fase-2b.md; decisão `F2B-RouteUvc` no decision-log);
+fallbacks em ordem: tuning → outra câmera UVC → outra plataforma (backend
+intacto). Pesquisas externas arquivadas em `f2b-pesquisa-chatgpt.md` e
+`f2b-pesquisa-gemini.md`.
+
 ### F3 — Fatia vertical do turno por foto *(o marco central; B.5 item 9)*
 
 `POST /api/turn` multipart (chunked, timeout ≥120 s) contendo **a imagem JPEG
@@ -412,8 +425,8 @@ checklist final de validação física com o dono, tag de versão.
 |---|---|---|---|---|
 | F0 — Fundações | concluída | 2026-08-03 | c5fb376 | nenhuma — flash e tela "PV" validados no hardware em 2026-08-03 |
 | F1 — Rede e hidratação | concluída | 2026-08-04 | 8ec52ad | nenhuma — validação física completa em 2026-08-04 (boot→hidrata→roteia, §9.7, 401/503, toque corrigido, gesto de recuperação); spike (a) parcial → F8 |
-| F2 — Câmera | implementação concluída — aprovada na revisão independente; aguarda validação física (T6) | — | 46db44b | T6 em dois degraus (combinado 2026-08-04): degrau 1 flat 10 cm (bring-up: preview 5 fps, foto, legibilidade, medições); degrau 2 configuração de produção — flat 50 cm ou CSI→HDMI (a fase só fecha aqui). Medir tamanho típico do JPEG/página. Flash = ação do dono |
-| F2B — Resolução de extração | não iniciada (adendo criado em 2026-08-05) | — | — | teste A/B físico com a mesma página (CSI full-res vs UVC) |
+| F2 — Câmera | implementação concluída — aprovada na revisão independente; aguarda validação física (T6) | — | 46db44b | T6 em dois degraus (combinado 2026-08-04): degrau 1 flat 10 cm (bring-up: preview 5 fps, foto, legibilidade, medições); degrau 2 configuração de produção — flat 50 cm ou CSI→HDMI (a fase só fecha aqui). Degrau 1 concluído (2026-08-04/05 + A/B 2026-08-10); degrau 2 CONDICIONADO ao desenho pós-F2B (se a captura migrar para UVC, o papel do flat muda — provável preview). Medir tamanho típico do JPEG/página. Flash = ação do dono |
+| F2B — Resolução de extração | em andamento — rota UVC necessária (A/B físico 2026-08-10); spike de bancada desenhado (fase-2b.md) | — | — | spike UVC no Mac (T5, flash = dono; câmera NE-HD362 no USB-A); se PASS, A/B de extração com o backend real |
 | F3 — Turno por foto | não iniciada | — | — | — |
 | F4 — Turno por áudio | não iniciada | — | — | — |
 | F5 — Máquina de fases | não iniciada | — | — | — |
