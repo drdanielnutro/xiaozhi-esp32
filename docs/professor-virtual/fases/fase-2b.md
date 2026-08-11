@@ -59,7 +59,7 @@ até a F3).
       --name esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-spike` gera
       o zip (apagar zip pré-existente em releases/ antes — senão o build é
       PULADO com exit 0).
-- [ ] T4 — Regressão: build spike + build `7b-professor-virtual` + build
+- [x] T4 — Regressão: build spike + build `7b-professor-virtual` + build
       `7b` original + testes host (incluindo teste novo do `--all`) ·
       pronto quando: 3 builds verdes e testes host passando.
 - [ ] T5 — Bancada (flash = ação do dono; roteiro nas Notas): enumeração
@@ -354,3 +354,12 @@ Build da variante spike:
 (1.967.944 B; `xiaozhi.bin` 954.496 B — o linker descarta PvApp/LVGL
 inteiros porque nada os referencia no ramo do spike; bom para bancada).
 `SpikeTask` confirmado no `.map`; sdkconfig efetivo com as 4 flags.
+
+### T4 — Regressão (2026-08-10/11; Mac)
+
+3 builds verdes no estado da T3: spike (zip 1.967.944 B), PV normal
+(3.015.223 B — contém a rotação 180° de b837db1, validação física
+pendente) e 7b original (3.409.027 B); testes host 21/21. Os zips da F2
+foram movidos do `releases/` para backup fora do repo antes dos rebuilds
+(zip existente PULA o build). O build da 7b original foi interrompido por
+desligamento do Mac a ~96% e reexecutado limpo na retomada.
