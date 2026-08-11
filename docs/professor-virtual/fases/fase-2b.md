@@ -82,7 +82,32 @@ até a F3).
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-(vazio)
+- Task em andamento: T5 (bancada), pausada aguardando UM gesto físico do
+  proprietário: **replugar a câmera NE-HD362 na USB-A** (desplugar, 5 s,
+  replugar; placa pode ficar ligada). NÃO precisa de flash: o firmware da
+  rodada 6 já está na placa e a escada roda sozinha a cada boot.
+- Próximo passo exato após o replug: abrir a captura serial (o open da
+  porta auto-reseta a placa via CH343) com
+  `~/.espressif/tools/python/v6.0.2/venv/bin/python <scratchpad>/pv_capture.py <log>`
+  (script recriável: pyserial, dtr/rts=False, port
+  /dev/cu.usbmodem5B3E0883401 a 115200) e acompanhar a escada. Esta é a
+  RODADA DECISIVA: câmera fresca + ciclo device-único corrigido. Leituras
+  possíveis: (a) 4-5 degraus PASS → viabilidade respondida, ir à T6; (b)
+  degrau 1 PASS e demais mudos → a câmera trava no CLOSE do stream (não
+  nos reboots) → próxima rodada reordena a escada (2592×1944 primeiro)
+  e/ou 1 degrau por boot via RTC noinit, com 1 replug por degrau (a fase
+  só precisa de 1920×1080 + um ≥2592×1944).
+- Estado da bancada (2026-08-11, rodadas 1-6 da T5): ver Notas "T5 —
+  Bancada". Resumo: transporte ISOC OK no P4; 800×600 PASS com foto
+  íntegra (rodada 4); bug de reopen do esp_video contornado (device
+  único, rodada 5); câmera trava streaming se atravessa reboots
+  energizada — replug por firmware NÃO funciona (VBUS não é controlável
+  pelo host nesta placa, rodada 6); destravamento é FÍSICO.
+- Armadilhas: SEMPRE liberar a porta serial (matar capturas) antes de
+  qualquer flash — "multiple access on port" já custou uma rodada; flash
+  é do proprietário (classifier bloqueia; linha pronta:
+  `! zsh releases/flash-spike.sh`); zip existente em releases/ PULA o
+  build.
 
 ## Notas da fase
 
@@ -214,6 +239,55 @@ com tee; conferir enumeração (VID/PID, sem erros de descritor/MPS) e a
 lista ENUM_FMT; escada automática completa; por degrau conferir
 `result=PASS`; `extract_jpeg_dump.py --all`; abrir cada JPG (cena,
 corrupção, foco); repetir a escada 3× e anotar power-cycles.
+
+### T5 — Bancada (2026-08-11, rodadas 1-6; em andamento)
+
+Roteiro operacional que emergiu: flash é do proprietário (linha
+`! zsh releases/flash-spike.sh`, funciona por controle remoto); captura e
+monitoramento são do implementador (pyserial com dtr/rts=False; o open da
+porta auto-reseta a placa — o boot cai inteiro na captura); liberar a
+porta antes de todo flash.
+
+- **Rodada 1** (config da T2): câmera enumera perfeita (14 tamanhos JPEG,
+  TODOS os degraus anunciados, até 4000×3000), mas zero frames e assert
+  `usbh_dev_close` no teardown → boot loop. Log:
+  `t5-rodada1-isoc-sem-frames.log`.
+- **Rodada 2** (tuning: usb task 2→6, REQBUFS 4, sizeimage, BIAS_IN,
+  DEBUG): o por-pacote revelou a 1ª causa raiz: TODOS os pacotes
+  rejeitados por `invalid UVC payload header 0c 4d` — a NE-HD362 não seta
+  o bit EOH e `CONFIG_UVC_CHECK_PAYLOAD_HEADER_EOH` (default y) descarta
+  tudo. Log: `t5-rodada2-eoh-rejeita-pacotes.log`.
+- **Rodada 3** (EOH off): SEM crash (dreno 400 ms) e escada completa —
+  mas silêncio total: câmera estava TRAVADA (ver rodadas 5-6).
+- **Rodada 4** (pós-replug físico da câmera): **MARCO — 800×600 PASS**:
+  frame JPEG 32.405 B íntegro (SOI/EOI, CRC), dump ok, foto verificada no
+  Mac (`t5-rodada4-foto-800x600.jpg`). Transporte ISOC high-bandwidth
+  3×1024 FUNCIONA no P4 (8.307 callbacks, zero usb err) — a hipótese de
+  limitação de silício CAIU. ERR da câmera é intermitente (AF/exposição);
+  warmup lida. Degraus 2-5: `open errno=22` — 2ª causa raiz: esp_video
+  2.0.1 não sobrevive a open→close→open após streaming
+  (`uvc_video_init: Failed to get frame info`). Log:
+  `t5-rodada4-800x600-pass.log`.
+- **Rodada 5** (device único para a escada, reconfig por degrau): o ciclo
+  FUNCIONA (5 degraus reconfiguram sem erro de reopen), mas zero frames:
+  3ª causa raiz — a câmera trava o plano de streaming quando atravessa
+  reboots da placa energizada (controle/enumeração perfeitos; só replug
+  físico destrava; a rodada 4 passou porque o replug era fresco). Log:
+  `t5-rodada5-ciclo-ok-camera-travada.log`.
+- **Rodada 6** (replug por firmware): host instalado com
+  `root_port_unpowered=true`, 1 s off, `usb_host_lib_set_root_port_power`
+  — executa limpo e a câmera re-enumera, mas streaming segue mudo:
+  o EN do TPS2051C NÃO é fiado ao controle de VBUS do P4; a energia da
+  USB-A não cai por software. Destravamento é FÍSICO. Log:
+  `t5-rodada6-vbus-nao-destrava.log`. Implicação de produto: liga/desliga
+  normal corta a energia da câmera junto (sem problema por construção);
+  reboots por software (OTA/recuperação) precisam de mitigação na
+  integração (avaliar na T6; candidatos: chave de VBUS no hardware do
+  gabinete, ou verificar se o padrão de uso real sequer dispara o
+  travamento).
+
+Pendente: rodada decisiva com câmera fresca (1 replug do proprietário) —
+ver Contexto de retomada.
 
 ### Árvore de decisão da fase (sem fixação)
 
