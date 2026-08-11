@@ -355,6 +355,56 @@ Build da variante spike:
 inteiros porque nada os referencia no ramo do spike; bom para bancada).
 `SpikeTask` confirmado no `.map`; sdkconfig efetivo com as 4 flags.
 
+### T5 — Bancada, rodada 1 (2026-08-11; Mac) — FALHA → tuning (ramo previsto)
+
+Fluxo da bancada: flash da variante spike pelo proprietário (esptool,
+`--after no_reset`); captura serial minha por pyserial (DTR/RTS soltos —
+o abrir da porta dispara o auto-reset e o boot cai inteiro no log);
+evidência em `../evidencias/f2b/t5-rodada1-isoc-sem-frames.log`.
+
+O que funcionou: USB host sobe; **NE-HD362 enumera em 2 s**, descritor
+limpo (sem "EP MPS exceeds"); FOURCC JPEG com **14 tamanhos — todos os
+degraus da escada anunciados** (800×600 … 4000×3000, mais 3840×2160);
+YUYV também exposto (12 tamanhos, até 2592×1944@5fps); PSRAM 32,6 MB
+livre. Enumeração V4L2 completa logada (formatos × tamanhos ×
+intervalos: JPEG dá 30/15/10 fps na maioria dos tamanhos).
+
+O que falhou: degrau 800×600 — S_FMT/G_FMT ok, mas
+`Allocating 2 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets,
+3072 MPS`: endpoint ISOC high-bandwidth (MPS 1024×3), payload negociado
+(dwMaxPayloadTransferSize) = 3072 capou o URB em 1 pacote, e o glue
+esp_video usa REQBUFS count (=2) como número de URBs → 2 URBs de 1
+pacote para microframes de 125 µs. **Zero frames em 8 s** (warmup e
+DQBUF final estouram timeout, errno=1). Nenhum LOGW do driver ("usb
+err"/"frame error"/"invalid MJPEG SOI" teriam aparecido) — os detalhes
+por pacote são LOGD, invisíveis em INFO. Na desmontagem do degrau:
+`assert failed: usbh_dev_close usbh.c:1226
+(dev_obj->dynamic.num_ctrl_xfers_inflight == 0)` → SW_CPU_RESET →
+**boot loop** (5 ciclos idênticos no log). Config da rodada 1: usb host
+lib task priority=2 / uvc task=5, herdados do código morto S3 (nunca
+validados em streaming real).
+
+Rodada 2 de tuning (decision-log `F2B-SpikeTuningR2-*`, Codex ratificou
+os 5 itens; SUPERSEDE F2B-SpikeReqbufs e F2B-SpikeSdkconfig): usb host
+lib task 2→6 (daemon ≥ clientes; latência de resubmissão de URB);
+REQBUFS 2→4 com `sizeimage = max(1 MiB, w*h/2)` (pior caso 24 MB) e
+guarda `req.count==4`; variante ganha `CONFIG_USB_HOST_HW_BUFFER_BIAS_IN=y`
+e `CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y` (spike liga DEBUG em runtime para
+uvc/uvc-isoc/uvc-bulk/uvc-frame/usb_uvc_device — bancada enxerga pacote
+a pacote); dreno de 400 ms entre STREAMOFF e close (workaround do assert
+do stack usb 1.4.1 — managed component; se persistir, vira issue
+registrada para a integração). fps/S_PARM reservado para eventual
+rodada 3.
+
+Desvio de build da rodada 2: `CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y` fez um
+`ESP_LOGD` do `espressif__esp_lcd_st7701` (managed component; compila
+mesmo sem o spike usar tela) virar código vivo — e ele tem use-after-free
+real num log de debug, que o GCC ≥12 trata como erro (`-Werror`).
+Correção: `CONFIG_COMPILER_DISABLE_GCC12_WARNINGS=y` na variante spike
+(flag oficial do IDF apontada pelo hint do próprio build; confinada à
+bancada). Bug do componente anotado — não é nosso código nem caminho de
+execução do spike.
+
 ### T4 — Regressão (2026-08-10/11; Mac)
 
 3 builds verdes no estado da T3: spike (zip 1.967.944 B), PV normal

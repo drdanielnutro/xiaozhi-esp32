@@ -65,10 +65,18 @@ constexpr Rung kLadder[] = {
 };
 constexpr size_t kRungCount = sizeof(kLadder) / sizeof(kLadder[0]);
 
-// Dois buffers V4L2 por degrau: o mínimo que mantém o stream vivo enquanto um
-// frame está fora. No pior degrau (4000x3000) são 12 MB cada, 24 MB de PSRAM —
-// cabe porque esta build não tem UI, LVGL nem rede.
-constexpr uint32_t kBufferCount = 2;
+// Quatro buffers V4L2 por degrau (rodada 2 de tuning, decision-log
+// F2B-SpikeTuningR2-Reqbufs): o glue esp_video usa count também como número de
+// URBs ISOC — com payloads de 1 pacote (MPS 3072 negociado pela NE-HD362), 2
+// URBs não cobriam os microframes e nenhum frame chegava. O custo de PSRAM é
+// contido pelo sizeimage explícito no S_FMT (abaixo).
+constexpr uint32_t kBufferCount = 4;
+
+// Teto deliberado do buffer de frame JPEG por degrau: JPEG real fica muito
+// abaixo de 4 bits/px, então w*h/2 sobra; o piso de 1 MiB cobre os degraus
+// pequenos. Frame maior que isto vira OVERFLOW visível em DEBUG e descarte
+// limpo no driver — nunca corrupção. Pior caso 4000x3000: 6 MB x 4 = 24 MB.
+constexpr uint32_t kFrameSizeFloorBytes = 1024 * 1024;
 
 // Descarte antes do frame que vale: o autofoco é on-camera (o caminho UVC não
 // expõe V4L2_CID_FOCUS_AUTO) e a exposição também precisa convergir. Teto
@@ -172,7 +180,11 @@ bool InitVideo() {
                 // fica a porta USB-A OTG da 7B.
                 .peripheral_map = 0,
                 .task_stack = 4096,
-                .task_priority = 2,
+                // Acima da task do device UVC (5): o daemon do usb host precisa
+                // resubmeter URBs ISOC de 1 pacote a cada microframe (125 us) —
+                // com prioridade 2 (herdada do código morto S3) a rodada 1 não
+                // recebeu um único frame (decision-log F2B-SpikeTuningR2).
+                .task_priority = 6,
                 .task_affinity = -1,
             },
     };
@@ -352,6 +364,11 @@ struct RungSession {
             if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
                 ESP_LOGW(TAG, "STREAMOFF falhou: errno=%d(%s)", errno, strerror(errno));
             }
+            // Dreno de control transfers em voo antes do close: a rodada 1
+            // morreu no assert usbh_dev_close (num_ctrl_xfers_inflight != 0)
+            // do stack usb 1.4.1 — managed component, intocável. Workaround
+            // diagnóstico, não correção (decision-log F2B-SpikeTuningR2).
+            vTaskDelay(pdMS_TO_TICKS(400));
         }
         for (size_t i = 0; i < kBufferCount; ++i) {
             if (mapped[i] != nullptr) {
@@ -420,10 +437,11 @@ bool RunRung(const Rung& rung, RungResult* result, uint8_t** out_jpeg, size_t* o
     format.fmt.pix.width = rung.width;
     format.fmt.pix.height = rung.height;
     format.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG;
-    // sizeimage=0 de propósito: o componente então dimensiona o buffer como
-    // w*h bytes, teto seguro para qualquer JPEG deste degrau (um frame maior
-    // que o buffer viraria evento de OVERFLOW e descarte limpo, não corrupção).
-    format.fmt.pix.sizeimage = 0;
+    // sizeimage explícito (rodada 2): com 4 buffers, o dimensionamento w*h do
+    // componente estouraria a PSRAM no degrau de 12 MP (12 MB x 4 = 48 MB).
+    // Ver kFrameSizeFloorBytes para o racional do teto w*h/2.
+    const uint32_t frame_cap = rung.width * rung.height / 2;
+    format.fmt.pix.sizeimage = frame_cap > kFrameSizeFloorBytes ? frame_cap : kFrameSizeFloorBytes;
     if (ioctl(session.fd, VIDIOC_S_FMT, &format) != 0) {
         ESP_LOGE(TAG, "VIDIOC_S_FMT falhou: errno=%d(%s)", errno, strerror(errno));
         result->reason = "s-fmt";
@@ -463,6 +481,14 @@ bool RunRung(const Rung& rung, RungResult* result, uint8_t** out_jpeg, size_t* o
     if (ioctl(session.fd, VIDIOC_REQBUFS, &req) != 0) {
         ESP_LOGE(TAG, "VIDIOC_REQBUFS falhou: errno=%d(%s)", errno, strerror(errno));
         result->reason = "reqbufs";
+        return false;
+    }
+    printf("PV-UVC-REQBUFS pedido=%u obtido=%u sizeimage=%u\n", (unsigned)kBufferCount,
+           (unsigned)req.count, (unsigned)format.fmt.pix.sizeimage);
+    if (req.count != kBufferCount) {
+        // count também é o número de URBs ISOC no glue — menos que o pedido
+        // reabriria exatamente o buraco de microframes da rodada 1.
+        result->reason = "reqbufs-count";
         return false;
     }
 
@@ -698,6 +724,16 @@ void SpikeTask(void* arg) {
 
     printf("\nPV-UVC-SPIKE inicio (F2B) degraus=%u\n", (unsigned)kRungCount);
     PrintMemory("boot");
+
+    // Bancada enxerga pacote a pacote (zero-length, header inválido, usb err):
+    // a rodada 1 falhou em silêncio porque esses detalhes são ESP_LOGD. Efetivo
+    // apenas com CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y (variante spike); inócuo nas
+    // demais builds.
+    esp_log_level_set("uvc", ESP_LOG_DEBUG);
+    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
+    esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
+    esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
+    esp_log_level_set("usb_uvc_device", ESP_LOG_DEBUG);
 
     if (!InitVideo()) {
         PrintSummary();
