@@ -51,7 +51,7 @@ até a F3).
       opcional 4000×3000 [rec.: sim, nunca bloqueante]; timeout e frames
       de descarte p/ AF [rec.: ~10 frames/3 s]) · pronto quando: decisões
       no decision-log.
-- [ ] T3 — Implementação: `main/professor_virtual/pv_uvc_spike.{h,cc}`,
+- [x] T3 — Implementação: `main/professor_virtual/pv_uvc_spike.{h,cc}`,
       3º ramo no `main.cc`, `CONFIG_PV_UVC_SPIKE` no Kconfig.projbuild,
       variante `esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-spike`
       no config.json, flag `--all` no `extract_jpeg_dump.py` · pronto
@@ -320,3 +320,37 @@ miniterm com tee); builds fora do export.sh exigem `ESP_IDF_VERSION=6.0`;
 board dir do release.py `waveshare/esp32-p4-wifi6-touch-lcd`; zip
 existente em `releases/` PULA o build (exit 0); o spike não usa rede nem
 backend; flash é SEMPRE ação do proprietário.
+
+**Correção de ambiente descoberta na T3**: o IDF 6.0.2 do projeto fica em
+`~/.espressif/v6.0.2/esp-idf`, ativado por
+`source ~/.espressif/tools/activate_idf_v6.0.2.sh` — e nessa instalação o
+`idf.py` é função de shell, invisível ao `os.system()` do release.py:
+depois de ativar, faça `export PATH="$IDF_PATH/tools:$PATH"`. O
+`~/esp/esp-idf` é um IDF **5.5.2** — NÃO usar (um build acidental com ele
+reescreve o `dependencies.lock`, não versionado; o build 6.0.2 restaura).
+
+### T3 — Implementação do spike (2026-08-10; Mac)
+
+Implementada por subagente com revisão do orquestrador. Arquivos:
+`pv_uvc_spike.h` (48 l) + `pv_uvc_spike.cc` (732 l, conteúdo inteiro sob
+`#if CONFIG_PV_UVC_SPIKE` + `#error` se o device UVC não estiver ligado);
+3º ramo no `main.cc` (falha do spike NÃO cai no app normal — preserva o
+isolamento); `config PV_UVC_SPIKE` no Kconfig.projbuild; variante
+`…-uvc-spike` no config.json (cópia exata da PV + as 4 flags da T1);
+`--all` no `extract_jpeg_dump.py` (índice = posição do bloco no log;
+bloco corrompido não desloca os demais; exit 1 se algum falhar, íntegros
+sempre gravados); 6 testes host novos (21/21 verdes). Formato: os dois
+arquivos novos passam `clang-format --dry-run -Werror` (o binário está em
+`~/.espressif/tools/esp-clang/…/bin/clang-format`); `main.cc` não foi
+reformatado (violações pré-existentes; churn não relacionado).
+
+Desvio documentado no código: `ESP_VIDEO_USB_UVC_DEVICE_NAME()` injeta um
+`extern` no escopo de uso — dentro de namespace anônimo vira símbolo de
+linkage interna e o link quebra; a única chamada mora em função `static`
+no escopo global do .cc.
+
+Build da variante spike:
+`releases/v2.4.0_waveshare-esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-spike.zip`
+(1.967.944 B; `xiaozhi.bin` 954.496 B — o linker descarta PvApp/LVGL
+inteiros porque nada os referencia no ramo do spike; bom para bancada).
+`SpikeTask` confirmado no `.map`; sdkconfig efetivo com as 4 flags.

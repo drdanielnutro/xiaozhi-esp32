@@ -814,6 +814,20 @@ config PROFESSOR_VIRTUAL
         are never initialized; main() boots PvApp instead of Application.
         Enabled only by the *-professor-virtual build variants.
 
+config PV_UVC_SPIKE
+    bool "Professor Virtual F2B UVC bench spike (diagnostics only)"
+    depends on PROFESSOR_VIRTUAL
+    default n
+    help
+        Replace the Professor Virtual application with the F2B bench spike that
+        probes the USB UVC camera: it initializes esp_video with the UVC device
+        only, logs the full enumeration, walks a fixed resolution ladder and
+        dumps one MJPEG frame per passing rung over the serial console.
+        The board is never constructed (no CSI, no display, no audio, no
+        network), so the screen stays dark on purpose.
+        Diagnostics tool, never a production build. Enabled only by the
+        *-professor-virtual-uvc-spike build variant.
+
 choice WAKE_WORD_TYPE
     prompt "Wake Word Implementation Type"
     default USE_AFE_WAKE_WORD if (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && SPIRAM

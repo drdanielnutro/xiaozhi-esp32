@@ -80,10 +80,10 @@ def write_log(directory: Path, *chunks: list[str]) -> Path:
     return path
 
 
-def run_extract(log_path: Path, out_dir: Path) -> int:
+def run_extract(log_path: Path, out_dir: Path, all_blocks: bool = False) -> int:
     """Executa o script silenciando o relatório para o operador."""
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        return DUMP.extract(str(log_path), str(out_dir))
+        return DUMP.extract(str(log_path), str(out_dir), all_blocks)
 
 
 class ExtractJpegDumpTest(unittest.TestCase):
@@ -151,6 +151,83 @@ class ExtractJpegDumpTest(unittest.TestCase):
             self.assertFalse((base / "foto_800x800.jpg").exists())
 
 
+class ExtractAllBlocksTest(unittest.TestCase):
+    """`--all` é o modo do spike UVC da F2B: um JPEG por degrau da escada.
+
+    Um degrau que chega corrompido não pode levar junto os degraus bons — a
+    bancada custa flash + minutos de dump serial por resolução, e repetir tudo
+    por causa de um bloco perdido inviabiliza a medição.
+    """
+
+    def test_all_flag_extracts_every_block_in_log_order(self):
+        rungs = ((800, 600, 2048), (1920, 1080, 3072), (2592, 1944, 4096))
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            payloads = [sample_jpeg(size, seed=index) for index, (_, _, size) in enumerate(rungs)]
+            log = write_log(
+                base,
+                *[
+                    render_block(data, width=width, height=height)
+                    for data, (width, height, _) in zip(payloads, rungs)
+                ],
+            )
+            self.assertEqual(run_extract(log, base, all_blocks=True), 0)
+            for index, (data, (width, height, _)) in enumerate(zip(payloads, rungs), start=1):
+                saved = base / f"foto_{index:02d}_{width}x{height}.jpg"
+                self.assertTrue(saved.exists(), saved.name)
+                self.assertEqual(saved.read_bytes(), data)
+
+    def test_all_flag_survives_a_corrupted_block_in_the_middle(self):
+        first = sample_jpeg(2048, seed=11)
+        broken = sample_jpeg(2560, seed=12)
+        last = sample_jpeg(3072, seed=13)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            log = write_log(
+                base,
+                render_block(first, width=800, height=600),
+                render_block(
+                    broken,
+                    width=1920,
+                    height=1080,
+                    declared_crc=zlib.crc32(broken) ^ 0xFFFFFFFF,
+                ),
+                render_block(last, width=2592, height=1944),
+            )
+            # Saída != 0 avisa o operador do bloco perdido, mas os íntegros já
+            # estão no disco — e o índice do terceiro continua sendo 03.
+            self.assertNotEqual(run_extract(log, base, all_blocks=True), 0)
+            self.assertEqual((base / "foto_01_800x600.jpg").read_bytes(), first)
+            self.assertFalse((base / "foto_02_1920x1080.jpg").exists())
+            self.assertEqual((base / "foto_03_2592x1944.jpg").read_bytes(), last)
+
+    def test_all_flag_ignores_interleaved_log_lines(self):
+        first = sample_jpeg(3000, seed=21)
+        second = sample_jpeg(3600, seed=22)
+        blocks = []
+        for data, (width, height) in ((first, (800, 600)), (second, (3264, 2448))):
+            lines = render_block(data, width=width, height=height)
+            noisy = [lines[0]]
+            for index, line in enumerate(lines[1:-1]):
+                noisy.append(line)
+                if index % 4 == 0:
+                    noisy.append(f"I (5000{index}) PvUvcSpike: PV-UVC-WARMUP descartados={index}")
+            noisy.append(lines[-1])
+            blocks.append(noisy)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            log = write_log(base, *blocks)
+            self.assertEqual(run_extract(log, base, all_blocks=True), 0)
+            self.assertEqual((base / "foto_01_800x600.jpg").read_bytes(), first)
+            self.assertEqual((base / "foto_02_3264x2448.jpg").read_bytes(), second)
+
+    def test_all_flag_without_any_block_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            log = write_log(base, ["I (100) PvUvcSpike: sem dump nenhum aqui"])
+            self.assertNotEqual(run_extract(log, base, all_blocks=True), 0)
+
+
 class BoardCameraFormatTest(unittest.TestCase):
     """O modo do sensor é parte do contrato da F2 e não pode vazar de volta."""
 
@@ -186,6 +263,36 @@ class BoardCameraFormatTest(unittest.TestCase):
             self.assertIn(self.RAW8_ON, appended, build["name"])
             for flag in self.RAW10_FLAGS:
                 self.assertNotIn(flag, appended, build["name"])
+
+
+class UvcSpikeVariantTest(unittest.TestCase):
+    """A variante do spike da F2B só é útil se vier com o caminho UVC ligado."""
+
+    NAME = "esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-spike"
+    REQUIRED = (
+        "CONFIG_PV_UVC_SPIKE=y",
+        "CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=y",
+        "CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096",
+        "CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y",
+    )
+
+    def test_spike_variant_enables_the_uvc_path(self):
+        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
+        spike = [build for build in builds if build["name"] == self.NAME]
+        self.assertEqual(len(spike), 1, f"variante {self.NAME} ausente ou duplicada")
+        appended = spike[0]["sdkconfig_append"]
+        for flag in self.REQUIRED:
+            self.assertIn(flag, appended)
+        # O gate depende de PROFESSOR_VIRTUAL no Kconfig: sem ele o spike nem
+        # entra no build (o glob dos fontes do PV também some).
+        self.assertIn("CONFIG_PROFESSOR_VIRTUAL=y", appended)
+
+    def test_no_other_variant_enables_the_spike(self):
+        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
+        for build in builds:
+            if build["name"] == self.NAME:
+                continue
+            self.assertNotIn("CONFIG_PV_UVC_SPIKE=y", build["sdkconfig_append"], build["name"])
 
 
 if __name__ == "__main__":
