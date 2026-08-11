@@ -725,12 +725,17 @@ void SpikeTask(void* arg) {
     printf("\nPV-UVC-SPIKE inicio (F2B) degraus=%u\n", (unsigned)kRungCount);
     PrintMemory("boot");
 
-    // Bancada enxerga pacote a pacote (zero-length, header inválido, usb err):
-    // a rodada 1 falhou em silêncio porque esses detalhes são ESP_LOGD. Efetivo
-    // apenas com CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y (variante spike); inócuo nas
-    // demais builds.
+    // Bancada enxerga o driver por dentro (efetivo só com
+    // CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y, variante spike; inócuo nas demais
+    // builds). Foi este DEBUG que revelou a causa raiz das rodadas 1-2: todos
+    // os pacotes rejeitados por "invalid UVC payload header 0c 4d" — a
+    // NE-HD362 não seta o bit EOH e o CONFIG_UVC_CHECK_PAYLOAD_HEADER_EOH
+    // (default y) descartava tudo. EXCEÇÃO deliberada: "uvc-isoc" fica em
+    // INFO — ele loga a CADA callback ISOC (milhares/s), o que satura o
+    // console a 115200 e atrasa a própria task do usb host (o printf roda
+    // nela). Religar só se uma rodada futura precisar ver pacote a pacote.
     esp_log_level_set("uvc", ESP_LOG_DEBUG);
-    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
+    esp_log_level_set("uvc-isoc", ESP_LOG_INFO);
     esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
     esp_log_level_set("usb_uvc_device", ESP_LOG_DEBUG);

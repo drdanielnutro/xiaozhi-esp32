@@ -180,7 +180,8 @@
                 "CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y",
                 "CONFIG_USB_HOST_HW_BUFFER_BIAS_IN=y",
                 "CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y",
-                "CONFIG_COMPILER_DISABLE_GCC12_WARNINGS=y"
+                "CONFIG_COMPILER_DISABLE_GCC12_WARNINGS=y",
+                "CONFIG_UVC_CHECK_PAYLOAD_HEADER_EOH=n"
             ]
         },
         {
