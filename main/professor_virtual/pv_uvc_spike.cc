@@ -735,7 +735,13 @@ void SpikeTask(void* arg) {
     // console a 115200 e atrasa a própria task do usb host (o printf roda
     // nela). Religar só se uma rodada futura precisar ver pacote a pacote.
     esp_log_level_set("uvc", ESP_LOG_DEBUG);
-    esp_log_level_set("uvc-isoc", ESP_LOG_INFO);
+    // Rodada 4: religa o por-pacote. Na rodada 3 (EOH off) o driver ficou em
+    // SILÊNCIO TOTAL — incompatível com dados chegando (erro de frame, SOI
+    // inválido e overflow logam em nível visível). O único caminho silencioso
+    // é status SKIPPED/TIMED_OUT: janelas de microframe perdidas. Só o LOGD
+    // por pacote distingue isso de zero-length/headers novos. Custa console
+    // saturado — aceito, é diagnóstico.
+    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
     esp_log_level_set("usb_uvc_device", ESP_LOG_DEBUG);
