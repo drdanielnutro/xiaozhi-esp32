@@ -45,7 +45,7 @@ até a F3).
       (interna vs PSRAM — se interna, escalar na T2), DQBUF
       bloqueante/O_NONBLOCK, V4L2_CID_FOCUS_AUTO) · pronto quando: fatos
       registrados nas Notas e lista final de `sdkconfig_append` fechada.
-- [ ] T2 — Decisões estruturais via Codex (ratificar arquitetura
+- [x] T2 — Decisões estruturais via Codex (ratificar arquitetura
       "A-sem-board" das Notas; ciclo open→close por degrau [rec.: sim];
       REQBUFS count [rec.: 2]; baud do console [rec.: 115200]; degrau
       opcional 4000×3000 [rec.: sim, nunca bloqueante]; timeout e frames
