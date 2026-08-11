@@ -37,7 +37,7 @@ até a F3).
 
 ## Tasks
 
-- [ ] T1 — Inspeção da API real do esp_video UVC pós-download (baixar
+- [x] T1 — Inspeção da API real do esp_video UVC pós-download (baixar
       managed_components no Mac; ler `espressif__esp_video`: campos de
       `esp_video_init_usb_uvc_config_t`, Kconfigs UVC do componente, FOURCC
       exposto pelo device UVC — JPEG vs MJPG, ENUM_FRAMESIZES
@@ -82,38 +82,7 @@ até a F3).
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T1 (primeira task; fase aberta em 2026-08-10 na
-  estação Windows/WSL — esta sessão do Mac NÃO tem memória daquela
-  conversa; TODO o contexto necessário está neste arquivo).
-- Último passo concluído (2026-08-10, estação Windows): validação física
-  A/B que decidiu a rota — fotos CSI 1280×960 extraídas por dump serial e
-  comparadas com a baseline UVC do piloto (`../evidencias/f2b/`, ler o
-  README). Veredito do proprietário: CSI insuficiente (no piloto, essa
-  classe de resolução já causava extração INCOMPLETA silenciosa até em
-  impresso); rota UVC virou NECESSÁRIA. Pesquisas ChatGPT/Gemini analisadas
-  (`../f2b-pesquisa-{chatgpt,gemini}.md`); spike desenhado (Notas, seção
-  "Desenho do spike"); hooks de sessão corrigidos para reconhecer
-  fase-2b.md; rotação 180° órfã commitada (validação física pendente).
-- Próximo passo exato: T1 — no Mac, `git pull`; baixar dependências (um
-  build da variante PV ou `idf.py reconfigure` popula managed_components/);
-  ler `managed_components/espressif__esp_video/` respondendo os itens da
-  T1; registrar nas Notas; fechar a lista de sdkconfig_append da variante
-  spike. Depois T2 via `mcp__codex-council__codex` (fase roda com
-  `/autonomous-phase fase-2b`).
-- Decisões já tomadas: `F2B-RouteUvc` no decision-log (2026-08-10) — rota
-  UVC necessária; spike decide; árvore de fallback (tuning → outra câmera
-  UVC → outra plataforma, backend intacto); plano B interino CSI 1080p
-  morto; degrau 2 da T6 da F2 condicionado ao desenho pós-spike.
-- Estado do worktree / armadilhas: worktree limpo após os commits de
-  abertura. Ambiente Mac: backend em
-  /Users/institutorecriare/VSCodeProjects/licao_casa/backend (somente
-  leitura; o spike NÃO precisa de backend nem de rede); porta serial da F2
-  era /dev/cu.usbmodem5B3E0883401 a 115200 (captura: idf.py monitor ou
-  miniterm com tee); builds fora do export.sh exigem ESP_IDF_VERSION=6.0;
-  board dir do release.py é waveshare/esp32-p4-wifi6-touch-lcd; zip
-  existente em releases/ PULA o build; Wi-Fi da placa "quarto_2.4GHz";
-  flash é SEMPRE ação do proprietário. Durante o spike a tela fica
-  APAGADA (o board nunca é construído — comportamento esperado).
+(vazio)
 
 ## Notas da fase
 
@@ -267,3 +236,87 @@ local 8001/qualquer endereço) criada para expor o backend rodando no WSL
 (`~/licao_casa`) à placa na LAN — relevante se a bancada voltar àquela
 máquina. A placa enxergava o backend em `http://192.168.15.9:8001` na F2
 (Mac na LAN de 192.168.15.x).
+
+### T1 — API real do caminho UVC (2026-08-10; Mac)
+
+Componentes já estavam no disco do Mac, baixados pelos builds da F2 (a
+dependência `usb_host_uvc` do esp_video é por target `[esp32p4, esp32s3]`,
+não por Kconfig): **esp_video 2.0.1** (commit 231c131), **usb_host_uvc
+2.4.2**, **usb (host stack) 1.4.1** — o stack USB host agora é componente
+gerenciado, não parte do IDF. Fontes lidas:
+`src/device/esp_video_usb_uvc_device.c`, `esp_video_init.{h,c}`,
+`esp_video.c` (config_buffer, dqbuf), `esp_video_ioctl.c`, Kconfigs dos
+três componentes, `uvc_host.c`/`uvc_bulk.c`.
+
+- Init: `esp_video_init_usb_uvc_config_t` tem dois blocos — `.uvc{
+  uvc_dev_num, task_stack, task_priority, task_affinity}` e `.usb{
+  init_usb_host_lib, peripheral_map, task_stack, task_priority,
+  task_affinity}`. `peripheral_map=0` seleciona o periférico default (no
+  P4, o HS). Os valores de referência dos boards S3 do repo não têm
+  `peripheral_map` (API antiga) — incluir o campo. Com `.csi=NULL` o laço
+  de detect de sensores não roda: CSI intocado, como o desenho previa.
+- Device: abrir `"/dev/video40"` (`ESP_VIDEO_USB_UVC_DEVICE_NAME(0)`;
+  IDs 40–49; nome interno "USB-UVC0").
+- FOURCC: o device converte o MJPEG da câmera para **`V4L2_PIX_FMT_JPEG`**
+  (e YUY2→YUYV, H264, HEVC). Não existe 'MJPG' no caminho — o risco
+  "MJPG vs JPEG" do desenho está RESOLVIDO: o pipeline vê JPEG.
+- **ENUM_FMT, ENUM_FRAMESIZES (DISCRETE, da frame list real da câmera) e
+  ENUM_FRAMEINTERVALS são implementados** — a escada pode ser dirigida
+  pelo que a câmera anuncia, não por chute.
+- S_FMT exige match EXATO (w, h, formato) na lista da câmera; fora dela
+  devolve `ESP_ERR_INVALID_ARG` — não ajusta silenciosamente (G_FMT vira
+  confirmação, não descoberta).
+- Buffers: para JPEG, tamanho = `sizeimage` (se >0 no S_FMT) senão
+  `w*h` bytes; caps = `MALLOC_CAP_SPIRAM` com CONFIG_SPIRAM → **PSRAM**,
+  nada a escalar. Zero-copy: os buffers V4L2 são entregues ao uvc_host
+  como `user_frame_buffers`. `dwMaxVideoFrameSize` vem da negociação
+  Probe/Commit (não dos descritores); frame maior que o buffer gera
+  evento OVERFLOW e descarte limpo, não corrupção (`w*h` ≥ qualquer JPEG
+  do degrau — seguro). Pior degrau 4000×3000: 12 MB/buffer; REQBUFS=2 →
+  24 MB de PSRAM (ok no app do spike, sem UI/LVGL).
+- DQBUF é bloqueante com default `portMAX_DELAY`; existe
+  **`VIDIOC_S_DQBUF_TIMEOUT`** (struct timeval, extensão Espressif) — o
+  deadline por degrau usa isso, sem polling nem O_NONBLOCK.
+- open() espera a enumeração até `CONFIG_USB_UVC_INIT_TIMEOUT_MS`
+  (default 10 s); se a câmera já enumerou, retorna direto — o ciclo
+  open→close por degrau é barato.
+- Renegociação: `uvc_host_stream_format_select` para/reconfigura/reinicia
+  o stream sozinho — tanto o ciclo STREAMOFF→S_FMT→STREAMON quanto o
+  close→open completo por degrau são suportados.
+- AF: `V4L2_CID_FOCUS_AUTO` **não é plumbado** (sem ext_controls no
+  device UVC; usb_host_uvc 2.4.2 não expõe controles CT/PU). O autofoco
+  fica por conta da câmera; mitigação confirmada = descartar ~10 frames.
+  Registrar como limitação para a integração.
+- Transporte: isoc E bulk implementados (`uvc_bulk.c` dedicado) — câmeras
+  MJPEG de alta resolução frequentemente usam bulk; sem lacuna.
+- Kconfigs relevantes: `USB_UVC_VIDEO_DEVICE_URB_SIZE` default 10240;
+  `USB_UVC_INIT_TIMEOUT_MS` default 10000 (range 500–60000);
+  `UVC_PRINTF_CONFIGURATION_DESCRIPTOR` (default n) imprime o descritor
+  completo no console — LIGAR no spike (evidência da T5: formatos, MPS,
+  dwMaxVideoFrameBufSize); `UVC_INTERVAL_ARRAY_SIZE` default 3. No
+  componente usb 1.4.1: `USB_HOST_CONTROL_TRANSFER_MAX_SIZE` default 256
+  (o global do repo já sobe para 1024 em `sdkconfig.defaults.esp32p4`) e
+  o choice `USB_HOST_HW_BUFFER_BIAS` (BALANCED default; `BIAS_IN` é a
+  1ª mitigação se a bancada acusar "EP MPS exceeds").
+
+**Lista FINAL de `sdkconfig_append` da variante spike** (sobre a cópia da
+variante PV, mantendo as flags CSI/RAW10 — inócuas com o board nunca
+construído e exigidas por `scripts/tests/test_pv_f2.py`):
+
+```
+CONFIG_PV_UVC_SPIKE=y
+CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=y
+CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096
+CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y
+```
+
+URB size e init timeout ficam nos defaults; FIFO bias fica BALANCED. O
+4096 antecipa descritores multi-formato de câmera 12 MP acima de 1 KB
+(custo de RAM trivial); T2 ratifica junto com os demais parâmetros.
+
+Ambiente Mac (durável, ex-Contexto de retomada): porta serial da F2
+`/dev/cu.usbmodem5B3E0883401` a 115200 (captura: `idf.py monitor` ou
+miniterm com tee); builds fora do export.sh exigem `ESP_IDF_VERSION=6.0`;
+board dir do release.py `waveshare/esp32-p4-wifi6-touch-lcd`; zip
+existente em `releases/` PULA o build (exit 0); o spike não usa rede nem
+backend; flash é SEMPRE ação do proprietário.
