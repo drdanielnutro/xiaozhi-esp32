@@ -1050,6 +1050,11 @@ if(CONFIG_PROFESSOR_VIRTUAL)
 endif()
 
 set(MAIN_PRIV_REQUIRES_EXTRA "")
+if(CONFIG_PV_UVC_SPIKE)
+    # O spike UVC da F2B controla a energia do root port (usb/usb_host.h);
+    # o componente usb só existe nos targets com OTG (P4/S3), por isso o gate.
+    list(APPEND MAIN_PRIV_REQUIRES_EXTRA espressif__usb)
+endif()
 if(BOARD_TYPE STREQUAL "m5stack-stick-s3")
     list(APPEND MAIN_PRIV_REQUIRES_EXTRA
         m5stack__m5pm1

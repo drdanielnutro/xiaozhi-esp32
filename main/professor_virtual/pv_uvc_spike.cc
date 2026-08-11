@@ -30,6 +30,7 @@
 #include "esp_video_init.h"
 #include "esp_video_ioctl.h"
 #include "linux/videodev2.h"
+#include "usb/usb_host.h"
 
 #include "pv_photo_dump.h"
 
@@ -162,6 +163,65 @@ void PrintMemory(const char* etapa) {
 // Inicialização do vídeo
 // ---------------------------------------------------------------------------
 
+// Task do USB host lib (espelha a do esp_video_init, que não usamos porque o
+// spike instala o host sozinho — ver InstallUsbHostWithVbusCycle).
+void UsbLibTask(void* arg) {
+    (void)arg;
+    while (true) {
+        uint32_t event_flags = 0;
+        if (usb_host_lib_handle_events(portMAX_DELAY, &event_flags) == ESP_OK) {
+            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
+                if (usb_host_device_free_all() == ESP_OK) {
+                    break;
+                }
+            }
+            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
+                break;
+            }
+        }
+    }
+    vTaskDelete(nullptr);
+}
+
+// Rodada 6 (decision-log F2B-SpikeTuningR6): a NE-HD362 TRAVA o plano de
+// streaming quando fica energizada através de reboots da placa (controle e
+// enumeração seguem perfeitos; streaming não entrega nada) e só destrava com
+// corte de energia. Tentativa de replug POR FIRMWARE: o spike instala o USB
+// host com o root port DESENERGIZADO (root_port_unpowered), espera 1 s e só
+// então liga a energia — se o EN do TPS2051C for fiado ao controle de VBUS do
+// P4, a câmera renasce; senão, ainda é um ciclo de power do port mais profundo
+// que reboot. Feito ANTES do esp_video_init instalar o driver UVC (exigência
+// do decisor: o driver não pode herdar estado da câmera pré-ciclo).
+bool InstallUsbHostWithVbusCycle() {
+    const usb_host_config_t host_config = {
+        .skip_phy_setup = false,
+        .root_port_unpowered = true,
+        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+        .enum_filter_cb = nullptr,
+        .fifo_settings_custom = {},
+        .peripheral_map = 0,
+    };
+    esp_err_t err = usb_host_install(&host_config);
+    if (err != ESP_OK) {
+        printf("PV-UVC-VBUS result=FAIL reason=usb_host_install err=0x%x\n", (unsigned)err);
+        return false;
+    }
+    if (xTaskCreate(UsbLibTask, "usb_lib", 4096, nullptr, 6, nullptr) != pdPASS) {
+        printf("PV-UVC-VBUS result=FAIL reason=usb_lib_task\n");
+        return false;
+    }
+    printf("PV-UVC-VBUS estado=off (host instalado sem energia no root port; 1000 ms)\n");
+    fflush(stdout);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    const int64_t started_us = esp_timer_get_time();
+    err = usb_host_lib_set_root_port_power(true);
+    printf("PV-UVC-VBUS estado=on err=0x%x apos_ms=%u\n", (unsigned)err,
+           (unsigned)((esp_timer_get_time() - started_us) / 1000));
+    fflush(stdout);
+    return err == ESP_OK;
+}
+
 // SÓ `.usb_uvc`: com `.csi` nulo o laço de detecção de sensores do esp_video
 // não roda, o CSI/ISP nunca é tocado e o board continua inexistente.
 bool InitVideo() {
@@ -175,15 +235,14 @@ bool InitVideo() {
             },
         .usb =
             {
-                .init_usb_host_lib = true,
-                // 0 = periférico USB default do P4 (o High-Speed), que é onde
-                // fica a porta USB-A OTG da 7B.
+                // O spike instala o USB host ELE MESMO, antes, para poder
+                // fazer o ciclo de VBUS com o driver UVC ainda inexistente
+                // (InstallUsbHostWithVbusCycle; a task própria roda a prio 6 —
+                // daemon acima da task do device UVC, decision-log
+                // F2B-SpikeTuningR2).
+                .init_usb_host_lib = false,
                 .peripheral_map = 0,
                 .task_stack = 4096,
-                // Acima da task do device UVC (5): o daemon do usb host precisa
-                // resubmeter URBs ISOC de 1 pacote a cada microframe (125 us) —
-                // com prioridade 2 (herdada do código morto S3) a rodada 1 não
-                // recebeu um único frame (decision-log F2B-SpikeTuningR2).
                 .task_priority = 6,
                 .task_affinity = -1,
             },
@@ -744,6 +803,10 @@ void SpikeTask(void* arg) {
     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
     esp_log_level_set("usb_uvc_device", ESP_LOG_DEBUG);
 
+    if (!InstallUsbHostWithVbusCycle()) {
+        PrintSummary();
+        IdleForever();
+    }
     if (!InitVideo()) {
         PrintSummary();
         IdleForever();
