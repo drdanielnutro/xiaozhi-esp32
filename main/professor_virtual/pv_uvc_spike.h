@@ -21,8 +21,11 @@
 //  2. enumeração completa do que a câmera anuncia (ENUM_FMT x ENUM_FRAMESIZES
 //     x ENUM_FRAMEINTERVALS), em linhas `PV-UVC-ENUM ...`;
 //  3. escada FIXA de resoluções (800x600 -> 1920x1080 -> 2592x1944 ->
-//     3264x2448 -> 4000x3000 opcional), um ciclo open->close por degrau, com
-//     uma linha `PV-UVC-RUNG ...` por degrau e um sumário no fim;
+//     3264x2448 -> 4000x3000 opcional), com o device aberto UMA vez para a
+//     escada inteira e reconfiguração por degrau (STREAMOFF -> S_FMT ->
+//     REQBUFS -> STREAMON; o re-open por degrau quebra o esp_video 2.0.1 —
+//     ver decision-log F2B-SpikeTuningR5), uma linha `PV-UVC-RUNG ...` por
+//     degrau e um sumário no fim;
 //  4. um dump serial base64 (PvPhotoDump) por degrau aprovado, que o
 //     `scripts/pv/extract_jpeg_dump.py --all` reconstrói em JPEGs no Mac.
 //

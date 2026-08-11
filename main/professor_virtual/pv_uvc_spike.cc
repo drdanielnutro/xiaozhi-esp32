@@ -311,9 +311,14 @@ void EnumerateFormats(int fd) {
     }
 }
 
-// Abre o device UMA vez só para descrever a câmera e fecha em seguida: a escada
-// faz o seu próprio ciclo open->close por degrau.
-bool EnumerateOnce() {
+// Abre o device UMA vez para a escada INTEIRA (rodada 5, decision-log
+// F2B-SpikeTuningR5): a bancada provou que o esp_video 2.0.1 não sobrevive ao
+// ciclo open->close->open com o device conectado — depois de um degrau com
+// streaming, o re-init falha em `uvc_host_get_frame_list` ("Failed to get
+// frame info", errno=22) porque o deinit devolve o ready_sem e o estado do
+// driver se perde no uvc_host_stream_close. O fd devolvido é da escada; quem
+// fecha é o chamador, no fim de tudo.
+int OpenDeviceOnce() {
     const char* device = PvUvcSpikeDeviceName();
     printf("PV-UVC-ENUM aguardando enumeracao USB em %s (ate %u ms)\n", device,
            (unsigned)CONFIG_USB_UVC_INIT_TIMEOUT_MS);
@@ -323,11 +328,14 @@ bool EnumerateOnce() {
     const int fd = open(device, O_RDWR);
     if (fd < 0) {
         printf("PV-UVC-ENUM result=FAIL reason=open errno=%d(%s)\n", errno, strerror(errno));
-        return false;
+        return -1;
     }
     printf("PV-UVC-ENUM device aberto em %u ms\n",
            (unsigned)((esp_timer_get_time() - started_us) / 1000));
+    return fd;
+}
 
+void DescribeCamera(int fd) {
     struct v4l2_capability cap = {};
     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0) {
         printf("PV-UVC-ENUM cap driver=%s card=%s bus=%s caps=0x%08x device_caps=0x%08x\n",
@@ -338,11 +346,9 @@ bool EnumerateOnce() {
     }
 
     EnumerateFormats(fd);
-    close(fd);
 
     printf("PV-UVC-ENUM result=OK tamanhos_jpeg=%u\n", (unsigned)g_jpeg_size_count);
     fflush(stdout);
-    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -350,8 +356,8 @@ bool EnumerateOnce() {
 // ---------------------------------------------------------------------------
 
 // Limpeza defensiva: QUALQUER saída do degrau (inclusive erro no meio) desfaz
-// STREAMON, mmap e open na ordem inversa. Sem isto um degrau que falha deixa o
-// device ocupado e derruba todos os seguintes.
+// STREAMON e mmap na ordem inversa. O fd NÃO é do degrau: pertence à escada
+// (rodada 5) e sobrevive entre degraus — quem o fecha é o SpikeTask no fim.
 struct RungSession {
     int fd = -1;
     void* mapped[kBufferCount] = {};
@@ -364,19 +370,17 @@ struct RungSession {
             if (ioctl(fd, VIDIOC_STREAMOFF, &type) != 0) {
                 ESP_LOGW(TAG, "STREAMOFF falhou: errno=%d(%s)", errno, strerror(errno));
             }
-            // Dreno de control transfers em voo antes do close: a rodada 1
-            // morreu no assert usbh_dev_close (num_ctrl_xfers_inflight != 0)
-            // do stack usb 1.4.1 — managed component, intocável. Workaround
-            // diagnóstico, não correção (decision-log F2B-SpikeTuningR2).
+            // Dreno de control transfers em voo depois do STREAMOFF (que
+            // fecha o stream handle do uvc_host): a rodada 1 morreu no assert
+            // usbh_dev_close (num_ctrl_xfers_inflight != 0) do stack usb
+            // 1.4.1 — managed component, intocável. Workaround diagnóstico,
+            // não correção (decision-log F2B-SpikeTuningR2).
             vTaskDelay(pdMS_TO_TICKS(400));
         }
         for (size_t i = 0; i < kBufferCount; ++i) {
             if (mapped[i] != nullptr) {
                 munmap(mapped[i], mapped_len[i]);
             }
-        }
-        if (fd >= 0) {
-            close(fd);
         }
     }
 };
@@ -420,17 +424,12 @@ bool ValidateJpeg(const uint8_t* data, size_t len, const char** reason) {
 // Executa o degrau inteiro. Em PASS devolve, por *out_jpeg, uma cópia do frame
 // em PSRAM cuja POSSE passa a ser do chamador (heap_caps_free). Em FAIL nada é
 // devolvido e o degrau seguinte segue normalmente.
-bool RunRung(const Rung& rung, RungResult* result, uint8_t** out_jpeg, size_t* out_len) {
+bool RunRung(int fd, const Rung& rung, RungResult* result, uint8_t** out_jpeg, size_t* out_len) {
     *out_jpeg = nullptr;
     *out_len = 0;
 
     RungSession session;
-    session.fd = open(PvUvcSpikeDeviceName(), O_RDWR);
-    if (session.fd < 0) {
-        ESP_LOGE(TAG, "open falhou: errno=%d(%s)", errno, strerror(errno));
-        result->reason = "open";
-        return false;
-    }
+    session.fd = fd;
 
     struct v4l2_format format = {};
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -652,7 +651,7 @@ void PrintRungLine(const Rung& rung, const RungResult& result) {
     fflush(stdout);
 }
 
-void RunLadder() {
+void RunLadder(int fd) {
     for (size_t i = 0; i < kRungCount; ++i) {
         const Rung& rung = kLadder[i];
         RungResult& result = g_results[i];
@@ -668,7 +667,7 @@ void RunLadder() {
 
         uint8_t* jpeg = nullptr;
         size_t jpeg_len = 0;
-        result.pass = RunRung(rung, &result, &jpeg, &jpeg_len);
+        result.pass = RunRung(fd, rung, &result, &jpeg, &jpeg_len);
         PrintRungLine(rung, result);
         PrintMemory("pos-degrau");
 
@@ -735,13 +734,12 @@ void SpikeTask(void* arg) {
     // console a 115200 e atrasa a própria task do usb host (o printf roda
     // nela). Religar só se uma rodada futura precisar ver pacote a pacote.
     esp_log_level_set("uvc", ESP_LOG_DEBUG);
-    // Rodada 4: religa o por-pacote. Na rodada 3 (EOH off) o driver ficou em
-    // SILÊNCIO TOTAL — incompatível com dados chegando (erro de frame, SOI
-    // inválido e overflow logam em nível visível). O único caminho silencioso
-    // é status SKIPPED/TIMED_OUT: janelas de microframe perdidas. Só o LOGD
-    // por pacote distingue isso de zero-length/headers novos. Custa console
-    // saturado — aceito, é diagnóstico.
-    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
+    // uvc-isoc fica em INFO: o LOGD por pacote (rodada 4) já entregou o
+    // diagnóstico — pacotes fluem, a câmera seta ERR em rajadas
+    // intermitentes (AF/exposição) e frames limpos passam. Com frames
+    // fluindo, o flood de printf na task do usb host custa exatamente o
+    // timing que os degraus grandes precisam. Religar só para diagnóstico.
+    esp_log_level_set("uvc-isoc", ESP_LOG_INFO);
     esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
     esp_log_level_set("usb_uvc_device", ESP_LOG_DEBUG);
@@ -750,7 +748,8 @@ void SpikeTask(void* arg) {
         PrintSummary();
         IdleForever();
     }
-    if (!EnumerateOnce()) {
+    const int fd = OpenDeviceOnce();
+    if (fd < 0) {
         // Sem device não há o que medir: os degraus ficam com o motivo de
         // fábrica e o sumário diz por que a escada nem começou.
         for (size_t i = 0; i < kRungCount; ++i) {
@@ -759,8 +758,10 @@ void SpikeTask(void* arg) {
         PrintSummary();
         IdleForever();
     }
+    DescribeCamera(fd);
 
-    RunLadder();
+    RunLadder(fd);
+    close(fd);
     PrintSummary();
     IdleForever();
 }
