@@ -90,13 +90,12 @@ constexpr int64_t kWarmupBudgetUs = 3 * 1000 * 1000;
 // não entrega frame trava o spike para sempre, em vez de virar um FAIL.
 constexpr int64_t kDqbufTimeoutUs = 5 * 1000 * 1000;
 
-// Rodada 11: a bancada mostrou que a NE-HD362 (energia fresca) TRANSMITE,
-// mas marca a esmagadora maioria dos frames com o bit ERR (1.095 avisos na
-// run11; 5.325 na run4) — e o frame limpo que fez o PASS da rodada 4 escapou
-// por sorte dentro da janela de 5 s. Dois botões: fps=10 (menos pressão no
-// pipeline da câmera; anunciado para todos os tamanhos JPEG) e mais
-// tentativas de DQBUF por degrau (30 s de janela total).
-constexpr uint32_t kTargetFps = 10;
+// Janela de captura alargada (rodada 11): com energia fresca a NE-HD362
+// TRANSMITE, mas marca a maioria dos frames com o bit ERR (1.095 avisos na
+// run11; 5.325 na run4) — o frame limpo do PASS da rodada 4 escapou dentro de
+// uma janela de 5 s. 6 tentativas de 5 s = 30 s por degrau. O outro botão
+// tentado — S_PARM fps=10 — foi REVERTIDO na rodada 12: a câmera aceita o
+// comando e EMUDECE por completo (zero payloads); só o fps default funciona.
 constexpr int kCaptureAttempts = 6;
 
 // Câmeras costumam acolchoar o fim do JPEG com alguns bytes; aceitar o EOI
@@ -541,18 +540,10 @@ bool RunRung(int fd, const Rung& rung, RungResult* result, uint8_t** out_jpeg, s
         return false;
     }
 
-    // fps baixo ANTES do STREAMON (o start usa o intervalo corrente). Falha
-    // aqui não reprova o degrau: segue no default (30 fps) e o log registra.
-    struct v4l2_streamparm parm = {};
-    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    parm.parm.capture.timeperframe.numerator = 1;
-    parm.parm.capture.timeperframe.denominator = kTargetFps;
-    if (ioctl(session.fd, VIDIOC_S_PARM, &parm) == 0) {
-        printf("PV-UVC-PARM fps=%u result=OK\n", (unsigned)kTargetFps);
-    } else {
-        printf("PV-UVC-PARM fps=%u result=FAIL errno=%d (segue no default)\n",
-               (unsigned)kTargetFps, errno);
-    }
+    // fps fica no DEFAULT da câmera (30). A rodada 12 provou que o S_PARM de
+    // 10 fps — embora anunciado e aceito — EMUDECE a NE-HD362 por completo
+    // (zero payloads, nem frames com ERR), enquanto no default ela transmite.
+    // Firmware de câmera barata: só o modo default funciona de verdade.
 
     struct v4l2_requestbuffers req = {};
     req.count = kBufferCount;
