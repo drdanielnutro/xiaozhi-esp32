@@ -82,32 +82,39 @@ até a F3).
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T5 (bancada), pausada aguardando UM gesto físico do
-  proprietário: **replugar a câmera NE-HD362 na USB-A** (desplugar, 5 s,
-  replugar; placa pode ficar ligada). NÃO precisa de flash: o firmware da
-  rodada 6 já está na placa e a escada roda sozinha a cada boot.
-- Próximo passo exato após o replug: abrir a captura serial (o open da
-  porta auto-reseta a placa via CH343) com
-  `~/.espressif/tools/python/v6.0.2/venv/bin/python <scratchpad>/pv_capture.py <log>`
-  (script recriável: pyserial, dtr/rts=False, port
-  /dev/cu.usbmodem5B3E0883401 a 115200) e acompanhar a escada. Esta é a
-  RODADA DECISIVA: câmera fresca + ciclo device-único corrigido. Leituras
-  possíveis: (a) 4-5 degraus PASS → viabilidade respondida, ir à T6; (b)
-  degrau 1 PASS e demais mudos → a câmera trava no CLOSE do stream (não
-  nos reboots) → próxima rodada reordena a escada (2592×1944 primeiro)
-  e/ou 1 degrau por boot via RTC noinit, com 1 replug por degrau (a fase
-  só precisa de 1920×1080 + um ≥2592×1944).
-- Estado da bancada (2026-08-11, rodadas 1-6 da T5): ver Notas "T5 —
-  Bancada". Resumo: transporte ISOC OK no P4; 800×600 PASS com foto
-  íntegra (rodada 4); bug de reopen do esp_video contornado (device
-  único, rodada 5); câmera trava streaming se atravessa reboots
-  energizada — replug por firmware NÃO funciona (VBUS não é controlável
-  pelo host nesta placa, rodada 6); destravamento é FÍSICO.
-- Armadilhas: SEMPRE liberar a porta serial (matar capturas) antes de
-  qualquer flash — "multiple access on port" já custou uma rodada; flash
-  é do proprietário (classifier bloqueia; linha pronta:
-  `! zsh releases/flash-spike.sh`); zip existente em releases/ PULA o
-  build.
+- Task em andamento: T5 (bancada), pausada em 2026-08-12 após 14 rodadas.
+  Decisão do proprietário: **continuar na estação Windows** (troca da
+  fonte upstream). Mistério aberto: canal ISOC mudo (ver Notas, "rodadas
+  7-14") com código e câmera exonerados por experimento. Análise neutra
+  do Codex solicitada — registrar o resultado quando disponível (se a
+  sessão encerrar antes, refazer a consulta com os fatos das Notas).
+- Estado da placa: firmware de CONTROLE (recompilação do commit 299f3ec,
+  escada única por boot, DEBUG por pacote ligado) flashado. O firmware
+  MAIS RECENTE do spike é o do commit 1c02248 (laço por replug + janela
+  30 s) — zip em releases/ (rebuildar se ausente).
+- Protocolo Windows (próxima sessão): (1) `git pull`; (2) conectar a 7B
+  ao desktop pelo "USB TO UART" (COM3/CH343 — dossiê da placa, seção
+  conexão serial; usbipd para WSL se preciso); (3) câmera DESPLUGADA;
+  flash da variante spike (merged-binary.bin @0x0); (4) captura serial
+  115200 SEM tocar DTR/RTS (o `C:\Users\Public\pv_capture.ps1` daquela
+  estação captura COM3; conferir se não reseta a placa ao abrir); (5)
+  boot com porta USB-A vazia → plugar a câmera → escada roda sozinha
+  (firmware do laço) — replug dispara novas escadas; (6) peças de
+  diagnóstico se persistir: hub USB alimentado entre câmera e placa;
+  adaptador USB-A fêmea→USB-C macho para testar a porta "USB OTG"
+  (mesmo controlador, conector virgem).
+- Fatos que a sessão Windows precisa saber: TODO reboot da placa com
+  câmera energizada pode deixá-la muda/travada (só replug físico ou
+  plugagem pós-boot recupera); unplug sem stream aberto cria
+  slot-fantasma no driver (só reboot limpa) — por isso a ordem
+  desplugar→resetar→plugar; S_PARM≠default emudece a câmera; a câmera é
+  saudável (Photo Booth no Mac); o PASS de referência é
+  `t5-rodada4-foto-800x600.jpg` (CRC 36aa87a9).
+- Armadilhas: SEMPRE liberar a porta serial antes de flash ("multiple
+  access on port"); flash é do proprietário; zip existente em releases/
+  PULA o build; builds exigem o IDF 6.0.2 (no Mac:
+  `~/.espressif/tools/activate_idf_v6.0.2.sh` + PATH; no Windows,
+  ambiente próprio daquela estação).
 
 ## Notas da fase
 
@@ -286,8 +293,30 @@ porta antes de todo flash.
   gabinete, ou verificar se o padrão de uso real sequer dispara o
   travamento).
 
-Pendente: rodada decisiva com câmera fresca (1 replug do proprietário) —
-ver Contexto de retomada.
+**Rodadas 7-14 (2026-08-11/12) — o mistério do canal mudo.** Rodadas de
+protocolo físico (RST provado inócuo para o travamento; laço de escadas
+disparado por replug; dança desplugue→RST→plugue) e descobertas em série:
+o driver tem **slot-fantasma** (unplug sem stream aberto nunca é adotado
+de novo até reboot — o callback de desconexão só existe com stream
+aberto); `VIDIOC_S_PARM` fps=10, embora anunciado e aceito, **emudece a
+câmera** (revertido); e o padrão final, não explicado em bancada: a
+câmera alterna entre *streaming-com-ERR* (rodada 4 — que capturou o
+frame íntegro — e run11) e **silêncio absoluto no canal ISOC** (zero
+callbacks, zero erros; runs 13/14), com enumeração/S_FMT/STREAMON
+perfeitos em todos os casos. **Experimento de controle**: o binário do
+próprio commit 299f3ec (o que capturou a foto em 2026-08-11) recompilado
+e reexecutado em 2026-08-12 no procedimento idêntico → mudo → **o diff de
+firmware está exonerado**. A câmera funciona perfeita num MacBook (Photo
+Booth, testado) → **câmera exonerada**. Sem efeito: carregador do Mac,
+troca de porta USB do Mac (power-cycle total), reencaixe firme, descansos
+variados. Logs: `t5-run11-…`, `t5-run13-…`, `t5-run14-controle-…`.
+Análise independente do Codex solicitada de forma neutra (fatos + código,
+sem hipóteses do implementador) — resultado a registrar.
+
+Próxima sessão (estação Windows, decisão do proprietário): trocar a fonte
+upstream (desktop) e repetir o protocolo; peças de diagnóstico a adquirir:
+hub USB alimentado e adaptador USB-A fêmea→USB-C (testa a porta OTG-C,
+mesmo controlador por conector virgem).
 
 ### Árvore de decisão da fase (sem fixação)
 

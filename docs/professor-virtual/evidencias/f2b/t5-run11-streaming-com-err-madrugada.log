@@ -1,0 +1,3201 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x5d0
+load:0x4ff28ed0,len:0xdf8
+load:0x4ff2bbd0,len:0x34b8
+entry 0x4ff28ed0
+I (42) hex_psram: vendor id    : 0x0d (AP)
+I (43) hex_psram: Latency      : 0x01 (Fixed)
+I (43) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (43) hex_psram: dev id       : 0x03 (generation 4)
+I (48) hex_psram: density      : 0x07 (256 Mbit)
+I (52) hex_psram: good-die     : 0x06 (Pass)
+I (56) hex_psram: SRF          : 0x02 (Slow Refresh)
+I (61) hex_psram: BurstType    : 0x00 ( Wrap)
+I (65) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (69) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (74) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)
+I (79) hex_psram: DriveStrength: 0x00 (1/1)
+I (83) MSPI Timing: Enter psram timing tuning
+I esp_psram: Found 32MB PSRAM device
+I esp_psram: Speed: 200MHz
+I (280) mmu_psram: .rodata xip on psram
+I (314) mmu_psram: .text xip on psram
+I (315) hex_psram: psram CS IO is dedicated
+I (315) cpu_start: Multicore app
+I (324) cpu_start: GPIO 38 and 37 are used as console UART I/O pins
+I (325) cpu_start: Pro cpu start user code
+I (325) cpu_start: cpu freq: 360000000 Hz
+I (327) app_init: Application information:
+I (330) app_init: Project name:     xiaozhi
+I (334) app_init: App version:      2.4.0
+I (338) app_init: Compile time:     Aug 11 2026 20:56:13
+I (343) app_init: ELF file SHA256:  5da0490f6...
+I (347) app_init: ESP-IDF:          v6.0.2
+I (351) efuse_init: Min chip rev:     v1.0
+I (355) efuse_init: Max chip rev:     v1.99 
+I (359) efuse_init: Chip rev:         v1.3
+I (363) heap_init: Initializing. RAM available for dynamic allocation:
+I (369) heap_init: At 4FF1B1D0 len 0001FDF0 (127 KiB): RETENT_RAM
+I (375) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (380) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (386) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (391) heap_init: At 30100088 len 00001F78 (7 KiB): SPM
+I (396) esp_psram: Adding pool of 31808K of PSRAM memory to heap allocator
+I (402) esp_psram: Adding pool of 44K of PSRAM memory gap generated due to end address alignment of irom to the heap allocator
+I (413) esp_psram: Adding pool of 44K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (425) spi_flash: detected chip: gd
+I (428) spi_flash: flash io: qio
+I (431) host_init: ESP Hosted : Host chip_ip[18]
+I (435) H_API: ESP-Hosted starting. Hosted_Tasks: prio:23, stack: 5120 RPC_task_stack: 5120
+I (443) H_API: ** add_esp_wifi_remote_channels **
+I (449) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (454) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (462) H_SDIO_DRV: sdio_data_to_rx_buf_task started
+I (465) main_task: Started on CPU0
+I (468) esp_psram: Reserving pool of 64K of internal memory for DMA/internal allocations
+I (477) main_task: Calling app_main()
+
+PV-UVC-SPIKE inicio (F2B) degraus=5
+PV-UVC-MEM etapa=boot psram_livre=32634996 psram_maior_bloco=32505856 interna_livre=418575
+I (2357) main_task: Returned from app_main()
+PV-UVC-VBUS estado=off (host instalado sem energia no root port; 1000 ms)
+PV-UVC-VBUS estado=on err=0x0 apos_ms=0
+D (3387) uvc: USB UVC handling start
+PV-UVC-INIT result=OK usb_host=on uvc_dev_num=1
+
+PV-UVC-CICLO 1 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (3395) usb_uvc_device: Waiting for UVC device to be enumerated...
+E (13401) usb_uvc_device: uvc_video_init(266): Failed to take UVC device ready semaphore
+PV-UVC-ENUM result=FAIL reason=open errno=19(No such device)
+PV-UVC-CICLO 1 sem device (replug a camera p/ nova escada; retry 15 s)
+
+PV-UVC-CICLO 2 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (28409) usb_uvc_device: Waiting for UVC device to be enumerated...
+E (38412) usb_uvc_device: uvc_video_init(266): Failed to take UVC device ready semaphore
+PV-UVC-ENUM result=FAIL reason=open errno=19(No such device)
+PV-UVC-CICLO 2 sem device (replug a camera p/ nova escada; retry 15 s)
+
+PV-UVC-CICLO 3 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (53420) usb_uvc_device: Waiting for UVC device to be enumerated...
+E (63423) usb_uvc_device: uvc_video_init(266): Failed to take UVC device ready semaphore
+PV-UVC-ENUM result=FAIL reason=open errno=19(No such device)
+PV-UVC-CICLO 3 sem device (replug a camera p/ nova escada; retry 15 s)
+
+PV-UVC-CICLO 4 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (78431) usb_uvc_device: Waiting for UVC device to be enumerated...
+E (88434) usb_uvc_device: uvc_video_init(266): Failed to take UVC device ready semaphore
+PV-UVC-ENUM result=FAIL reason=open errno=19(No such device)
+PV-UVC-CICLO 4 sem device (replug a camera p/ nova escada; retry 15 s)
+
+PV-UVC-CICLO 5 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (103442) usb_uvc_device: Waiting for UVC device to be enumerated...
+E (113445) usb_uvc_device: uvc_video_init(266): Failed to take UVC device ready semaphore
+PV-UVC-ENUM result=FAIL reason=open errno=19(No such device)
+PV-UVC-CICLO 5 sem device (replug a camera p/ nova escada; retry 15 s)
+E (121709) ENUM: LANGID 0x409 not found
+D (121711) uvc: New device connected
+*** Configuration descriptor ***
+bLength 9
+bDescriptorType 2
+wTotalLength 1463
+bNumInterfaces 5
+bConfigurationValue 1
+iConfiguration 0
+bmAttributes 0x80
+bMaxPower 500mA
+*** Interface Association Descriptor ***
+bLength 8
+bDescriptorType 11
+bFirstInterface 0
+bInterfaceCount 2
+bFunctionClass 0xe
+bFunctionSubClass 0x3
+bFunctionProtocol 0x0
+iFunction 4
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 0
+	bAlternateSetting 0
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x1
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 13
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0100
+	wTotalLength 80
+	dwClockFrequency 24000000
+	bInCollection 1
+	baInterfaceNr[0] 1
+	*** Input Terminal Descriptor (Camera) ***
+	bLength 18
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x201
+	bAssocTerminal 0
+	iTerminal 0
+	wObjectiveFocalLengthMin 0
+	wObjectiveFocalLengthMax 0
+	wOcularFocalLength 0
+	bControlSize 3
+	bmControls 0x7A 0x2A 0x2
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** Processing Unit Descriptor ***
+	bLength 11
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 3
+	bSourceID 2
+	wMaxMultiplier 16384
+	bControlSize 2
+	bmControls 0x7F 0x17 0x0
+	iProcessing 9
+	bmVideoStandards 0x24
+	*** Output Terminal Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 4
+	wTerminalType 0x101
+	bAssocTerminal 0
+	bSourceID 3
+	iTerminal 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x81	EP 1 IN
+		bmAttributes 0x3	INT
+		wMaxPacketSize 16
+		bInterval 8
+		*** Class-specific Interrupt Endpoint Descriptor ***
+		bLength 5
+		bDescriptorType 0x25
+		bDescriptorSubType 3
+		wMaxTransferSize 16
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 15
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC fc02
+	wTotalLength 33283
+	dwClockFrequency 16909312
+	bInCollection 1
+	baInterfaceNr[0] 1
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 1
+	bmCapabilities 0x0
+	wWidth 1920
+	wHeight 1080
+	dwMinBitRate 20736000
+	dwMaxBitRate 62208000
+	dwMaxVideoFrameBufSize 2073600
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 2
+	bmCapabilities 0x0
+	wWidth 640
+	wHeight 320
+	dwMinBitRate 2048000
+	dwMaxBitRate 6144000
+	dwMaxVideoFrameBufSize 204800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 3
+	bmCapabilities 0x0
+	wWidth 640
+	wHeight 480
+	dwMinBitRate 3072000
+	dwMaxBitRate 9216000
+	dwMaxVideoFrameBufSize 307200
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 4
+	bmCapabilities 0x0
+	wWidth 800
+	wHeight 600
+	dwMinBitRate 4800000
+	dwMaxBitRate 14400000
+	dwMaxVideoFrameBufSize 480000
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 5
+	bmCapabilities 0x0
+	wWidth 1024
+	wHeight 768
+	dwMinBitRate 7864320
+	dwMaxBitRate 23592960
+	dwMaxVideoFrameBufSize 786432
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 6
+	bmCapabilities 0x0
+	wWidth 1280
+	wHeight 720
+	dwMinBitRate 9216000
+	dwMaxBitRate 27648000
+	dwMaxVideoFrameBufSize 921600
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 7
+	bmCapabilities 0x0
+	wWidth 1280
+	wHeight 960
+	dwMinBitRate 12288000
+	dwMaxBitRate 36864000
+	dwMaxVideoFrameBufSize 1228800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 8
+	bmCapabilities 0x0
+	wWidth 1600
+	wHeight 1200
+	dwMinBitRate 19200000
+	dwMaxBitRate 57600000
+	dwMaxVideoFrameBufSize 1920000
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 9
+	bmCapabilities 0x0
+	wWidth 2048
+	wHeight 1536
+	dwMinBitRate 31457280
+	dwMaxBitRate 94371840
+	dwMaxVideoFrameBufSize 3145728
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 10
+	bmCapabilities 0x0
+	wWidth 2592
+	wHeight 1944
+	dwMinBitRate 50388480
+	dwMaxBitRate 151165440
+	dwMaxVideoFrameBufSize 5038848
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 11
+	bmCapabilities 0x0
+	wWidth 3264
+	wHeight 2448
+	dwMinBitRate 79902720
+	dwMaxBitRate 239708160
+	dwMaxVideoFrameBufSize 7990272
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 12
+	bmCapabilities 0x0
+	wWidth 3840
+	wHeight 2160
+	dwMinBitRate 82944000
+	dwMaxBitRate 248832000
+	dwMaxVideoFrameBufSize 8294400
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 13
+	bmCapabilities 0x0
+	wWidth 4000
+	wHeight 3000
+	dwMinBitRate 120000000
+	dwMaxBitRate 180000000
+	dwMaxVideoFrameBufSize 12000000
+	dwDefaultFrameInterval 666666
+	bFrameIntervalType 2
+	FrameInterval[0] 666666
+	FrameInterval[1] 1000000
+	*** VS Frame Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 14
+	bmCapabilities 0x0
+	wWidth 320
+	wHeight 240
+	dwMinBitRate 1152000
+	dwMaxBitRate 2304000
+	dwMaxVideoFrameBufSize 76800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 2
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	*** Output Terminal Descriptor ***
+	bLength 63
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 0
+	wTerminalType 0x800E
+	bAssocTerminal 7
+	bSourceID 56
+	iTerminal 4
+	*** VS Color Format Descriptor ***
+	bLength 6
+	bDescriptorType 0x24
+	bDescriptorSubType 0x0D
+	bColorPrimaries 0x1
+	bTransferCharacteristics 1
+	bMatrixCoefficients 0x4
+	*** Selector Unit Descriptor ***
+	bLength 27
+	bDescriptorType 0x24
+	bDescriptorSubType 0x04
+	bUnitID 2
+	bNrInPins 12
+	baSourceID1 89
+	baSourceID2 85
+	iSelector 89
+	*** Processing Unit Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 1
+	bSourceID 0
+	wMaxMultiplier 320
+	bControlSize 240
+	bmControls 0x0 0x0 0x70
+	iProcessing 23
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 2
+	bSourceID 0
+	wMaxMultiplier 640
+	bControlSize 104
+	bmControls 0x1 0x0 0x50
+	iProcessing 70
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 3
+	bSourceID 0
+	wMaxMultiplier 640
+	bControlSize 224
+	bmControls 0x1 0x0 0xC0
+	iProcessing 93
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 4
+	bSourceID 0
+	wMaxMultiplier 800
+	bControlSize 88
+	bmControls 0x2 0x0 0x7C
+	iProcessing 146
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 5
+	bSourceID 0
+	wMaxMultiplier 1024
+	bControlSize 208
+	bmControls 0x2 0x0 0x0
+	iProcessing 225
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 6
+	bSourceID 0
+	wMaxMultiplier 1280
+	bControlSize 172
+	bmControls 0x3 0x0 0x30
+	iProcessing 111
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 7
+	bSourceID 0
+	wMaxMultiplier 1280
+	bControlSize 0
+	bmControls 0x4 0x0 0x0
+	iProcessing 144
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 8
+	bSourceID 0
+	wMaxMultiplier 1600
+	bControlSize 176
+	bmControls 0x4 0x0 0xF8
+	iProcessing 36
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 9
+	bSourceID 0
+	wMaxMultiplier 1920
+	bControlSize 56
+	bmControls 0x4 0x0 0x68
+	iProcessing 60
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 10
+	bSourceID 0
+	wMaxMultiplier 2048
+	bControlSize 0
+	bmControls 0x6 0x0 0x0
+	iProcessing 224
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 11
+	bSourceID 0
+	wMaxMultiplier 2560
+	bControlSize 160
+	bmControls 0x5 0x0 0x80
+	iProcessing 50
+	bmVideoStandards 0x2
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 12
+	bSourceID 0
+	wMaxMultiplier 2592
+	bControlSize 152
+	bmControls 0x7 0x0 0xDE
+	iProcessing 0
+	bmVideoStandards 0x3
+	*** VS Color Format Descriptor ***
+	bLength 6
+	bDescriptorType 0x24
+	bDescriptorSubType 0x0D
+	bColorPrimaries 0x1
+	bTransferCharacteristics 1
+	bMatrixCoefficients 0x4
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 1
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 192
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 2
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 384
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 3
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 512
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 4
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 640
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 5
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 800
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 6
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 944
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 7
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 640
+		wMaxPacketSize (with additional transactions in microframe) 1280
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 8
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 800
+		wMaxPacketSize (with additional transactions in microframe) 1600
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 9
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 992
+		wMaxPacketSize (with additional transactions in microframe) 1984
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 10
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 896
+		wMaxPacketSize (with additional transactions in microframe) 2688
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 11
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 1024
+		wMaxPacketSize (with additional transactions in microframe) 3072
+		bInterval 1
+*** Interface Association Descriptor ***
+bLength 8
+bDescriptorType 11
+bFirstInterface 2
+bInterfaceCount 2
+bFunctionClass 0x1
+bFunctionSubClass 0x0
+bFunctionProtocol 0x0
+iFunction 5
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 2
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x1
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0100
+	wTotalLength 39
+	dwClockFrequency 604766977
+	bInCollection 2
+	baInterfaceNr[0] 1
+	baInterfaceNr[1] 1
+	*** Input Terminal Descriptor (Camera) ***
+	bLength 12
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x201
+	bAssocTerminal 0
+	iTerminal 1
+	wObjectiveFocalLengthMin 3
+	wObjectiveFocalLengthMax 0
+	wOcularFocalLength 9225
+	bControlSize 6
+	bmControls 0x2 0x1 0x2
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** Output Terminal Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 3
+	wTerminalType 0x101
+	bAssocTerminal 0
+	bSourceID 2
+	iTerminal 0
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 3
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 3
+	bAlternateSetting 1
+	bNumEndpoints 1
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 7
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0003
+	wTotalLength 1
+	dwClockFrequency 16917515
+	bInCollection 2
+	baInterfaceNr[0] 2
+	baInterfaceNr[1] 16
+	*** Input Terminal Descriptor (Media) ***
+	bLength 11
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x202
+	bAssocTerminal 16
+	iTerminal 1
+	bControlSize 128
+	bmControls 0xBB
+	bTransportModeSize 0
+	bmTransportModes 0x9 0x5 0x83 0x1 0xC0
+		*** Endpoint descriptor ***
+		bLength 9
+		bDescriptorType 5
+		bEndpointAddress 0x83	EP 3 IN
+		bmAttributes 0x1	ISOC
+		wMaxPacketSize 192
+		bInterval 4
+		*** Class-specific Interrupt Endpoint Descriptor ***
+		bLength 7
+		bDescriptorType 0x25
+		bDescriptorSubType 1
+		wMaxTransferSize 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 4
+	bAlternateSetting 0
+	bNumEndpoints 2
+	bInterfaceClass 0x3
+	bInterfaceSubClass 0x0
+	bInterfaceProtocol 0x0
+	iInterface 0
+ *** Unknown Descriptor Length: 9 Type: 33 ***
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x84	EP 4 IN
+		bmAttributes 0x3	INT
+		wMaxPacketSize 64
+		bInterval 4
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x1	EP 1 OUT
+		bmAttributes 0x3	INT
+		wMaxPacketSize 64
+		bInterval 4
+D (123303) usb_uvc_device: Device connected
+D (123306) usb_uvc_device: UVC device found, dev_addr = 1, stream_index = 0
+
+PV-UVC-CICLO 6 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (128453) usb_uvc_device: All UVC devices already enumerated
+PV-UVC-ENUM device aberto em 2 ms
+PV-UVC-ENUM cap driver=USB-UVC0 card=USB-UVC0 bus=esp32p4:USB-UVC0 caps=0x84201001 device_caps=0x04201001
+PV-UVC-ENUM fmt index=0 fourcc=JPEG flags=0x0 desc="JPEG"
+PV-UVC-ENUM size fourcc=JPEG index=0 1920x1080
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=1 640x320
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=2 640x480
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=3 800x600
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=4 1024x768
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=5 1280x720
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=6 1280x960
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=7 1600x1200
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=8 2048x1536
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=9 2592x1944
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=10 3264x2448
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=11 3840x2160
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=12 4000x3000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=0 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=13 320x240
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM fmt index=1 fourcc=YUYV flags=0x0 desc="YUV 4:2:2 YUYV"
+PV-UVC-ENUM size fourcc=YUYV index=0 320x240
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=1 640x360
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=2 640x480
+PV-UVC-ENUM interval fourcc=YUYV 640x480 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=3 800x600
+PV-UVC-ENUM interval fourcc=YUYV 800x600 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=4 1024x720
+PV-UVC-ENUM interval fourcc=YUYV 1024x720 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=5 1280x940
+PV-UVC-ENUM interval fourcc=YUYV 1280x940 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=6 1280x1024
+PV-UVC-ENUM interval fourcc=YUYV 1280x1024 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=7 1600x1200
+PV-UVC-ENUM interval fourcc=YUYV 1600x1200 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=8 1920x1080
+PV-UVC-ENUM interval fourcc=YUYV 1920x1080 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=9 2048x1536
+PV-UVC-ENUM interval fourcc=YUYV 2048x1536 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=10 2560x1440
+PV-UVC-ENUM interval fourcc=YUYV 2560x1440 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=11 2592x1944
+PV-UVC-ENUM interval fourcc=YUYV 2592x1944 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM result=OK tamanhos_jpeg=14
+PV-UVC-FMT requested=800x600 applied=800x600 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (129095) uvc: Checking list of opened USB devices
+D (129099) uvc: Checking list of connected USB devices
+D (129104) uvc: Claimed interface index 1 with MPS 1024
+D (129111) uvc: ctrl xfer cb
+D (129113) uvc: ctrl xfer cb
+D (129115) uvc: ctrl xfer cb
+D (129118) uvc: ctrl xfer cb
+I (129120) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (129130) uvc: ctrl xfer cb
+D (129132) uvc: ctrl xfer cb
+D (129135) uvc: ctrl xfer cb
+D (129137) uvc: ctrl xfer cb
+D (129139) uvc: ctrl xfer cb
+D (129142) uvc: ctrl xfer cb
+D (129146) uvc: ctrl xfer cb
+D (129148) uvc: ctrl xfer cb
+D (129150) uvc: ctrl xfer cb
+D (129153) uvc: ctrl xfer cb
+D (129155) uvc: ctrl xfer cb
+D (129167) uvc: ctrl xfer cb
+W (132166) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=800x600 descartados=0
+E (137166) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (137266) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=1920x1080 applied=1920x1080 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (137684) uvc: Checking list of opened USB devices
+D (137688) uvc: Checking list of connected USB devices
+D (137693) uvc: Claimed interface index 1 with MPS 1024
+D (137700) uvc: ctrl xfer cb
+D (137702) uvc: ctrl xfer cb
+D (137704) uvc: ctrl xfer cb
+D (137707) uvc: ctrl xfer cb
+I (137709) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (137719) uvc: ctrl xfer cb
+D (137721) uvc: ctrl xfer cb
+D (137724) uvc: ctrl xfer cb
+D (137726) uvc: ctrl xfer cb
+D (137728) uvc: ctrl xfer cb
+D (137731) uvc: ctrl xfer cb
+D (137733) uvc: ctrl xfer cb
+D (137738) uvc: ctrl xfer cb
+D (137740) uvc: ctrl xfer cb
+D (137742) uvc: ctrl xfer cb
+D (137744) uvc: ctrl xfer cb
+D (137756) uvc: ctrl xfer cb
+W (140755) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=1920x1080 descartados=0
+E (145755) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (145858) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=2592x1944 applied=2592x1944 fourcc=JPEG sizeimage=2519424
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=2519424
+D (146275) uvc: Checking list of opened USB devices
+D (146280) uvc: Checking list of connected USB devices
+D (146285) uvc: Claimed interface index 1 with MPS 1024
+D (146291) uvc: ctrl xfer cb
+D (146294) uvc: ctrl xfer cb
+D (146296) uvc: ctrl xfer cb
+D (146299) uvc: ctrl xfer cb
+I (146300) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (146311) uvc: ctrl xfer cb
+D (146313) uvc: ctrl xfer cb
+D (146315) uvc: ctrl xfer cb
+D (146318) uvc: ctrl xfer cb
+D (146320) uvc: ctrl xfer cb
+D (146322) uvc: ctrl xfer cb
+D (146325) uvc: ctrl xfer cb
+D (146327) uvc: ctrl xfer cb
+D (146331) uvc: ctrl xfer cb
+D (146334) uvc: ctrl xfer cb
+D (146336) uvc: ctrl xfer cb
+D (146348) uvc: ctrl xfer cb
+W (149347) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=2592x1944 descartados=0
+E (154347) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (154447) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=22553468 psram_maior_bloco=22020096 interna_livre=412607
+PV-UVC-FMT requested=3264x2448 applied=3264x2448 fourcc=JPEG sizeimage=3995136
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=3995136
+D (154864) uvc: Checking list of opened USB devices
+D (154869) uvc: Checking list of connected USB devices
+D (154874) uvc: Claimed interface index 1 with MPS 1024
+D (154880) uvc: ctrl xfer cb
+D (154883) uvc: ctrl xfer cb
+D (154885) uvc: ctrl xfer cb
+D (154888) uvc: ctrl xfer cb
+I (154889) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (154900) uvc: ctrl xfer cb
+D (154902) uvc: ctrl xfer cb
+D (154904) uvc: ctrl xfer cb
+D (154907) uvc: ctrl xfer cb
+D (154909) uvc: ctrl xfer cb
+D (154912) uvc: ctrl xfer cb
+D (154914) uvc: ctrl xfer cb
+D (154916) uvc: ctrl xfer cb
+D (154918) uvc: ctrl xfer cb
+D (154923) uvc: ctrl xfer cb
+D (154925) uvc: ctrl xfer cb
+D (154937) uvc: ctrl xfer cb
+W (157936) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=3264x2448 descartados=0
+E (162936) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (163036) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=16650620 psram_maior_bloco=16515072 interna_livre=412607
+PV-UVC-FMT requested=4000x3000 applied=4000x3000 fourcc=JPEG sizeimage=6000000
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=6000000
+D (163454) uvc: Checking list of opened USB devices
+D (163459) uvc: Checking list of connected USB devices
+D (163464) uvc: Claimed interface index 1 with MPS 1024
+D (163470) uvc: ctrl xfer cb
+D (163472) uvc: ctrl xfer cb
+D (163474) uvc: ctrl xfer cb
+D (163477) uvc: ctrl xfer cb
+I (163479) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (163489) uvc: ctrl xfer cb
+D (163491) uvc: ctrl xfer cb
+D (163494) uvc: ctrl xfer cb
+D (163496) uvc: ctrl xfer cb
+D (163498) uvc: ctrl xfer cb
+D (163501) uvc: ctrl xfer cb
+D (163505) uvc: ctrl xfer cb
+D (163508) uvc: ctrl xfer cb
+D (163510) uvc: ctrl xfer cb
+D (163512) uvc: ctrl xfer cb
+D (163514) uvc: ctrl xfer cb
+D (163526) uvc: ctrl xfer cb
+W (166525) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=4000x3000 descartados=0
+W (167401) uvc-isoc: frame error
+W (167401) uvc-isoc: frame error
+W (167401) uvc-isoc: frame error
+W (167401) uvc-isoc: frame error
+W (167402) uvc-isoc: frame error
+W (167405) uvc-isoc: frame error
+W (167407) uvc-isoc: frame error
+W (167410) uvc-isoc: frame error
+W (167413) uvc-isoc: frame error
+W (167416) uvc-isoc: frame error
+W (167419) uvc-isoc: frame error
+W (167422) uvc-isoc: frame error
+W (167425) uvc-isoc: frame error
+W (167428) uvc-isoc: frame error
+W (167431) uvc-isoc: frame error
+W (167434) uvc-isoc: frame error
+W (167437) uvc-isoc: frame error
+W (167440) uvc-isoc: frame error
+W (167443) uvc-isoc: frame error
+W (167446) uvc-isoc: frame error
+W (167449) uvc-isoc: frame error
+W (167452) uvc-isoc: frame error
+W (167455) uvc-isoc: frame error
+W (167458) uvc-isoc: frame error
+W (167461) uvc-isoc: frame error
+W (167464) uvc-isoc: frame error
+W (167467) uvc-isoc: frame error
+W (167469) uvc-isoc: frame error
+W (167472) uvc-isoc: frame error
+W (167475) uvc-isoc: frame error
+W (167478) uvc-isoc: frame error
+W (167481) uvc-isoc: frame error
+W (167484) uvc-isoc: frame error
+W (167487) uvc-isoc: frame error
+W (167490) uvc-isoc: frame error
+W (167493) uvc-isoc: frame error
+W (167496) uvc-isoc: frame error
+W (167499) uvc-isoc: frame error
+W (167502) uvc-isoc: frame error
+W (167505) uvc-isoc: frame error
+W (167508) uvc-isoc: frame error
+W (167511) uvc-isoc: frame error
+W (167514) uvc-isoc: frame error
+W (167517) uvc-isoc: frame error
+W (167520) uvc-isoc: frame error
+W (167523) uvc-isoc: frame error
+W (167526) uvc-isoc: frame error
+W (167528) uvc-isoc: frame error
+W (167531) uvc-isoc: frame error
+W (167534) uvc-isoc: frame error
+W (167537) uvc-isoc: frame error
+W (167540) uvc-isoc: frame error
+W (167543) uvc-isoc: frame error
+W (167546) uvc-isoc: frame error
+W (167549) uvc-isoc: frame error
+W (167552) uvc-isoc: frame error
+W (167555) uvc-isoc: frame error
+W (167558) uvc-isoc: frame error
+W (167561) uvc-isoc: frame error
+W (167564) uvc-isoc: frame error
+W (167567) uvc-isoc: frame error
+W (167570) uvc-isoc: frame error
+W (167573) uvc-isoc: frame error
+W (167576) uvc-isoc: frame error
+W (167579) uvc-isoc: frame error
+W (167582) uvc-isoc: frame error
+W (167585) uvc-isoc: frame error
+W (167588) uvc-isoc: frame error
+W (167591) uvc-isoc: frame error
+W (167593) uvc-isoc: frame error
+W (167596) uvc-isoc: frame error
+W (167599) uvc-isoc: frame error
+W (167602) uvc-isoc: frame error
+W (167605) uvc-isoc: frame error
+W (167608) uvc-isoc: frame error
+W (167611) uvc-isoc: frame error
+W (167614) uvc-isoc: frame error
+W (167617) uvc-isoc: frame error
+W (167620) uvc-isoc: frame error
+W (167623) uvc-isoc: frame error
+W (167626) uvc-isoc: frame error
+W (167629) uvc-isoc: frame error
+W (167632) uvc-isoc: frame error
+W (167635) uvc-isoc: frame error
+W (167638) uvc-isoc: frame error
+W (167641) uvc-isoc: frame error
+W (167644) uvc-isoc: frame error
+W (167647) uvc-isoc: frame error
+W (167649) uvc-isoc: frame error
+W (167652) uvc-isoc: frame error
+W (167655) uvc-isoc: frame error
+W (167658) uvc-isoc: frame error
+W (167661) uvc-isoc: frame error
+W (167664) uvc-isoc: frame error
+W (167667) uvc-isoc: frame error
+W (167670) uvc-isoc: frame error
+W (167673) uvc-isoc: frame error
+W (167676) uvc-isoc: frame error
+W (167679) uvc-isoc: frame error
+W (167682) uvc-isoc: frame error
+W (167685) uvc-isoc: frame error
+W (167688) uvc-isoc: frame error
+W (167691) uvc-isoc: frame error
+W (167694) uvc-isoc: frame error
+W (167697) uvc-isoc: frame error
+W (167700) uvc-isoc: frame error
+W (167703) uvc-isoc: frame error
+W (167706) uvc-isoc: frame error
+W (167709) uvc-isoc: frame error
+W (167711) uvc-isoc: frame error
+W (167714) uvc-isoc: frame error
+W (167717) uvc-isoc: frame error
+W (167720) uvc-isoc: frame error
+W (167723) uvc-isoc: frame error
+W (167726) uvc-isoc: frame error
+W (167729) uvc-isoc: frame error
+W (167732) uvc-isoc: frame error
+W (167735) uvc-isoc: frame error
+W (167738) uvc-isoc: frame error
+W (167741) uvc-isoc: frame error
+W (167744) uvc-isoc: frame error
+W (167747) uvc-isoc: frame error
+W (167750) uvc-isoc: frame error
+W (167753) uvc-isoc: frame error
+W (167756) uvc-isoc: frame error
+W (167759) uvc-isoc: frame error
+W (167762) uvc-isoc: frame error
+W (167765) uvc-isoc: frame error
+W (167768) uvc-isoc: frame error
+W (167770) uvc-isoc: frame error
+W (167773) uvc-isoc: frame error
+W (167776) uvc-isoc: frame error
+W (167779) uvc-isoc: frame error
+W (167782) uvc-isoc: frame error
+W (167785) uvc-isoc: frame error
+W (167788) uvc-isoc: frame error
+W (167791) uvc-isoc: frame error
+W (167794) uvc-isoc: frame error
+W (167797) uvc-isoc: frame error
+W (167800) uvc-isoc: frame error
+W (167803) uvc-isoc: frame error
+W (167806) uvc-isoc: frame error
+W (167809) uvc-isoc: frame error
+W (167812) uvc-isoc: frame error
+W (167815) uvc-isoc: frame error
+W (167818) uvc-isoc: frame error
+W (167821) uvc-isoc: frame error
+W (167824) uvc-isoc: frame error
+W (167827) uvc-isoc: frame error
+W (167830) uvc-isoc: frame error
+W (167832) uvc-isoc: frame error
+W (167835) uvc-isoc: frame error
+W (167838) uvc-isoc: frame error
+W (167841) uvc-isoc: frame error
+W (167844) uvc-isoc: frame error
+W (167847) uvc-isoc: frame error
+W (167850) uvc-isoc: frame error
+W (167853) uvc-isoc: frame error
+W (167856) uvc-isoc: frame error
+W (167859) uvc-isoc: frame error
+W (167862) uvc-isoc: frame error
+W (167865) uvc-isoc: frame error
+W (167868) uvc-isoc: frame error
+W (167871) uvc-isoc: frame error
+W (167874) uvc-isoc: frame error
+W (167877) uvc-isoc: frame error
+W (167880) uvc-isoc: frame error
+W (167883) uvc-isoc: frame error
+W (167886) uvc-isoc: frame error
+W (167889) uvc-isoc: frame error
+W (167891) uvc-isoc: frame error
+W (167894) uvc-isoc: frame error
+W (167897) uvc-isoc: frame error
+W (167900) uvc-isoc: frame error
+W (167903) uvc-isoc: frame error
+W (167906) uvc-isoc: frame error
+W (167909) uvc-isoc: frame error
+W (167912) uvc-isoc: frame error
+W (167915) uvc-isoc: frame error
+W (167918) uvc-isoc: frame error
+W (167921) uvc-isoc: frame error
+W (167924) uvc-isoc: frame error
+W (167927) uvc-isoc: frame error
+W (167930) uvc-isoc: frame error
+W (167933) uvc-isoc: frame error
+W (167936) uvc-isoc: frame error
+W (167939) uvc-isoc: frame error
+W (167942) uvc-isoc: frame error
+W (167945) uvc-isoc: frame error
+W (167948) uvc-isoc: frame error
+W (167950) uvc-isoc: frame error
+W (167953) uvc-isoc: frame error
+W (167956) uvc-isoc: frame error
+W (167959) uvc-isoc: frame error
+W (167962) uvc-isoc: frame error
+W (167965) uvc-isoc: frame error
+W (167968) uvc-isoc: frame error
+W (167971) uvc-isoc: frame error
+W (167974) uvc-isoc: frame error
+W (167977) uvc-isoc: frame error
+W (167980) uvc-isoc: frame error
+W (167983) uvc-isoc: frame error
+W (167986) uvc-isoc: frame error
+W (167989) uvc-isoc: frame error
+W (167992) uvc-isoc: frame error
+W (167995) uvc-isoc: frame error
+W (167998) uvc-isoc: frame error
+W (168001) uvc-isoc: frame error
+W (168004) uvc-isoc: frame error
+W (168007) uvc-isoc: frame error
+W (168010) uvc-isoc: frame error
+W (168012) uvc-isoc: frame error
+W (168015) uvc-isoc: frame error
+W (168018) uvc-isoc: frame error
+W (168021) uvc-isoc: frame error
+W (168024) uvc-isoc: frame error
+W (168027) uvc-isoc: frame error
+W (168030) uvc-isoc: frame error
+W (168033) uvc-isoc: frame error
+W (168036) uvc-isoc: frame error
+W (168039) uvc-isoc: frame error
+W (168042) uvc-isoc: frame error
+W (168045) uvc-isoc: frame error
+W (168048) uvc-isoc: frame error
+W (168051) uvc-isoc: frame error
+W (168054) uvc-isoc: frame error
+W (168057) uvc-isoc: frame error
+W (168060) uvc-isoc: frame error
+W (168063) uvc-isoc: frame error
+W (168066) uvc-isoc: frame error
+W (168069) uvc-isoc: frame error
+W (168071) uvc-isoc: frame error
+W (168074) uvc-isoc: frame error
+W (168077) uvc-isoc: frame error
+W (168080) uvc-isoc: frame error
+W (168083) uvc-isoc: frame error
+W (168086) uvc-isoc: frame error
+W (168089) uvc-isoc: frame error
+W (168092) uvc-isoc: frame error
+W (168095) uvc-isoc: frame error
+W (168098) uvc-isoc: frame error
+W (168101) uvc-isoc: frame error
+W (168104) uvc-isoc: frame error
+W (168107) uvc-isoc: frame error
+W (168110) uvc-isoc: frame error
+W (168113) uvc-isoc: frame error
+W (168116) uvc-isoc: frame error
+W (168119) uvc-isoc: frame error
+W (168122) uvc-isoc: frame error
+W (168125) uvc-isoc: frame error
+W (168128) uvc-isoc: frame error
+W (168131) uvc-isoc: frame error
+W (168133) uvc-isoc: frame error
+W (168136) uvc-isoc: frame error
+W (168139) uvc-isoc: frame error
+W (168142) uvc-isoc: frame error
+W (168145) uvc-isoc: frame error
+W (168148) uvc-isoc: frame error
+W (168151) uvc-isoc: frame error
+W (168154) uvc-isoc: frame error
+W (168157) uvc-isoc: frame error
+W (168160) uvc-isoc: frame error
+W (168163) uvc-isoc: frame error
+W (168166) uvc-isoc: frame error
+W (168169) uvc-isoc: frame error
+W (168172) uvc-isoc: frame error
+W (168175) uvc-isoc: frame error
+W (168178) uvc-isoc: frame error
+W (168181) uvc-isoc: frame error
+W (168184) uvc-isoc: frame error
+W (168187) uvc-isoc: frame error
+W (168190) uvc-isoc: frame error
+W (168193) uvc-isoc: frame error
+W (168195) uvc-isoc: frame error
+W (168198) uvc-isoc: frame error
+W (168201) uvc-isoc: frame error
+W (168204) uvc-isoc: frame error
+W (168207) uvc-isoc: frame error
+W (168210) uvc-isoc: frame error
+W (168213) uvc-isoc: frame error
+W (168216) uvc-isoc: frame error
+W (168219) uvc-isoc: frame error
+W (168222) uvc-isoc: frame error
+W (168225) uvc-isoc: frame error
+W (168228) uvc-isoc: frame error
+W (168231) uvc-isoc: frame error
+W (168234) uvc-isoc: frame error
+W (168237) uvc-isoc: frame error
+W (168240) uvc-isoc: frame error
+W (168243) uvc-isoc: frame error
+W (168246) uvc-isoc: frame error
+W (168249) uvc-isoc: frame error
+W (168252) uvc-isoc: frame error
+W (168254) uvc-isoc: frame error
+W (168257) uvc-isoc: frame error
+W (168260) uvc-isoc: frame error
+W (168263) uvc-isoc: frame error
+W (168266) uvc-isoc: frame error
+W (168269) uvc-isoc: frame error
+W (168272) uvc-isoc: frame error
+W (168275) uvc-isoc: frame error
+W (168278) uvc-isoc: frame error
+W (168281) uvc-isoc: frame error
+W (168284) uvc-isoc: frame error
+W (168287) uvc-isoc: frame error
+W (168290) uvc-isoc: frame error
+W (168293) uvc-isoc: frame error
+W (168296) uvc-isoc: frame error
+W (168299) uvc-isoc: frame error
+W (168302) uvc-isoc: frame error
+W (168305) uvc-isoc: frame error
+W (168308) uvc-isoc: frame error
+W (168311) uvc-isoc: frame error
+W (168313) uvc-isoc: frame error
+W (168316) uvc-isoc: frame error
+W (168319) uvc-isoc: frame error
+W (168322) uvc-isoc: frame error
+W (168325) uvc-isoc: frame error
+W (168328) uvc-isoc: frame error
+W (168331) uvc-isoc: frame error
+W (168334) uvc-isoc: frame error
+W (168337) uvc-isoc: frame error
+W (168340) uvc-isoc: frame error
+W (168343) uvc-isoc: frame error
+W (168346) uvc-isoc: frame error
+W (168349) uvc-isoc: frame error
+W (168352) uvc-isoc: frame error
+W (168355) uvc-isoc: frame error
+W (168358) uvc-isoc: frame error
+W (168361) uvc-isoc: frame error
+W (168364) uvc-isoc: frame error
+W (168367) uvc-isoc: frame error
+W (168370) uvc-isoc: frame error
+W (168373) uvc-isoc: frame error
+W (168375) uvc-isoc: frame error
+W (168378) uvc-isoc: frame error
+W (168381) uvc-isoc: frame error
+W (168384) uvc-isoc: frame error
+W (168387) uvc-isoc: frame error
+W (168390) uvc-isoc: frame error
+W (168394) uvc-isoc: frame error
+W (168396) uvc-isoc: frame error
+W (168399) uvc-isoc: frame error
+W (168402) uvc-isoc: frame error
+W (168405) uvc-isoc: frame error
+W (168408) uvc-isoc: frame error
+W (168411) uvc-isoc: frame error
+W (168414) uvc-isoc: frame error
+W (168417) uvc-isoc: frame error
+W (168420) uvc-isoc: frame error
+W (168423) uvc-isoc: frame error
+W (168426) uvc-isoc: frame error
+W (168429) uvc-isoc: frame error
+W (168432) uvc-isoc: frame error
+W (168434) uvc-isoc: frame error
+W (168437) uvc-isoc: frame error
+W (168440) uvc-isoc: frame error
+W (168443) uvc-isoc: frame error
+W (168446) uvc-isoc: frame error
+W (168449) uvc-isoc: frame error
+W (168452) uvc-isoc: frame error
+W (168455) uvc-isoc: frame error
+W (168458) uvc-isoc: frame error
+W (168461) uvc-isoc: frame error
+W (168464) uvc-isoc: frame error
+W (168467) uvc-isoc: frame error
+W (168470) uvc-isoc: frame error
+W (168473) uvc-isoc: frame error
+W (168476) uvc-isoc: frame error
+W (168479) uvc-isoc: frame error
+W (168482) uvc-isoc: frame error
+W (168485) uvc-isoc: frame error
+W (168488) uvc-isoc: frame error
+W (168491) uvc-isoc: frame error
+W (168493) uvc-isoc: frame error
+W (168496) uvc-isoc: frame error
+W (168499) uvc-isoc: frame error
+W (168502) uvc-isoc: frame error
+W (168505) uvc-isoc: frame error
+W (168508) uvc-isoc: frame error
+W (168511) uvc-isoc: frame error
+W (168514) uvc-isoc: frame error
+W (168517) uvc-isoc: frame error
+W (168520) uvc-isoc: frame error
+W (168523) uvc-isoc: frame error
+W (168526) uvc-isoc: frame error
+W (168529) uvc-isoc: frame error
+W (168532) uvc-isoc: frame error
+W (168535) uvc-isoc: frame error
+W (168538) uvc-isoc: frame error
+W (168541) uvc-isoc: frame error
+W (168544) uvc-isoc: frame error
+W (168547) uvc-isoc: frame error
+W (168550) uvc-isoc: frame error
+W (168553) uvc-isoc: frame error
+W (168555) uvc-isoc: frame error
+W (168558) uvc-isoc: frame error
+W (168561) uvc-isoc: frame error
+W (168564) uvc-isoc: frame error
+W (168567) uvc-isoc: frame error
+W (168570) uvc-isoc: frame error
+W (168573) uvc-isoc: frame error
+W (168576) uvc-isoc: frame error
+W (168579) uvc-isoc: frame error
+W (168582) uvc-isoc: frame error
+W (168585) uvc-isoc: frame error
+W (168588) uvc-isoc: frame error
+W (168591) uvc-isoc: frame error
+W (168594) uvc-isoc: frame error
+W (168597) uvc-isoc: frame error
+W (168600) uvc-isoc: frame error
+W (168603) uvc-isoc: frame error
+W (168606) uvc-isoc: frame error
+W (168609) uvc-isoc: frame error
+W (168612) uvc-isoc: frame error
+W (168614) uvc-isoc: frame error
+W (168617) uvc-isoc: frame error
+W (168620) uvc-isoc: frame error
+W (168623) uvc-isoc: frame error
+W (168626) uvc-isoc: frame error
+W (168629) uvc-isoc: frame error
+W (168632) uvc-isoc: frame error
+W (168635) uvc-isoc: frame error
+W (168638) uvc-isoc: frame error
+W (168641) uvc-isoc: frame error
+W (168644) uvc-isoc: frame error
+W (168647) uvc-isoc: frame error
+W (168650) uvc-isoc: frame error
+W (168653) uvc-isoc: frame error
+W (168656) uvc-isoc: frame error
+W (168659) uvc-isoc: frame error
+W (168662) uvc-isoc: frame error
+W (168665) uvc-isoc: frame error
+W (168668) uvc-isoc: frame error
+W (168671) uvc-isoc: frame error
+W (168674) uvc-isoc: frame error
+W (168676) uvc-isoc: frame error
+W (168679) uvc-isoc: frame error
+W (168682) uvc-isoc: frame error
+W (168685) uvc-isoc: frame error
+W (168688) uvc-isoc: frame error
+W (168691) uvc-isoc: frame error
+W (168694) uvc-isoc: frame error
+W (168697) uvc-isoc: frame error
+W (168700) uvc-isoc: frame error
+W (168703) uvc-isoc: frame error
+W (168706) uvc-isoc: frame error
+W (168709) uvc-isoc: frame error
+W (168712) uvc-isoc: frame error
+W (168715) uvc-isoc: frame error
+W (168718) uvc-isoc: frame error
+W (168721) uvc-isoc: frame error
+W (168724) uvc-isoc: frame error
+W (168727) uvc-isoc: frame error
+W (168730) uvc-isoc: frame error
+W (168733) uvc-isoc: frame error
+W (168735) uvc-isoc: frame error
+W (168738) uvc-isoc: frame error
+W (168741) uvc-isoc: frame error
+W (168744) uvc-isoc: frame error
+W (168747) uvc-isoc: frame error
+W (168750) uvc-isoc: frame error
+W (168753) uvc-isoc: frame error
+W (168756) uvc-isoc: frame error
+W (168759) uvc-isoc: frame error
+W (168762) uvc-isoc: frame error
+W (168765) uvc-isoc: frame error
+W (168768) uvc-isoc: frame error
+W (168771) uvc-isoc: frame error
+W (168774) uvc-isoc: frame error
+W (168777) uvc-isoc: frame error
+W (168780) uvc-isoc: frame error
+W (168783) uvc-isoc: frame error
+W (168786) uvc-isoc: frame error
+W (168789) uvc-isoc: frame error
+W (168792) uvc-isoc: frame error
+W (168795) uvc-isoc: frame error
+W (168798) uvc-isoc: frame error
+W (168800) uvc-isoc: frame error
+W (168803) uvc-isoc: frame error
+W (168806) uvc-isoc: frame error
+W (168809) uvc-isoc: frame error
+W (168812) uvc-isoc: frame error
+W (168815) uvc-isoc: frame error
+W (168818) uvc-isoc: frame error
+W (168821) uvc-isoc: frame error
+W (168824) uvc-isoc: frame error
+W (168827) uvc-isoc: frame error
+W (168830) uvc-isoc: frame error
+W (168833) uvc-isoc: frame error
+W (168836) uvc-isoc: frame error
+W (168839) uvc-isoc: frame error
+W (168842) uvc-isoc: frame error
+W (168845) uvc-isoc: frame error
+W (168848) uvc-isoc: frame error
+W (168851) uvc-isoc: frame error
+W (168854) uvc-isoc: frame error
+W (168856) uvc-isoc: frame error
+W (168859) uvc-isoc: frame error
+W (168863) uvc-isoc: frame error
+W (168865) uvc-isoc: frame error
+W (168868) uvc-isoc: frame error
+W (168871) uvc-isoc: frame error
+W (168874) uvc-isoc: frame error
+W (168877) uvc-isoc: frame error
+W (168880) uvc-isoc: frame error
+W (168883) uvc-isoc: frame error
+W (168886) uvc-isoc: frame error
+W (168889) uvc-isoc: frame error
+W (168892) uvc-isoc: frame error
+W (168895) uvc-isoc: frame error
+W (168898) uvc-isoc: frame error
+W (168901) uvc-isoc: frame error
+W (168904) uvc-isoc: frame error
+W (168907) uvc-isoc: frame error
+W (168910) uvc-isoc: frame error
+W (168913) uvc-isoc: frame error
+W (168916) uvc-isoc: frame error
+W (168918) uvc-isoc: frame error
+W (168921) uvc-isoc: frame error
+W (168924) uvc-isoc: frame error
+W (168927) uvc-isoc: frame error
+W (168931) uvc-isoc: frame error
+W (168933) uvc-isoc: frame error
+W (168936) uvc-isoc: frame error
+W (168939) uvc-isoc: frame error
+W (168942) uvc-isoc: frame error
+W (168945) uvc-isoc: frame error
+W (168948) uvc-isoc: frame error
+W (168951) uvc-isoc: frame error
+W (168954) uvc-isoc: frame error
+W (168957) uvc-isoc: frame error
+W (168960) uvc-isoc: frame error
+W (168963) uvc-isoc: frame error
+W (168966) uvc-isoc: frame error
+W (168969) uvc-isoc: frame error
+W (168972) uvc-isoc: frame error
+W (168975) uvc-isoc: frame error
+W (168977) uvc-isoc: frame error
+W (168980) uvc-isoc: frame error
+W (168983) uvc-isoc: frame error
+W (168986) uvc-isoc: frame error
+W (168989) uvc-isoc: frame error
+W (168992) uvc-isoc: frame error
+W (168995) uvc-isoc: frame error
+W (168998) uvc-isoc: frame error
+W (169001) uvc-isoc: frame error
+W (169004) uvc-isoc: frame error
+W (169007) uvc-isoc: frame error
+W (169010) uvc-isoc: frame error
+W (169013) uvc-isoc: frame error
+W (169016) uvc-isoc: frame error
+W (169019) uvc-isoc: frame error
+W (169022) uvc-isoc: frame error
+W (169025) uvc-isoc: frame error
+W (169028) uvc-isoc: frame error
+W (169031) uvc-isoc: frame error
+W (169034) uvc-isoc: frame error
+W (169037) uvc-isoc: frame error
+W (169039) uvc-isoc: frame error
+W (169042) uvc-isoc: frame error
+W (169045) uvc-isoc: frame error
+W (169048) uvc-isoc: frame error
+W (169051) uvc-isoc: frame error
+W (169054) uvc-isoc: frame error
+W (169057) uvc-isoc: frame error
+W (169060) uvc-isoc: frame error
+W (169063) uvc-isoc: frame error
+W (169066) uvc-isoc: frame error
+W (169069) uvc-isoc: frame error
+W (169072) uvc-isoc: frame error
+W (169075) uvc-isoc: frame error
+W (169078) uvc-isoc: frame error
+W (169081) uvc-isoc: frame error
+W (169084) uvc-isoc: frame error
+W (169087) uvc-isoc: frame error
+W (169090) uvc-isoc: frame error
+W (169093) uvc-isoc: frame error
+W (169096) uvc-isoc: frame error
+W (169098) uvc-isoc: frame error
+W (169101) uvc-isoc: frame error
+W (169104) uvc-isoc: frame error
+W (169107) uvc-isoc: frame error
+W (169110) uvc-isoc: frame error
+W (169113) uvc-isoc: frame error
+W (169116) uvc-isoc: frame error
+W (169119) uvc-isoc: frame error
+W (169122) uvc-isoc: frame error
+W (169125) uvc-isoc: frame error
+W (169128) uvc-isoc: frame error
+W (169132) uvc-isoc: frame error
+W (169134) uvc-isoc: frame error
+W (169137) uvc-isoc: frame error
+W (169140) uvc-isoc: frame error
+W (169143) uvc-isoc: frame error
+W (169146) uvc-isoc: frame error
+W (169149) uvc-isoc: frame error
+W (169152) uvc-isoc: frame error
+W (169155) uvc-isoc: frame error
+W (169157) uvc-isoc: frame error
+W (169160) uvc-isoc: frame error
+W (169163) uvc-isoc: frame error
+W (169166) uvc-isoc: frame error
+W (169169) uvc-isoc: frame error
+W (169172) uvc-isoc: frame error
+W (169175) uvc-isoc: frame error
+W (169178) uvc-isoc: frame error
+W (169181) uvc-isoc: frame error
+W (169184) uvc-isoc: frame error
+W (169187) uvc-isoc: frame error
+W (169190) uvc-isoc: frame error
+W (169193) uvc-isoc: frame error
+W (169196) uvc-isoc: frame error
+W (169199) uvc-isoc: frame error
+W (169202) uvc-isoc: frame error
+W (169205) uvc-isoc: frame error
+W (169208) uvc-isoc: frame error
+W (169211) uvc-isoc: frame error
+W (169214) uvc-isoc: frame error
+W (169217) uvc-isoc: frame error
+W (169219) uvc-isoc: frame error
+W (169222) uvc-isoc: frame error
+W (169225) uvc-isoc: frame error
+W (169228) uvc-isoc: frame error
+W (169231) uvc-isoc: frame error
+W (169234) uvc-isoc: frame error
+W (169237) uvc-isoc: frame error
+W (169240) uvc-isoc: frame error
+W (169243) uvc-isoc: frame error
+W (169246) uvc-isoc: frame error
+W (169249) uvc-isoc: frame error
+W (169252) uvc-isoc: frame error
+W (169255) uvc-isoc: frame error
+W (169258) uvc-isoc: frame error
+W (169261) uvc-isoc: frame error
+W (169264) uvc-isoc: frame error
+W (169267) uvc-isoc: frame error
+W (169270) uvc-isoc: frame error
+W (169273) uvc-isoc: frame error
+W (169276) uvc-isoc: frame error
+W (169278) uvc-isoc: frame error
+W (169281) uvc-isoc: frame error
+W (169284) uvc-isoc: frame error
+W (169287) uvc-isoc: frame error
+W (169290) uvc-isoc: frame error
+W (169293) uvc-isoc: frame error
+W (169296) uvc-isoc: frame error
+W (169299) uvc-isoc: frame error
+W (169302) uvc-isoc: frame error
+W (169305) uvc-isoc: frame error
+W (169308) uvc-isoc: frame error
+W (169311) uvc-isoc: frame error
+W (169314) uvc-isoc: frame error
+W (169317) uvc-isoc: frame error
+W (169320) uvc-isoc: frame error
+W (169323) uvc-isoc: frame error
+W (169326) uvc-isoc: frame error
+W (169329) uvc-isoc: frame error
+W (169332) uvc-isoc: frame error
+W (169335) uvc-isoc: frame error
+W (169338) uvc-isoc: frame error
+W (169340) uvc-isoc: frame error
+W (169343) uvc-isoc: frame error
+W (169346) uvc-isoc: frame error
+W (169349) uvc-isoc: frame error
+W (169352) uvc-isoc: frame error
+W (169355) uvc-isoc: frame error
+W (169358) uvc-isoc: frame error
+W (169361) uvc-isoc: frame error
+W (169364) uvc-isoc: frame error
+W (169367) uvc-isoc: frame error
+W (169370) uvc-isoc: frame error
+W (169373) uvc-isoc: frame error
+W (169376) uvc-isoc: frame error
+W (169379) uvc-isoc: frame error
+W (169382) uvc-isoc: frame error
+W (169385) uvc-isoc: frame error
+W (169388) uvc-isoc: frame error
+W (169391) uvc-isoc: frame error
+W (169394) uvc-isoc: frame error
+W (169397) uvc-isoc: frame error
+W (169400) uvc-isoc: frame error
+W (169402) uvc-isoc: frame error
+W (169405) uvc-isoc: frame error
+W (169408) uvc-isoc: frame error
+W (169411) uvc-isoc: frame error
+W (169414) uvc-isoc: frame error
+W (169417) uvc-isoc: frame error
+W (169420) uvc-isoc: frame error
+W (169423) uvc-isoc: frame error
+W (169426) uvc-isoc: frame error
+W (169429) uvc-isoc: frame error
+W (169432) uvc-isoc: frame error
+W (169435) uvc-isoc: frame error
+W (169438) uvc-isoc: frame error
+W (169441) uvc-isoc: frame error
+W (169444) uvc-isoc: frame error
+W (169447) uvc-isoc: frame error
+W (169450) uvc-isoc: frame error
+W (169453) uvc-isoc: frame error
+W (169456) uvc-isoc: frame error
+W (169459) uvc-isoc: frame error
+W (169461) uvc-isoc: frame error
+W (169464) uvc-isoc: frame error
+W (169467) uvc-isoc: frame error
+W (169470) uvc-isoc: frame error
+W (169473) uvc-isoc: frame error
+W (169476) uvc-isoc: frame error
+W (169479) uvc-isoc: frame error
+W (169482) uvc-isoc: frame error
+W (169485) uvc-isoc: frame error
+W (169488) uvc-isoc: frame error
+W (169491) uvc-isoc: frame error
+W (169494) uvc-isoc: frame error
+W (169497) uvc-isoc: frame error
+W (169500) uvc-isoc: frame error
+W (169503) uvc-isoc: frame error
+W (169506) uvc-isoc: frame error
+W (169509) uvc-isoc: frame error
+W (169512) uvc-isoc: frame error
+W (169515) uvc-isoc: frame error
+W (169518) uvc-isoc: frame error
+W (169520) uvc-isoc: frame error
+W (169523) uvc-isoc: frame error
+W (169526) uvc-isoc: frame error
+W (169529) uvc-isoc: frame error
+W (169532) uvc-isoc: frame error
+W (169535) uvc-isoc: frame error
+W (169538) uvc-isoc: frame error
+W (169541) uvc-isoc: frame error
+W (169544) uvc-isoc: frame error
+W (169547) uvc-isoc: frame error
+W (169550) uvc-isoc: frame error
+W (169553) uvc-isoc: frame error
+W (169556) uvc-isoc: frame error
+W (169559) uvc-isoc: frame error
+W (169562) uvc-isoc: frame error
+W (169565) uvc-isoc: frame error
+W (169568) uvc-isoc: frame error
+W (169571) uvc-isoc: frame error
+W (169574) uvc-isoc: frame error
+W (169577) uvc-isoc: frame error
+W (169580) uvc-isoc: frame error
+W (169582) uvc-isoc: frame error
+W (169585) uvc-isoc: frame error
+W (169588) uvc-isoc: frame error
+W (169591) uvc-isoc: frame error
+W (169594) uvc-isoc: frame error
+W (169597) uvc-isoc: frame error
+W (169601) uvc-isoc: frame error
+W (169603) uvc-isoc: frame error
+W (169606) uvc-isoc: frame error
+W (169609) uvc-isoc: frame error
+W (169612) uvc-isoc: frame error
+W (169615) uvc-isoc: frame error
+W (169618) uvc-isoc: frame error
+W (169621) uvc-isoc: frame error
+W (169624) uvc-isoc: frame error
+W (169627) uvc-isoc: frame error
+W (169630) uvc-isoc: frame error
+W (169633) uvc-isoc: frame error
+W (169636) uvc-isoc: frame error
+W (169639) uvc-isoc: frame error
+W (169641) uvc-isoc: frame error
+W (169644) uvc-isoc: frame error
+W (169647) uvc-isoc: frame error
+W (169650) uvc-isoc: frame error
+W (169653) uvc-isoc: frame error
+W (169656) uvc-isoc: frame error
+W (169659) uvc-isoc: frame error
+W (169662) uvc-isoc: frame error
+W (169665) uvc-isoc: frame error
+W (169669) uvc-isoc: frame error
+W (169671) uvc-isoc: frame error
+W (169674) uvc-isoc: frame error
+W (169677) uvc-isoc: frame error
+W (169680) uvc-isoc: frame error
+W (169683) uvc-isoc: frame error
+W (169686) uvc-isoc: frame error
+W (169689) uvc-isoc: frame error
+W (169692) uvc-isoc: frame error
+W (169695) uvc-isoc: frame error
+W (169698) uvc-isoc: frame error
+W (169700) uvc-isoc: frame error
+W (169703) uvc-isoc: frame error
+W (169706) uvc-isoc: frame error
+W (169709) uvc-isoc: frame error
+W (169712) uvc-isoc: frame error
+W (169715) uvc-isoc: frame error
+W (169718) uvc-isoc: frame error
+W (169721) uvc-isoc: frame error
+W (169724) uvc-isoc: frame error
+W (169727) uvc-isoc: frame error
+W (169730) uvc-isoc: frame error
+W (169733) uvc-isoc: frame error
+W (169736) uvc-isoc: frame error
+W (169739) uvc-isoc: frame error
+W (169742) uvc-isoc: frame error
+W (169745) uvc-isoc: frame error
+W (169748) uvc-isoc: frame error
+W (169751) uvc-isoc: frame error
+W (169754) uvc-isoc: frame error
+W (169757) uvc-isoc: frame error
+W (169760) uvc-isoc: frame error
+W (169762) uvc-isoc: frame error
+W (169765) uvc-isoc: frame error
+W (169768) uvc-isoc: frame error
+W (169771) uvc-isoc: frame error
+W (169774) uvc-isoc: frame error
+W (169777) uvc-isoc: frame error
+W (169780) uvc-isoc: frame error
+W (169783) uvc-isoc: frame error
+W (169786) uvc-isoc: frame error
+W (169789) uvc-isoc: frame error
+W (169792) uvc-isoc: frame error
+W (169795) uvc-isoc: frame error
+W (169798) uvc-isoc: frame error
+W (169801) uvc-isoc: frame error
+W (169804) uvc-isoc: frame error
+W (169807) uvc-isoc: frame error
+W (169810) uvc-isoc: frame error
+W (169813) uvc-isoc: frame error
+W (169816) uvc-isoc: frame error
+W (169819) uvc-isoc: frame error
+W (169821) uvc-isoc: frame error
+W (169824) uvc-isoc: frame error
+W (169827) uvc-isoc: frame error
+W (169830) uvc-isoc: frame error
+W (169833) uvc-isoc: frame error
+W (169836) uvc-isoc: frame error
+W (169839) uvc-isoc: frame error
+W (169842) uvc-isoc: frame error
+W (169845) uvc-isoc: frame error
+W (169848) uvc-isoc: frame error
+W (169851) uvc-isoc: frame error
+W (169854) uvc-isoc: frame error
+W (169857) uvc-isoc: frame error
+W (169860) uvc-isoc: frame error
+W (169863) uvc-isoc: frame error
+W (169866) uvc-isoc: frame error
+W (169869) uvc-isoc: frame error
+W (169872) uvc-isoc: frame error
+W (169875) uvc-isoc: frame error
+W (169878) uvc-isoc: frame error
+W (169881) uvc-isoc: frame error
+W (169883) uvc-isoc: frame error
+W (169886) uvc-isoc: frame error
+W (169889) uvc-isoc: frame error
+W (169892) uvc-isoc: frame error
+W (169895) uvc-isoc: frame error
+W (169898) uvc-isoc: frame error
+W (169901) uvc-isoc: frame error
+W (169904) uvc-isoc: frame error
+W (169907) uvc-isoc: frame error
+W (169910) uvc-isoc: frame error
+W (169913) uvc-isoc: frame error
+W (169916) uvc-isoc: frame error
+W (169919) uvc-isoc: frame error
+W (169922) uvc-isoc: frame error
+W (169925) uvc-isoc: frame error
+W (169928) uvc-isoc: frame error
+W (169931) uvc-isoc: frame error
+W (169934) uvc-isoc: frame error
+W (169937) uvc-isoc: frame error
+W (169940) uvc-isoc: frame error
+W (169942) uvc-isoc: frame error
+W (169945) uvc-isoc: frame error
+W (169948) uvc-isoc: frame error
+W (169951) uvc-isoc: frame error
+W (169954) uvc-isoc: frame error
+W (169957) uvc-isoc: frame error
+W (169960) uvc-isoc: frame error
+W (169963) uvc-isoc: frame error
+W (169966) uvc-isoc: frame error
+W (169969) uvc-isoc: frame error
+W (169972) uvc-isoc: frame error
+W (169975) uvc-isoc: frame error
+W (169978) uvc-isoc: frame error
+W (169981) uvc-isoc: frame error
+W (169984) uvc-isoc: frame error
+W (169987) uvc-isoc: frame error
+W (169990) uvc-isoc: frame error
+W (169993) uvc-isoc: frame error
+W (169996) uvc-isoc: frame error
+W (169999) uvc-isoc: frame error
+W (170002) uvc-isoc: frame error
+W (170005) uvc-isoc: frame error
+W (170007) uvc-isoc: frame error
+W (170010) uvc-isoc: frame error
+W (170013) uvc-isoc: frame error
+W (170016) uvc-isoc: frame error
+W (170019) uvc-isoc: frame error
+W (170022) uvc-isoc: frame error
+W (170025) uvc-isoc: frame error
+W (170028) uvc-isoc: frame error
+W (170031) uvc-isoc: frame error
+W (170034) uvc-isoc: frame error
+W (170037) uvc-isoc: frame error
+W (170040) uvc-isoc: frame error
+W (170043) uvc-isoc: frame error
+W (170046) uvc-isoc: frame error
+W (170049) uvc-isoc: frame error
+W (170052) uvc-isoc: frame error
+W (170055) uvc-isoc: frame error
+W (170058) uvc-isoc: frame error
+W (170061) uvc-isoc: frame error
+W (170063) uvc-isoc: frame error
+W (170066) uvc-isoc: frame error
+W (170070) uvc-isoc: frame error
+W (170072) uvc-isoc: frame error
+W (170075) uvc-isoc: frame error
+W (170078) uvc-isoc: frame error
+W (170081) uvc-isoc: frame error
+W (170084) uvc-isoc: frame error
+W (170087) uvc-isoc: frame error
+W (170090) uvc-isoc: frame error
+W (170093) uvc-isoc: frame error
+W (170096) uvc-isoc: frame error
+W (170099) uvc-isoc: frame error
+W (170102) uvc-isoc: frame error
+W (170105) uvc-isoc: frame error
+W (170108) uvc-isoc: frame error
+W (170111) uvc-isoc: frame error
+W (170114) uvc-isoc: frame error
+W (170117) uvc-isoc: frame error
+W (170120) uvc-isoc: frame error
+W (170123) uvc-isoc: frame error
+W (170125) uvc-isoc: frame error
+W (170128) uvc-isoc: frame error
+W (170131) uvc-isoc: frame error
+W (170134) uvc-isoc: frame error
+W (170138) uvc-isoc: frame error
+W (170140) uvc-isoc: frame error
+W (170143) uvc-isoc: frame error
+W (170146) uvc-isoc: frame error
+W (170149) uvc-isoc: frame error
+W (170152) uvc-isoc: frame error
+W (170155) uvc-isoc: frame error
+W (170158) uvc-isoc: frame error
+W (170161) uvc-isoc: frame error
+W (170164) uvc-isoc: frame error
+W (170167) uvc-isoc: frame error
+W (170170) uvc-isoc: frame error
+W (170173) uvc-isoc: frame error
+W (170176) uvc-isoc: frame error
+W (170179) uvc-isoc: frame error
+W (170182) uvc-isoc: frame error
+W (170184) uvc-isoc: frame error
+W (170187) uvc-isoc: frame error
+W (170190) uvc-isoc: frame error
+W (170193) uvc-isoc: frame error
+W (170196) uvc-isoc: frame error
+W (170199) uvc-isoc: frame error
+W (170202) uvc-isoc: frame error
+W (170205) uvc-isoc: frame error
+W (170208) uvc-isoc: frame error
+W (170211) uvc-isoc: frame error
+W (170214) uvc-isoc: frame error
+W (170217) uvc-isoc: frame error
+W (170220) uvc-isoc: frame error
+W (170223) uvc-isoc: frame error
+W (170226) uvc-isoc: frame error
+W (170229) uvc-isoc: frame error
+W (170232) uvc-isoc: frame error
+W (170235) uvc-isoc: frame error
+W (170238) uvc-isoc: frame error
+W (170241) uvc-isoc: frame error
+W (170243) uvc-isoc: frame error
+W (170246) uvc-isoc: frame error
+W (170249) uvc-isoc: frame error
+W (170252) uvc-isoc: frame error
+W (170255) uvc-isoc: frame error
+W (170258) uvc-isoc: frame error
+W (170261) uvc-isoc: frame error
+W (170264) uvc-isoc: frame error
+W (170267) uvc-isoc: frame error
+W (170270) uvc-isoc: frame error
+W (170273) uvc-isoc: frame error
+W (170276) uvc-isoc: frame error
+W (170279) uvc-isoc: frame error
+W (170282) uvc-isoc: frame error
+W (170285) uvc-isoc: frame error
+W (170288) uvc-isoc: frame error
+W (170291) uvc-isoc: frame error
+W (170294) uvc-isoc: frame error
+W (170297) uvc-isoc: frame error
+W (170300) uvc-isoc: frame error
+W (170303) uvc-isoc: frame error
+W (170305) uvc-isoc: frame error
+W (170308) uvc-isoc: frame error
+W (170311) uvc-isoc: frame error
+W (170314) uvc-isoc: frame error
+W (170317) uvc-isoc: frame error
+W (170320) uvc-isoc: frame error
+W (170323) uvc-isoc: frame error
+W (170326) uvc-isoc: frame error
+W (170329) uvc-isoc: frame error
+W (170332) uvc-isoc: frame error
+W (170335) uvc-isoc: frame error
+W (170339) uvc-isoc: frame error
+W (170341) uvc-isoc: frame error
+W (170344) uvc-isoc: frame error
+W (170347) uvc-isoc: frame error
+W (170350) uvc-isoc: frame error
+W (170353) uvc-isoc: frame error
+W (170356) uvc-isoc: frame error
+W (170359) uvc-isoc: frame error
+W (170362) uvc-isoc: frame error
+W (170364) uvc-isoc: frame error
+W (170367) uvc-isoc: frame error
+W (170370) uvc-isoc: frame error
+W (170373) uvc-isoc: frame error
+W (170376) uvc-isoc: frame error
+W (170379) uvc-isoc: frame error
+W (170382) uvc-isoc: frame error
+W (170385) uvc-isoc: frame error
+W (170388) uvc-isoc: frame error
+W (170391) uvc-isoc: frame error
+W (170394) uvc-isoc: frame error
+W (170397) uvc-isoc: frame error
+W (170400) uvc-isoc: frame error
+W (170403) uvc-isoc: frame error
+W (170406) uvc-isoc: frame error
+W (170409) uvc-isoc: frame error
+W (170412) uvc-isoc: frame error
+W (170415) uvc-isoc: frame error
+W (170418) uvc-isoc: frame error
+W (170421) uvc-isoc: frame error
+W (170424) uvc-isoc: frame error
+W (170426) uvc-isoc: frame error
+W (170429) uvc-isoc: frame error
+W (170432) uvc-isoc: frame error
+W (170435) uvc-isoc: frame error
+W (170438) uvc-isoc: frame error
+W (170441) uvc-isoc: frame error
+W (170444) uvc-isoc: frame error
+W (170447) uvc-isoc: frame error
+W (170450) uvc-isoc: frame error
+W (170453) uvc-isoc: frame error
+W (170456) uvc-isoc: frame error
+W (170459) uvc-isoc: frame error
+W (170462) uvc-isoc: frame error
+W (170465) uvc-isoc: frame error
+W (170468) uvc-isoc: frame error
+W (170471) uvc-isoc: frame error
+W (170474) uvc-isoc: frame error
+W (170477) uvc-isoc: frame error
+W (170480) uvc-isoc: frame error
+W (170483) uvc-isoc: frame error
+W (170485) uvc-isoc: frame error
+W (170488) uvc-isoc: frame error
+W (170491) uvc-isoc: frame error
+W (170494) uvc-isoc: frame error
+W (170497) uvc-isoc: frame error
+W (170500) uvc-isoc: frame error
+W (170503) uvc-isoc: frame error
+W (170506) uvc-isoc: frame error
+W (170509) uvc-isoc: frame error
+W (170512) uvc-isoc: frame error
+W (170515) uvc-isoc: frame error
+W (170518) uvc-isoc: frame error
+W (170521) uvc-isoc: frame error
+W (170524) uvc-isoc: frame error
+W (170527) uvc-isoc: frame error
+W (170530) uvc-isoc: frame error
+W (170533) uvc-isoc: frame error
+W (170536) uvc-isoc: frame error
+W (170539) uvc-isoc: frame error
+W (170542) uvc-isoc: frame error
+W (170545) uvc-isoc: frame error
+W (170547) uvc-isoc: frame error
+W (170550) uvc-isoc: frame error
+W (170553) uvc-isoc: frame error
+W (170556) uvc-isoc: frame error
+W (170559) uvc-isoc: frame error
+W (170562) uvc-isoc: frame error
+W (170565) uvc-isoc: frame error
+W (170568) uvc-isoc: frame error
+W (170571) uvc-isoc: frame error
+W (170574) uvc-isoc: frame error
+W (170577) uvc-isoc: frame error
+W (170580) uvc-isoc: frame error
+W (170583) uvc-isoc: frame error
+W (170586) uvc-isoc: frame error
+W (170589) uvc-isoc: frame error
+W (170592) uvc-isoc: frame error
+W (170595) uvc-isoc: frame error
+W (170598) uvc-isoc: frame error
+W (170601) uvc-isoc: frame error
+W (170604) uvc-isoc: frame error
+W (170607) uvc-isoc: frame error
+W (170609) uvc-isoc: frame error
+W (170612) uvc-isoc: frame error
+W (170615) uvc-isoc: frame error
+W (170618) uvc-isoc: frame error
+W (170621) uvc-isoc: frame error
+W (170624) uvc-isoc: frame error
+W (170627) uvc-isoc: frame error
+W (170630) uvc-isoc: frame error
+W (170633) uvc-isoc: frame error
+W (170636) uvc-isoc: frame error
+W (170639) uvc-isoc: frame error
+W (170642) uvc-isoc: frame error
+W (170645) uvc-isoc: frame error
+W (170648) uvc-isoc: frame error
+W (170651) uvc-isoc: frame error
+W (170654) uvc-isoc: frame error
+W (170657) uvc-isoc: frame error
+W (170660) uvc-isoc: frame error
+W (170663) uvc-isoc: frame error
+W (170666) uvc-isoc: frame error
+W (170668) uvc-isoc: frame error
+W (170671) uvc-isoc: frame error
+W (170674) uvc-isoc: frame error
+W (170677) uvc-isoc: frame error
+W (170680) uvc-isoc: frame error
+W (170683) uvc-isoc: frame error
+W (170686) uvc-isoc: frame error
+W (170689) uvc-isoc: frame error
+W (170692) uvc-isoc: frame error
+W (170695) uvc-isoc: frame error
+W (170698) uvc-isoc: frame error
+W (170701) uvc-isoc: frame error
+W (170704) uvc-isoc: frame error
+W (170707) uvc-isoc: frame error
+W (170710) uvc-isoc: frame error
+W (170713) uvc-isoc: frame error
+W (170716) uvc-isoc: frame error
+W (170719) uvc-isoc: frame error
+W (170722) uvc-isoc: frame error
+W (170725) uvc-isoc: frame error
+W (170727) uvc-isoc: frame error
+W (170730) uvc-isoc: frame error
+W (170733) uvc-isoc: frame error
+W (170736) uvc-isoc: frame error
+W (170739) uvc-isoc: frame error
+W (170742) uvc-isoc: frame error
+W (170745) uvc-isoc: frame error
+W (170748) uvc-isoc: frame error
+W (170751) uvc-isoc: frame error
+W (170754) uvc-isoc: frame error
+W (170757) uvc-isoc: frame error
+W (170760) uvc-isoc: frame error
+W (170763) uvc-isoc: frame error
+W (170766) uvc-isoc: frame error
+W (170769) uvc-isoc: frame error
+W (170772) uvc-isoc: frame error
+W (170775) uvc-isoc: frame error
+W (170778) uvc-isoc: frame error
+W (170781) uvc-isoc: frame error
+W (170784) uvc-isoc: frame error
+W (170786) uvc-isoc: frame error
+W (170789) uvc-isoc: frame error
+W (170792) uvc-isoc: frame error
+W (170795) uvc-isoc: frame error
+W (170798) uvc-isoc: frame error
+W (170801) uvc-isoc: frame error
+W (170804) uvc-isoc: frame error
+W (170808) uvc-isoc: frame error
+W (170810) uvc-isoc: frame error
+W (170813) uvc-isoc: frame error
+W (170816) uvc-isoc: frame error
+W (170819) uvc-isoc: frame error
+W (170822) uvc-isoc: frame error
+W (170825) uvc-isoc: frame error
+W (170828) uvc-isoc: frame error
+W (170831) uvc-isoc: frame error
+W (170834) uvc-isoc: frame error
+W (170837) uvc-isoc: frame error
+W (170840) uvc-isoc: frame error
+W (170843) uvc-isoc: frame error
+W (170846) uvc-isoc: frame error
+W (170848) uvc-isoc: frame error
+W (170851) uvc-isoc: frame error
+W (170854) uvc-isoc: frame error
+W (170857) uvc-isoc: frame error
+W (170860) uvc-isoc: frame error
+W (170863) uvc-isoc: frame error
+W (170866) uvc-isoc: frame error
+W (170869) uvc-isoc: frame error
+W (170872) uvc-isoc: frame error
+W (170876) uvc-isoc: frame error
+W (170878) uvc-isoc: frame error
+W (170881) uvc-isoc: frame error
+W (170884) uvc-isoc: frame error
+W (170887) uvc-isoc: frame error
+W (170890) uvc-isoc: frame error
+W (170893) uvc-isoc: frame error
+W (170896) uvc-isoc: frame error
+W (170899) uvc-isoc: frame error
+W (170902) uvc-isoc: frame error
+W (170905) uvc-isoc: frame error
+W (170907) uvc-isoc: frame error
+W (170910) uvc-isoc: frame error
+W (170913) uvc-isoc: frame error
+W (170916) uvc-isoc: frame error
+W (170919) uvc-isoc: frame error
+W (170922) uvc-isoc: frame error
+W (170925) uvc-isoc: frame error
+W (170928) uvc-isoc: frame error
+W (170931) uvc-isoc: frame error
+W (170934) uvc-isoc: frame error
+W (170937) uvc-isoc: frame error
+W (170940) uvc-isoc: frame error
+W (170943) uvc-isoc: frame error
+W (170946) uvc-isoc: frame error
+W (170949) uvc-isoc: frame error
+W (170952) uvc-isoc: frame error
+W (170955) uvc-isoc: frame error
+W (170958) uvc-isoc: frame error
+W (170961) uvc-isoc: frame error
+W (170964) uvc-isoc: frame error
+W (170967) uvc-isoc: frame error
+W (170969) uvc-isoc: frame error
+W (170972) uvc-isoc: frame error
+W (170975) uvc-isoc: frame error
+W (170978) uvc-isoc: frame error
+W (170981) uvc-isoc: frame error
+W (170984) uvc-isoc: frame error
+W (170987) uvc-isoc: frame error
+W (170990) uvc-isoc: frame error
+W (170993) uvc-isoc: frame error
+W (170996) uvc-isoc: frame error
+W (170999) uvc-isoc: frame error
+W (171002) uvc-isoc: frame error
+W (171005) uvc-isoc: frame error
+W (171008) uvc-isoc: frame error
+W (171011) uvc-isoc: frame error
+W (171014) uvc-isoc: frame error
+W (171017) uvc-isoc: frame error
+W (171020) uvc-isoc: frame error
+W (171023) uvc-isoc: frame error
+W (171026) uvc-isoc: frame error
+W (171028) uvc-isoc: frame error
+W (171031) uvc-isoc: frame error
+W (171034) uvc-isoc: frame error
+W (171037) uvc-isoc: frame error
+W (171040) uvc-isoc: frame error
+W (171043) uvc-isoc: frame error
+W (171046) uvc-isoc: frame error
+W (171049) uvc-isoc: frame error
+W (171052) uvc-isoc: frame error
+W (171055) uvc-isoc: frame error
+W (171058) uvc-isoc: frame error
+W (171061) uvc-isoc: frame error
+W (171064) uvc-isoc: frame error
+W (171067) uvc-isoc: frame error
+W (171070) uvc-isoc: frame error
+W (171073) uvc-isoc: frame error
+W (171076) uvc-isoc: frame error
+W (171079) uvc-isoc: frame error
+W (171082) uvc-isoc: frame error
+W (171085) uvc-isoc: frame error
+W (171088) uvc-isoc: frame error
+W (171090) uvc-isoc: frame error
+W (171093) uvc-isoc: frame error
+W (171096) uvc-isoc: frame error
+W (171099) uvc-isoc: frame error
+W (171102) uvc-isoc: frame error
+W (171105) uvc-isoc: frame error
+W (171108) uvc-isoc: frame error
+W (171111) uvc-isoc: frame error
+W (171114) uvc-isoc: frame error
+W (171117) uvc-isoc: frame error
+W (171120) uvc-isoc: frame error
+W (171123) uvc-isoc: frame error
+W (171126) uvc-isoc: frame error
+W (171129) uvc-isoc: frame error
+W (171132) uvc-isoc: frame error
+W (171135) uvc-isoc: frame error
+W (171138) uvc-isoc: frame error
+W (171141) uvc-isoc: frame error
+W (171144) uvc-isoc: frame error
+W (171147) uvc-isoc: frame error
+W (171149) uvc-isoc: frame error
+W (171152) uvc-isoc: frame error
+W (171155) uvc-isoc: frame error
+W (171158) uvc-isoc: frame error
+W (171161) uvc-isoc: frame error
+W (171164) uvc-isoc: frame error
+W (171167) uvc-isoc: frame error
+W (171170) uvc-isoc: frame error
+W (171173) uvc-isoc: frame error
+W (171176) uvc-isoc: frame error
+W (171179) uvc-isoc: frame error
+W (171182) uvc-isoc: frame error
+W (171185) uvc-isoc: frame error
+W (171188) uvc-isoc: frame error
+W (171191) uvc-isoc: frame error
+W (171194) uvc-isoc: frame error
+W (171197) uvc-isoc: frame error
+W (171200) uvc-isoc: frame error
+W (171203) uvc-isoc: frame error
+W (171206) uvc-isoc: frame error
+W (171209) uvc-isoc: frame error
+W (171212) uvc-isoc: frame error
+W (171214) uvc-isoc: frame error
+W (171217) uvc-isoc: frame error
+W (171220) uvc-isoc: frame error
+W (171223) uvc-isoc: frame error
+W (171226) uvc-isoc: frame error
+W (171229) uvc-isoc: frame error
+W (171232) uvc-isoc: frame error
+W (171235) uvc-isoc: frame error
+W (171238) uvc-isoc: frame error
+W (171241) uvc-isoc: frame error
+W (171244) uvc-isoc: frame error
+W (171247) uvc-isoc: frame error
+W (171250) uvc-isoc: frame error
+W (171253) uvc-isoc: frame error
+W (171256) uvc-isoc: frame error
+W (171259) uvc-isoc: frame error
+W (171262) uvc-isoc: frame error
+W (171265) uvc-isoc: frame error
+W (171268) uvc-isoc: frame error
+W (171270) uvc-isoc: frame error
+W (171273) uvc-isoc: frame error
+W (171277) uvc-isoc: frame error
+W (171279) uvc-isoc: frame error
+W (171282) uvc-isoc: frame error
+W (171285) uvc-isoc: frame error
+W (171288) uvc-isoc: frame error
+W (171291) uvc-isoc: frame error
+W (171294) uvc-isoc: frame error
+W (171297) uvc-isoc: frame error
+W (171300) uvc-isoc: frame error
+W (171303) uvc-isoc: frame error
+W (171306) uvc-isoc: frame error
+W (171309) uvc-isoc: frame error
+W (171312) uvc-isoc: frame error
+W (171315) uvc-isoc: frame error
+W (171318) uvc-isoc: frame error
+W (171321) uvc-isoc: frame error
+W (171324) uvc-isoc: frame error
+W (171327) uvc-isoc: frame error
+W (171330) uvc-isoc: frame error
+W (171332) uvc-isoc: frame error
+W (171335) uvc-isoc: frame error
+W (171338) uvc-isoc: frame error
+W (171341) uvc-isoc: frame error
+W (171345) uvc-isoc: frame error
+W (171347) uvc-isoc: frame error
+W (171350) uvc-isoc: frame error
+W (171353) uvc-isoc: frame error
+W (171356) uvc-isoc: frame error
+W (171359) uvc-isoc: frame error
+W (171362) uvc-isoc: frame error
+W (171365) uvc-isoc: frame error
+W (171368) uvc-isoc: frame error
+W (171371) uvc-isoc: frame error
+W (171374) uvc-isoc: frame error
+W (171377) uvc-isoc: frame error
+W (171380) uvc-isoc: frame error
+W (171383) uvc-isoc: frame error
+W (171386) uvc-isoc: frame error
+W (171389) uvc-isoc: frame error
+W (171391) uvc-isoc: frame error
+W (171394) uvc-isoc: frame error
+W (171397) uvc-isoc: frame error
+W (171400) uvc-isoc: frame error
+W (171403) uvc-isoc: frame error
+W (171406) uvc-isoc: frame error
+W (171409) uvc-isoc: frame error
+W (171412) uvc-isoc: frame error
+W (171415) uvc-isoc: frame error
+W (171418) uvc-isoc: frame error
+W (171421) uvc-isoc: frame error
+W (171424) uvc-isoc: frame error
+W (171427) uvc-isoc: frame error
+W (171430) uvc-isoc: frame error
+W (171433) uvc-isoc: frame error
+W (171436) uvc-isoc: frame error
+W (171439) uvc-isoc: frame error
+W (171442) uvc-isoc: frame error
+W (171445) uvc-isoc: frame error
+W (171448) uvc-isoc: frame error
+W (171450) uvc-isoc: frame error
+W (171453) uvc-isoc: frame error
+W (171456) uvc-isoc: frame error
+W (171459) uvc-isoc: frame error
+W (171462) uvc-isoc: frame error
+W (171465) uvc-isoc: frame error
+W (171468) uvc-isoc: frame error
+W (171471) uvc-isoc: frame error
+W (171474) uvc-isoc: frame error
+W (171478) uvc-isoc: frame error
+W (171480) uvc-isoc: frame error
+W (171483) uvc-isoc: frame error
+W (171486) uvc-isoc: frame error
+W (171489) uvc-isoc: frame error
+W (171492) uvc-isoc: frame error
+W (171495) uvc-isoc: frame error
+W (171498) uvc-isoc: frame error
+W (171501) uvc-isoc: frame error
+W (171504) uvc-isoc: frame error
+W (171507) uvc-isoc: frame error
+W (171510) uvc-isoc: frame error
+W (171512) uvc-isoc: frame error
+W (171515) uvc-isoc: frame error
+W (171518) uvc-isoc: frame error
+W (171521) uvc-isoc: frame error
+W (171524) uvc-isoc: frame error
+W (171527) uvc-isoc: frame error
+W (171530) uvc-isoc: frame error
+W (171533) uvc-isoc: frame error
+W (171536) uvc-isoc: frame error
+W (171539) uvc-isoc: frame error
+W (171542) uvc-isoc: frame error
+E (171545) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+W (171546) uvc-isoc: frame error
+W (171553) uvc-isoc: frame error
+W (171556) uvc-isoc: frame error
+W (171559) uvc-isoc: frame error
+W (171562) uvc-isoc: frame error
+W (171565) uvc-isoc: frame error
+W (171568) uvc-isoc: frame error
+W (171571) uvc-isoc: frame error
+W (171574) uvc-isoc: frame error
+W (171577) uvc-isoc: frame error
+W (171580) uvc-isoc: frame error
+W (171583) uvc-isoc: frame error
+W (171586) uvc-isoc: frame error
+W (171589) uvc-isoc: frame error
+W (171592) uvc-isoc: frame error
+W (171595) uvc-isoc: frame error
+W (171598) uvc-isoc: frame error
+W (171601) uvc-isoc: frame error
+W (171604) uvc-isoc: frame error
+W (171607) uvc-isoc: frame error
+W (171610) uvc-isoc: frame error
+D (171714) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=8631164 psram_maior_bloco=8388608 interna_livre=412607
+PV-UVC-SUMARIO inicio
+PV-UVC-SUMARIO degrau=1 requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=2 requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=3 requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=4 requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=5 requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=nao
+PV-UVC-SUMARIO fim pass=0 fail=5 total=5 fail_obrigatorios=4
+PV-UVC-CICLO 6 fim — REPLUG a camera para disparar nova escada (retry 15 s)
+
+PV-UVC-CICLO 7 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (187189) usb_uvc_device: All UVC devices already enumerated
+PV-UVC-ENUM device aberto em 2 ms
+PV-UVC-ENUM cap driver=USB-UVC0 card=USB-UVC0 bus=esp32p4:USB-UVC0 caps=0x84201001 device_caps=0x04201001
+PV-UVC-ENUM fmt index=0 fourcc=JPEG flags=0x0 desc="JPEG"
+PV-UVC-ENUM size fourcc=JPEG index=0 1920x1080
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=1 640x320
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=2 640x480
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=3 800x600
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=4 1024x768
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=5 1280x720
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=6 1280x960
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=7 1600x1200
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=8 2048x1536
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=9 2592x1944
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=10 3264x2448
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=11 3840x2160
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=12 4000x3000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=0 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=13 320x240
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM fmt index=1 fourcc=YUYV flags=0x0 desc="YUV 4:2:2 YUYV"
+PV-UVC-ENUM size fourcc=YUYV index=0 320x240
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=1 640x360
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=2 640x480
+PV-UVC-ENUM interval fourcc=YUYV 640x480 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=3 800x600
+PV-UVC-ENUM interval fourcc=YUYV 800x600 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=4 1024x720
+PV-UVC-ENUM interval fourcc=YUYV 1024x720 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=5 1280x940
+PV-UVC-ENUM interval fourcc=YUYV 1280x940 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=6 1280x1024
+PV-UVC-ENUM interval fourcc=YUYV 1280x1024 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=7 1600x1200
+PV-UVC-ENUM interval fourcc=YUYV 1600x1200 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=8 1920x1080
+PV-UVC-ENUM interval fourcc=YUYV 1920x1080 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=9 2048x1536
+PV-UVC-ENUM interval fourcc=YUYV 2048x1536 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=10 2560x1440
+PV-UVC-ENUM interval fourcc=YUYV 2560x1440 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=11 2592x1944
+PV-UVC-ENUM interval fourcc=YUYV 2592x1944 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM result=OK tamanhos_jpeg=14
+PV-UVC-FMT requested=800x600 applied=800x600 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (187831) uvc: Checking list of opened USB devices
+D (187835) uvc: Checking list of connected USB devices
+D (187840) uvc: Claimed interface index 1 with MPS 1024
+D (187846) uvc: ctrl xfer cb
+D (187850) uvc: ctrl xfer cb
+D (187852) uvc: ctrl xfer cb
+D (187855) uvc: ctrl xfer cb
+I (187856) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (187865) uvc: ctrl xfer cb
+D (187867) uvc: ctrl xfer cb
+D (187872) uvc: ctrl xfer cb
+D (187874) uvc: ctrl xfer cb
+D (187876) uvc: ctrl xfer cb
+D (187879) uvc: ctrl xfer cb
+D (187881) uvc: ctrl xfer cb
+D (187883) uvc: ctrl xfer cb
+D (187885) uvc: ctrl xfer cb
+D (187890) uvc: ctrl xfer cb
+D (187892) uvc: ctrl xfer cb
+D (187904) uvc: ctrl xfer cb
+W (190903) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=800x600 descartados=0
+E (195903) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (196004) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=1920x1080 applied=1920x1080 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (196421) uvc: Checking list of opened USB devices
+D (196425) uvc: Checking list of connected USB devices
+D (196430) uvc: Claimed interface index 1 with MPS 1024
+D (196435) uvc: ctrl xfer cb
+D (196440) uvc: ctrl xfer cb
+D (196442) uvc: ctrl xfer cb
+D (196445) uvc: ctrl xfer cb
+I (196446) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (196455) uvc: ctrl xfer cb
+D (196457) uvc: ctrl xfer cb
+D (196461) uvc: ctrl xfer cb
+D (196464) uvc: ctrl xfer cb
+D (196466) uvc: ctrl xfer cb
+D (196469) uvc: ctrl xfer cb
+D (196471) uvc: ctrl xfer cb
+D (196473) uvc: ctrl xfer cb
+D (196475) uvc: ctrl xfer cb
+D (196478) uvc: ctrl xfer cb
+D (196482) uvc: ctrl xfer cb
+D (196494) uvc: ctrl xfer cb
+W (199493) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=1920x1080 descartados=0
+E (204493) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (204595) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=2592x1944 applied=2592x1944 fourcc=JPEG sizeimage=2519424
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=2519424
+D (205012) uvc: Checking list of opened USB devices
+D (205017) uvc: Checking list of connected USB devices
+D (205022) uvc: Claimed interface index 1 with MPS 1024
+D (205028) uvc: ctrl xfer cb
+D (205031) uvc: ctrl xfer cb
+D (205033) uvc: ctrl xfer cb
+D (205035) uvc: ctrl xfer cb
+I (205037) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (205047) uvc: ctrl xfer cb
+D (205049) uvc: ctrl xfer cb
+D (205052) uvc: ctrl xfer cb
+D (205055) uvc: ctrl xfer cb
+D (205057) uvc: ctrl xfer cb
+D (205059) uvc: ctrl xfer cb
+D (205062) uvc: ctrl xfer cb
+D (205066) uvc: ctrl xfer cb
+D (205068) uvc: ctrl xfer cb
+D (205071) uvc: ctrl xfer cb
+D (205073) uvc: ctrl xfer cb
+D (205085) uvc: ctrl xfer cb
+W (208084) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=2592x1944 descartados=0
+E (213084) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (213184) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=22553468 psram_maior_bloco=22020096 interna_livre=412607
+PV-UVC-FMT requested=3264x2448 applied=3264x2448 fourcc=JPEG sizeimage=3995136
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=3995136
+D (213601) uvc: Checking list of opened USB devices
+D (213606) uvc: Checking list of connected USB devices
+D (213611) uvc: Claimed interface index 1 with MPS 1024
+D (213617) uvc: ctrl xfer cb
+D (213620) uvc: ctrl xfer cb
+D (213622) uvc: ctrl xfer cb
+D (213625) uvc: ctrl xfer cb
+I (213626) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (213637) uvc: ctrl xfer cb
+D (213639) uvc: ctrl xfer cb
+D (213642) uvc: ctrl xfer cb
+D (213644) uvc: ctrl xfer cb
+D (213646) uvc: ctrl xfer cb
+D (213649) uvc: ctrl xfer cb
+D (213651) uvc: ctrl xfer cb
+D (213653) uvc: ctrl xfer cb
+D (213655) uvc: ctrl xfer cb
+D (213660) uvc: ctrl xfer cb
+D (213662) uvc: ctrl xfer cb
+D (213674) uvc: ctrl xfer cb
+W (216673) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=3264x2448 descartados=0
+E (221673) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (221774) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=16650620 psram_maior_bloco=16515072 interna_livre=412607
+PV-UVC-FMT requested=4000x3000 applied=4000x3000 fourcc=JPEG sizeimage=6000000
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=6000000
+D (222192) uvc: Checking list of opened USB devices
+D (222197) uvc: Checking list of connected USB devices
+D (222202) uvc: Claimed interface index 1 with MPS 1024
+D (222208) uvc: ctrl xfer cb
+D (222210) uvc: ctrl xfer cb
+D (222212) uvc: ctrl xfer cb
+D (222215) uvc: ctrl xfer cb
+I (222217) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (222227) uvc: ctrl xfer cb
+D (222229) uvc: ctrl xfer cb
+D (222232) uvc: ctrl xfer cb
+D (222234) uvc: ctrl xfer cb
+D (222236) uvc: ctrl xfer cb
+D (222241) uvc: ctrl xfer cb
+D (222243) uvc: ctrl xfer cb
+D (222245) uvc: ctrl xfer cb
+D (222249) uvc: ctrl xfer cb
+D (222252) uvc: ctrl xfer cb
+D (222254) uvc: ctrl xfer cb
+D (222264) uvc: ctrl xfer cb
+W (225263) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=4000x3000 descartados=0
+E (230263) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (230364) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=8631164 psram_maior_bloco=8388608 interna_livre=412607
+PV-UVC-SUMARIO inicio
+PV-UVC-SUMARIO degrau=1 requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=2 requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=3 requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=4 requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=5 requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=nao
+PV-UVC-SUMARIO fim pass=0 fail=5 total=5 fail_obrigatorios=4
+PV-UVC-CICLO 7 fim — REPLUG a camera para disparar nova escada (retry 15 s)
+
+PV-UVC-CICLO 8 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (245839) usb_uvc_device: All UVC devices already enumerated
+PV-UVC-ENUM device aberto em 2 ms
+PV-UVC-ENUM cap driver=USB-UVC0 card=USB-UVC0 bus=esp32p4:USB-UVC0 caps=0x84201001 device_caps=0x04201001
+PV-UVC-ENUM fmt index=0 fourcc=JPEG flags=0x0 desc="JPEG"
+PV-UVC-ENUM size fourcc=JPEG index=0 1920x1080
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=1 640x320
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=2 640x480
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=3 800x600
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=4 1024x768
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=5 1280x720
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=6 1280x960
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=7 1600x1200
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=8 2048x1536
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=9 2592x1944
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=10 3264x2448
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=11 3840x2160
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=12 4000x3000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=0 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=13 320x240
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM fmt index=1 fourcc=YUYV flags=0x0 desc="YUV 4:2:2 YUYV"
+PV-UVC-ENUM size fourcc=YUYV index=0 320x240
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=1 640x360
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=2 640x480
+PV-UVC-ENUM interval fourcc=YUYV 640x480 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=3 800x600
+PV-UVC-ENUM interval fourcc=YUYV 800x600 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=4 1024x720
+PV-UVC-ENUM interval fourcc=YUYV 1024x720 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=5 1280x940
+PV-UVC-ENUM interval fourcc=YUYV 1280x940 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=6 1280x1024
+PV-UVC-ENUM interval fourcc=YUYV 1280x1024 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=7 1600x1200
+PV-UVC-ENUM interval fourcc=YUYV 1600x1200 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=8 1920x1080
+PV-UVC-ENUM interval fourcc=YUYV 1920x1080 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=9 2048x1536
+PV-UVC-ENUM interval fourcc=YUYV 2048x1536 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=10 2560x1440
+PV-UVC-ENUM interval fourcc=YUYV 2560x1440 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=11 2592x1944
+PV-UVC-ENUM interval fourcc=YUYV 2592x1944 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM result=OK tamanhos_jpeg=14
+PV-UVC-FMT requested=800x600 applied=800x600 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (246481) uvc: Checking list of opened USB devices
+D (246485) uvc: Checking list of connected USB devices
+D (246490) uvc: Claimed interface index 1 with MPS 1024
+D (246496) uvc: ctrl xfer cb
+D (246500) uvc: ctrl xfer cb
+D (246504) uvc: ctrl xfer cb
+D (246507) uvc: ctrl xfer cb
+I (246507) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (246515) uvc: ctrl xfer cb
+D (246517) uvc: ctrl xfer cb
+D (246522) uvc: ctrl xfer cb
+D (246524) uvc: ctrl xfer cb
+D (246526) uvc: ctrl xfer cb
+D (246529) uvc: ctrl xfer cb
+D (246531) uvc: ctrl xfer cb
+D (246533) uvc: ctrl xfer cb
+D (246535) uvc: ctrl xfer cb
+D (246538) uvc: ctrl xfer cb
+D (246542) uvc: ctrl xfer cb
+D (246554) uvc: ctrl xfer cb
+W (249553) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=800x600 descartados=0
+E (254553) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (254654) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=1920x1080 applied=1920x1080 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (255071) uvc: Checking list of opened USB devices
+D (255075) uvc: Checking list of connected USB devices
+D (255080) uvc: Claimed interface index 1 with MPS 1024
+D (255087) uvc: ctrl xfer cb
+D (255090) uvc: ctrl xfer cb
+D (255092) uvc: ctrl xfer cb
+D (255094) uvc: ctrl xfer cb
+I (255096) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (255106) uvc: ctrl xfer cb
+D (255108) uvc: ctrl xfer cb
+D (255111) uvc: ctrl xfer cb
+D (255114) uvc: ctrl xfer cb
+D (255116) uvc: ctrl xfer cb
+D (255118) uvc: ctrl xfer cb
+D (255121) uvc: ctrl xfer cb
+D (255123) uvc: ctrl xfer cb
+D (255125) uvc: ctrl xfer cb
+D (255130) uvc: ctrl xfer cb
+D (255132) uvc: ctrl xfer cb
+D (255144) uvc: ctrl xfer cb
+W (258143) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=1920x1080 descartados=0
+E (263143) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (263244) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=2592x1944 applied=2592x1944 fourcc=JPEG sizeimage=2519424
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=2519424
+D (263661) uvc: Checking list of opened USB devices
+D (263666) uvc: Checking list of connected USB devices
+D (263671) uvc: Claimed interface index 1 with MPS 1024
+D (263677) uvc: ctrl xfer cb
+D (263679) uvc: ctrl xfer cb
+D (263681) uvc: ctrl xfer cb
+D (263684) uvc: ctrl xfer cb
+I (263686) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (263696) uvc: ctrl xfer cb
+D (263698) uvc: ctrl xfer cb
+D (263701) uvc: ctrl xfer cb
+D (263703) uvc: ctrl xfer cb
+D (263705) uvc: ctrl xfer cb
+D (263708) uvc: ctrl xfer cb
+D (263710) uvc: ctrl xfer cb
+D (263715) uvc: ctrl xfer cb
+D (263717) uvc: ctrl xfer cb
+D (263720) uvc: ctrl xfer cb
+D (263722) uvc: ctrl xfer cb
+D (263734) uvc: ctrl xfer cb
+W (266733) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=2592x1944 descartados=0
+E (271733) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (271834) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=22553468 psram_maior_bloco=22020096 interna_livre=412607
+PV-UVC-FMT requested=3264x2448 applied=3264x2448 fourcc=JPEG sizeimage=3995136
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=3995136
+D (272251) uvc: Checking list of opened USB devices
+D (272256) uvc: Checking list of connected USB devices
+D (272261) uvc: Claimed interface index 1 with MPS 1024
+D (272267) uvc: ctrl xfer cb
+D (272270) uvc: ctrl xfer cb
+D (272272) uvc: ctrl xfer cb
+D (272275) uvc: ctrl xfer cb
+I (272276) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (272285) uvc: ctrl xfer cb
+D (272289) uvc: ctrl xfer cb
+D (272292) uvc: ctrl xfer cb
+D (272294) uvc: ctrl xfer cb
+D (272296) uvc: ctrl xfer cb
+D (272299) uvc: ctrl xfer cb
+D (272301) uvc: ctrl xfer cb
+D (272303) uvc: ctrl xfer cb
+D (272305) uvc: ctrl xfer cb
+D (272310) uvc: ctrl xfer cb
+D (272312) uvc: ctrl xfer cb
+D (272324) uvc: ctrl xfer cb
+W (275323) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=3264x2448 descartados=0
+E (280323) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (280423) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=16650620 psram_maior_bloco=16515072 interna_livre=412607
+PV-UVC-FMT requested=4000x3000 applied=4000x3000 fourcc=JPEG sizeimage=6000000
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=6000000
+D (280840) uvc: Checking list of opened USB devices
+D (280845) uvc: Checking list of connected USB devices
+D (280850) uvc: Claimed interface index 1 with MPS 1024
+D (280856) uvc: ctrl xfer cb
+D (280859) uvc: ctrl xfer cb
+D (280861) uvc: ctrl xfer cb
+D (280864) uvc: ctrl xfer cb
+I (280865) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (280876) uvc: ctrl xfer cb
+D (280878) uvc: ctrl xfer cb
+D (280880) uvc: ctrl xfer cb
+D (280883) uvc: ctrl xfer cb
+D (280885) uvc: ctrl xfer cb
+D (280888) uvc: ctrl xfer cb
+D (280890) uvc: ctrl xfer cb
+D (280892) uvc: ctrl xfer cb
+D (280894) uvc: ctrl xfer cb
+D (280899) uvc: ctrl xfer cb
+D (280901) uvc: ctrl xfer cb
+D (280913) uvc: ctrl xfer cb
+W (283913) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=4000x3000 descartados=0
+E (288913) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (289014) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=8631164 psram_maior_bloco=8388608 interna_livre=412607
+PV-UVC-SUMARIO inicio
+PV-UVC-SUMARIO degrau=1 requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=2 requested=1920x1080 applied=1920x1080 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=3 requested=2592x1944 applied=2592x1944 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=4 requested=3264x2448 applied=3264x2448 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=sim
+PV-UVC-SUMARIO degrau=5 requested=4000x3000 applied=4000x3000 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf obrigatorio=nao
+PV-UVC-SUMARIO fim pass=0 fail=5 total=5 fail_obrigatorios=4
+PV-UVC-CICLO 8 fim — REPLUG a camera para disparar nova escada (retry 15 s)
+
+PV-UVC-CICLO 9 inicio
+PV-UVC-ENUM aguardando enumeracao USB em /dev/video40 (ate 10000 ms)
+I (304489) usb_uvc_device: All UVC devices already enumerated
+PV-UVC-ENUM device aberto em 2 ms
+PV-UVC-ENUM cap driver=USB-UVC0 card=USB-UVC0 bus=esp32p4:USB-UVC0 caps=0x84201001 device_caps=0x04201001
+PV-UVC-ENUM fmt index=0 fourcc=JPEG flags=0x0 desc="JPEG"
+PV-UVC-ENUM size fourcc=JPEG index=0 1920x1080
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1920x1080 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=1 640x320
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x320 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=2 640x480
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 640x480 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=3 800x600
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 800x600 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=4 1024x768
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1024x768 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=5 1280x720
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x720 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=6 1280x960
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1280x960 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=7 1600x1200
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 1600x1200 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=8 2048x1536
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2048x1536 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=9 2592x1944
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 2592x1944 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=10 3264x2448
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3264x2448 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=11 3840x2160
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 3840x2160 index=2 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=12 4000x3000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=0 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM interval fourcc=JPEG 4000x3000 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=JPEG index=13 320x240
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=0 tipo=discrete num=333333 den=10000000 fps_x1000=30000
+PV-UVC-ENUM interval fourcc=JPEG 320x240 index=1 tipo=discrete num=666666 den=10000000 fps_x1000=15000
+PV-UVC-ENUM fmt index=1 fourcc=YUYV flags=0x0 desc="YUV 4:2:2 YUYV"
+PV-UVC-ENUM size fourcc=YUYV index=0 320x240
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 320x240 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=1 640x360
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=0 tipo=discrete num=500000 den=10000000 fps_x1000=20000
+PV-UVC-ENUM interval fourcc=YUYV 640x360 index=1 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=2 640x480
+PV-UVC-ENUM interval fourcc=YUYV 640x480 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=3 800x600
+PV-UVC-ENUM interval fourcc=YUYV 800x600 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=4 1024x720
+PV-UVC-ENUM interval fourcc=YUYV 1024x720 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=5 1280x940
+PV-UVC-ENUM interval fourcc=YUYV 1280x940 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=6 1280x1024
+PV-UVC-ENUM interval fourcc=YUYV 1280x1024 index=0 tipo=discrete num=1000000 den=10000000 fps_x1000=10000
+PV-UVC-ENUM size fourcc=YUYV index=7 1600x1200
+PV-UVC-ENUM interval fourcc=YUYV 1600x1200 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=8 1920x1080
+PV-UVC-ENUM interval fourcc=YUYV 1920x1080 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=9 2048x1536
+PV-UVC-ENUM interval fourcc=YUYV 2048x1536 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=10 2560x1440
+PV-UVC-ENUM interval fourcc=YUYV 2560x1440 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM size fourcc=YUYV index=11 2592x1944
+PV-UVC-ENUM interval fourcc=YUYV 2592x1944 index=0 tipo=discrete num=2000000 den=10000000 fps_x1000=5000
+PV-UVC-ENUM result=OK tamanhos_jpeg=14
+PV-UVC-FMT requested=800x600 applied=800x600 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (305131) uvc: Checking list of opened USB devices
+D (305135) uvc: Checking list of connected USB devices
+D (305140) uvc: Claimed interface index 1 with MPS 1024
+D (305145) uvc: ctrl xfer cb
+D (305150) uvc: ctrl xfer cb
+D (305152) uvc: ctrl xfer cb
+D (305155) uvc: ctrl xfer cb
+I (305156) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (305165) uvc: ctrl xfer cb
+D (305169) uvc: ctrl xfer cb
+D (305171) uvc: ctrl xfer cb
+D (305174) uvc: ctrl xfer cb
+D (305176) uvc: ctrl xfer cb
+D (305178) uvc: ctrl xfer cb
+D (305181) uvc: ctrl xfer cb
+D (305183) uvc: ctrl xfer cb
+D (305187) uvc: ctrl xfer cb
+D (305190) uvc: ctrl xfer cb
+D (305192) uvc: ctrl xfer cb
+D (305204) uvc: ctrl xfer cb
+W (308204) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=800x600 descartados=0
+E (313204) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (313304) uvc: ctrl xfer cb
+PV-UVC-RUNG requested=800x600 applied=800x600 fourcc=JPEG bytesused=0 result=FAIL reason=dqbuf
+PV-UVC-MEM etapa=pos-degrau psram_livre=28436860 psram_maior_bloco=28311552 interna_livre=412607
+PV-UVC-FMT requested=1920x1080 applied=1920x1080 fourcc=JPEG sizeimage=1048576
+PV-UVC-REQBUFS pedido=4 obtido=4 sizeimage=1048576
+D (313721) uvc: Checking list of opened USB devices
+D (313725) uvc: Checking list of connected USB devices
+D (313730) uvc: Claimed interface index 1 with MPS 1024
+D (313737) uvc: ctrl xfer cb
+D (313739) uvc: ctrl xfer cb
+D (313741) uvc: ctrl xfer cb
+D (313744) uvc: ctrl xfer cb
+I (313746) uvc: Allocating 4 USB transfers for ISOC. Each: 3072 bytes, 1 ISOC packets, 3072 MPS
+D (313756) uvc: ctrl xfer cb
+D (313758) uvc: ctrl xfer cb
+D (313761) uvc: ctrl xfer cb
+D (313763) uvc: ctrl xfer cb
+D (313765) uvc: ctrl xfer cb
+D (313768) uvc: ctrl xfer cb
+D (313770) uvc: ctrl xfer cb
+D (313773) uvc: ctrl xfer cb
+D (313777) uvc: ctrl xfer cb
+D (313780) uvc: ctrl xfer cb
+D (313782) uvc: ctrl xfer cb
+D (313794) uvc: ctrl xfer cb
+W (316794) PvUvcSpike: DQBUF de descarte 0 falhou: errno=1(Not owner)
+PV-UVC-WARMUP requested=1920x1080 descartados=0
+E (321794) PvUvcSpike: VIDIOC_DQBUF falhou: errno=1(Not owner)
+D (321895) uvc: ctrl xfer cb
