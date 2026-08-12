@@ -310,13 +310,31 @@ firmware está exonerado**. A câmera funciona perfeita num MacBook (Photo
 Booth, testado) → **câmera exonerada**. Sem efeito: carregador do Mac,
 troca de porta USB do Mac (power-cycle total), reencaixe firme, descansos
 variados. Logs: `t5-run11-…`, `t5-run13-…`, `t5-run14-controle-…`.
-Análise independente do Codex solicitada de forma neutra (fatos + código,
-sem hipóteses do implementador) — resultado a registrar.
+**Diagnóstico independente do Codex (2026-08-12, decision-log
+F2B-T5-CodexDiagnostico)** — solicitado de forma neutra (fatos + código,
+sem hipóteses do implementador), com duas correções e uma aposta:
+o binário do PASS era o de **b8ed27e** (flood LOGD ligado; ELF
+fabe23054…), não o de 299f3ec (ELF 0f8737c26…) — o "experimento de
+controle" comparou binários diferentes e **a variável do flood nunca foi
+controlada**; o PASS real teve 22.596 callbacks/15.011 frame errors e
+streaming esticado a ~149 s pela saturação serial. Aposta técnica: **pipe
+ISOC high-bandwidth do host preso antes da primeira completion** (alt 11
+= 3×1024 sempre escolhido por MAX_MPS_IN=4096, constante privada; 4 URBs
+de 1 microframe). Sequência V4L2 do spike validada como correta.
+Veredito de fase: **não declarar o transporte validado** — prova de
+possibilidade, não de repetibilidade.
 
-Próxima sessão (estação Windows, decisão do proprietário): trocar a fonte
-upstream (desktop) e repetir o protocolo; peças de diagnóstico a adquirir:
-hub USB alimentado e adaptador USB-A fêmea→USB-C (testa a porta OTG-C,
-mesmo controlador por conector virgem).
+Próxima sessão (estação Windows, decisão do proprietário) — ordem de
+experimentos do Codex: (1) controle VERDADEIRO = flashar o binário de
+b8ed27e; (2) spike direto de `usb_host_uvc` SEM esp_video (desacopla
+camadas; URBs 8-16 independentes dos frame buffers); (3) alt setting
+≤1024/microframe sem high-bandwidth — o teste mais discriminante (exige
+expor limite de MPS/alt sem editar managed_components — avaliar na T6);
+(4) A/B elétricos (VBUS medido, 2ª câmera, 2ª placa). Telemetria:
+substituir LOGD por pacote por contadores agregados por segundo. Peças:
+hub USB alimentado (**exige CONFIG_USB_HOST_HUBS_SUPPORTED=y na
+variante**) e adaptador USB-A fêmea→USB-C (porta OTG-C, conector virgem).
+Matriz de bancada: 10 cold boots por célula, SHA-256 do binário anotado.
 
 ### Árvore de decisão da fase (sem fixação)
 
