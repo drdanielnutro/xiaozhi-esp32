@@ -90,6 +90,15 @@ constexpr int64_t kWarmupBudgetUs = 3 * 1000 * 1000;
 // não entrega frame trava o spike para sempre, em vez de virar um FAIL.
 constexpr int64_t kDqbufTimeoutUs = 5 * 1000 * 1000;
 
+// Rodada 11: a bancada mostrou que a NE-HD362 (energia fresca) TRANSMITE,
+// mas marca a esmagadora maioria dos frames com o bit ERR (1.095 avisos na
+// run11; 5.325 na run4) — e o frame limpo que fez o PASS da rodada 4 escapou
+// por sorte dentro da janela de 5 s. Dois botões: fps=10 (menos pressão no
+// pipeline da câmera; anunciado para todos os tamanhos JPEG) e mais
+// tentativas de DQBUF por degrau (30 s de janela total).
+constexpr uint32_t kTargetFps = 10;
+constexpr int kCaptureAttempts = 6;
+
 // Câmeras costumam acolchoar o fim do JPEG com alguns bytes; aceitar o EOI
 // dentro desta cauda evita reprovar frame íntegro por causa do padding.
 constexpr size_t kEoiTailBytes = 64;
@@ -532,6 +541,19 @@ bool RunRung(int fd, const Rung& rung, RungResult* result, uint8_t** out_jpeg, s
         return false;
     }
 
+    // fps baixo ANTES do STREAMON (o start usa o intervalo corrente). Falha
+    // aqui não reprova o degrau: segue no default (30 fps) e o log registra.
+    struct v4l2_streamparm parm = {};
+    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    parm.parm.capture.timeperframe.numerator = 1;
+    parm.parm.capture.timeperframe.denominator = kTargetFps;
+    if (ioctl(session.fd, VIDIOC_S_PARM, &parm) == 0) {
+        printf("PV-UVC-PARM fps=%u result=OK\n", (unsigned)kTargetFps);
+    } else {
+        printf("PV-UVC-PARM fps=%u result=FAIL errno=%d (segue no default)\n",
+               (unsigned)kTargetFps, errno);
+    }
+
     struct v4l2_requestbuffers req = {};
     req.count = kBufferCount;
     req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -622,11 +644,26 @@ bool RunRung(int fd, const Rung& rung, RungResult* result, uint8_t** out_jpeg, s
         result->reason = "dqbuf-timeout";
         return false;
     }
+    // Janela de captura alargada (rodada 11): a câmera intercala rajadas de
+    // frames com ERR e, ocasionalmente, um frame limpo — o driver só entrega
+    // os limpos. Cada tentativa espera até 5 s; 6 tentativas = 30 s de
+    // janela por degrau (o PASS da rodada 4 veio de uma janela de 5 s, por
+    // pouco).
     struct v4l2_buffer buf = {};
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    buf.memory = V4L2_MEMORY_MMAP;
-    if (ioctl(session.fd, VIDIOC_DQBUF, &buf) != 0) {
-        ESP_LOGE(TAG, "VIDIOC_DQBUF falhou: errno=%d(%s)", errno, strerror(errno));
+    bool got_frame = false;
+    for (int attempt = 1; attempt <= kCaptureAttempts; ++attempt) {
+        buf = {};
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        if (ioctl(session.fd, VIDIOC_DQBUF, &buf) == 0) {
+            got_frame = true;
+            printf("PV-UVC-DQBUF tentativa=%d result=OK\n", attempt);
+            break;
+        }
+        ESP_LOGW(TAG, "DQBUF tentativa %d/%d falhou: errno=%d(%s)", attempt, kCaptureAttempts,
+                 errno, strerror(errno));
+    }
+    if (!got_frame) {
         result->reason = "dqbuf";
         return false;
     }
