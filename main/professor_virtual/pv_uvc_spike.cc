@@ -811,22 +811,43 @@ void SpikeTask(void* arg) {
         PrintSummary();
         IdleForever();
     }
-    const int fd = OpenDeviceOnce();
-    if (fd < 0) {
-        // Sem device não há o que medir: os degraus ficam com o motivo de
-        // fábrica e o sumário diz por que a escada nem começou.
-        for (size_t i = 0; i < kRungCount; ++i) {
-            g_results[i].reason = "sem-device";
-        }
-        PrintSummary();
-        IdleForever();
-    }
-    DescribeCamera(fd);
 
-    RunLadder(fd);
-    close(fd);
-    PrintSummary();
-    IdleForever();
+    // Escada em LAÇO (rodada 10): a bancada provou que a NE-HD362 trava o
+    // streaming quando é enumerada de novo SEM ter perdido energia — e todo
+    // reboot da placa (chave com retro-alimentação? reset por serial? RST)
+    // provoca exatamente isso. Então o firmware NUNCA reinicia: fica em laço
+    // e cada REPLUG da câmera (única enumeração da câmera renascida, host
+    // contínuo) dispara uma escada nova. O reopen após close falha com o
+    // device parado (bug esp_video já mapeado), mas o replug gera
+    // disconnect/connect que limpa o estado do driver — o open seguinte
+    // funciona. Ciclos sem replug apenas falham o open e voltam a esperar.
+    for (unsigned ciclo = 1;; ++ciclo) {
+        printf("\nPV-UVC-CICLO %u inicio\n", ciclo);
+        for (size_t i = 0; i < kRungCount; ++i) {
+            g_results[i] = RungResult{};
+        }
+        g_jpeg_size_count = 0;
+
+        const int fd = OpenDeviceOnce();
+        if (fd < 0) {
+            for (size_t i = 0; i < kRungCount; ++i) {
+                g_results[i].reason = "sem-device";
+            }
+            printf("PV-UVC-CICLO %u sem device (replug a camera p/ nova escada; retry 15 s)\n",
+                   ciclo);
+            fflush(stdout);
+            vTaskDelay(pdMS_TO_TICKS(15000));
+            continue;
+        }
+        DescribeCamera(fd);
+        RunLadder(fd);
+        close(fd);
+        PrintSummary();
+        printf("PV-UVC-CICLO %u fim — REPLUG a camera para disparar nova escada (retry 15 s)\n",
+               ciclo);
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(15000));
+    }
 }
 
 }  // namespace
