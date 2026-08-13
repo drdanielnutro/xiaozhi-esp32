@@ -828,6 +828,22 @@ config PV_UVC_SPIKE
         Diagnostics tool, never a production build. Enabled only by the
         *-professor-virtual-uvc-spike build variant.
 
+config PV_UVC_DIRECT_SPIKE
+    bool "Professor Virtual F2B direct usb_host_uvc bench spike (diagnostics only)"
+    depends on PROFESSOR_VIRTUAL && !PV_UVC_SPIKE
+    default n
+    help
+        Replace the Professor Virtual application with the F2B bench spike that
+        talks DIRECTLY to the public usb_host_uvc API, with esp_video/V4L2
+        removed from the equation: 8 independent URBs (default 4x MPS size),
+        frame buffers decoupled from the transport, per-second aggregated
+        telemetry and the same fixed resolution ladder and serial JPEG dump as
+        the V4L2 spike. Mutually exclusive with PV_UVC_SPIKE (kept for A/B).
+        The board is never constructed (no CSI, no display, no audio, no
+        network), so the screen stays dark on purpose.
+        Diagnostics tool, never a production build. Enabled only by the
+        *-professor-virtual-uvc-direct build variant.
+
 choice WAKE_WORD_TYPE
     prompt "Wake Word Implementation Type"
     default USE_AFE_WAKE_WORD if (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && SPIRAM

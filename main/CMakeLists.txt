@@ -1055,6 +1055,12 @@ if(CONFIG_PV_UVC_SPIKE)
     # o componente usb só existe nos targets com OTG (P4/S3), por isso o gate.
     list(APPEND MAIN_PRIV_REQUIRES_EXTRA espressif__usb)
 endif()
+if(CONFIG_PV_UVC_DIRECT_SPIKE)
+    # O spike DIRETO da F2B fala com a API pública do usb_host_uvc sem passar
+    # pelo esp_video (usb/uvc_host.h) e também controla o root port; ambos os
+    # componentes só existem nos targets com OTG (P4/S3), por isso o gate.
+    list(APPEND MAIN_PRIV_REQUIRES_EXTRA espressif__usb espressif__usb_host_uvc)
+endif()
 if(BOARD_TYPE STREQUAL "m5stack-stick-s3")
     list(APPEND MAIN_PRIV_REQUIRES_EXTRA
         m5stack__m5pm1

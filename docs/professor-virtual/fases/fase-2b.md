@@ -103,18 +103,26 @@ até a F3).
   compilar (BSP 5.2.3 trava esp_video ~2.0; upstream removeu o BSP) e a
   regressão P4/S3 completa passar — solução em aberto, decidir sob o
   plano v2.
-- Próxima sessão (ordem do plano v2 + diagnóstico Codex): (1) spike
-  **direto de `usb_host_uvc` 2.5.1 SEM esp_video** — 8 URBs
-  independentes (`urb_size=0` → 4×MPS), 12/16 só se necessário,
-  contadores agregados por segundo no lugar de LOGD; (2) A/B elétricos:
-  hub USB alimentado (**exige rebuild com
+- Rodada 16 (mesma sessão de 2026-08-13, decisão do proprietário de
+  prosseguir): spike **direto de `usb_host_uvc` 2.5.1 SEM esp_video**
+  IMPLEMENTADO e revisado (NO_FINDINGS na 2ª rodada; 1 P0 real de posse
+  de frame corrigido — ver Notas, "T5 — Rodada 16"). Binário staged:
+  `releases/uvc-direct/merged-binary.bin` (sha256
+  `f898ca772bb0bb9c070043c125c58affb79642c34d8ea51d7489fe7874290cfe`),
+  flash por `releases/flash-direct.sh`. **Bancada PENDENTE** (protocolo
+  idêntico ao da rodada 15: partida fria de nascimento conjunto, máx. 2
+  tentativas por sessão).
+- Depois da bancada do spike direto, ordem do plano v2 + diagnóstico
+  Codex: A/B elétricos — hub USB alimentado (**exige rebuild com
   `CONFIG_USB_HOST_HUBS_SUPPORTED=y`** — sem isso a câmera não enumera
   atrás de hub), adaptador USB-A fêmea→USB-C macho na porta "USB OTG"
   (mesmo controlador, conector virgem), 2ª câmera, 2ª placa, VBUS
   medido. Proprietário sugeriu (2026-08-13) dock USB-C com alimentação
   própria + câmera na USB-A do dock — compatível com o plano C, mesma
   exigência da flag de hubs. Matriz: 10 cold boots por célula, SHA-256
-  do binário por célula.
+  do binário por célula. Alt setting ≤1024/microframe: SEM botão
+  público (MAX_MPS_IN=4096 é constante privada) — exige patch
+  upstream/issue Espressif; registrado, não tentar por vendorização.
 - Fatos permanentes de bancada: TODO reboot da placa com câmera
   energizada pode deixá-la muda/travada (só replug físico ou plugagem
   pós-boot recupera); unplug sem stream aberto cria slot-fantasma no
@@ -391,6 +399,41 @@ o 1º é pré-balé com USB-A vazia, 18 ciclos "sem device" normais).
 Classificação pelo plano da rodada: **silêncio total de novo → o bug
 2.4.2 não era a causa (ou não a única)**. Próximo passo já definido (ver
 Contexto de retomada): spike direto de `usb_host_uvc` + A/B elétricos.
+
+### T5 — Rodada 16 (2026-08-13; Mac) — spike direto de usb_host_uvc implementado
+
+Decisão do proprietário na mesma sessão da rodada 15: prosseguir
+imediatamente para o passo seguinte do plano v2 ("se ainda não houver
+frames"). Decisões estruturais D1-D8 ratificadas pelo Codex decisor
+(decision-log `F2B-T5-Rodada16-*`); revisão independente em thread
+separada: 1 P0 + 3 P1 na 1ª rodada, **NO_FINDINGS na 2ª**.
+
+- Módulo: `main/professor_virtual/pv_uvc_direct.{h,cc}` — API pública do
+  `usb_host_uvc` 2.5.1 direto, sem esp_video/V4L2. Gate
+  `CONFIG_PV_UVC_DIRECT_SPIKE` (exclusão mútua com `PV_UVC_SPIKE`, que
+  fica para A/B), 4º ramo no `main.cc`, variante
+  `esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-direct` (sem o
+  device V4L2 do esp_video; EOH check off; demais flags herdadas).
+- Transporte: 8 URBs independentes (`urb_size=0` → 4×MPS), 4 frame
+  buffers de 6 MB em PSRAM alocados UMA vez no `stream_open` (fato do
+  driver: `format_select` não realoca — uvc_host.c:853-856); por degrau
+  `format_select` → `start` → warmup → janela 30 s → `stop`.
+- Telemetria agregada (exigência do diagnóstico): `PV-UVC-STATS` 1
+  linha/s por tempo (cb, bytes, vazios, overflow, underflow, xfer_err);
+  callbacks só incrementam atômicos e enfileiram o frame retido (fila
+  prof. 1); dump nunca no callback. Linhas `PV-UVC-RUNG/SUMARIO/DUMP`
+  idênticas à rodada 15 (extrator e monitor inalterados).
+- Achados da revisão: **P0 real** — `uvc_host_frame_return` ZERA
+  `frame->data_len` (uvc_frame_reset); tudo que descreve o frame é
+  copiado antes de devolver a posse. P1s: stats por tempo (rajada de
+  frames inválidos não cala a telemetria) e linha de erro de
+  `stream_start` fora do formato RUNG (`PV-UVC-START`). Contestado com
+  evidência e aceito: ciclos repetem sem replug — comportamento
+  idêntico ao baseline da rodada 15 (8 escadas num boot no log
+  arquivado); a tentativa é definida pela partida fria.
+- Builds: 25/25 testes host; clang-format ok; variante compila
+  (SpikeTask/pv_uvc_direct no .map). Binário staged sha256
+  `f898ca772bb0bb9c…` — bancada pendente.
 
 ### Árvore de decisão da fase (sem fixação)
 

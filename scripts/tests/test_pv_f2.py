@@ -295,5 +295,43 @@ class UvcSpikeVariantTest(unittest.TestCase):
             self.assertNotIn("CONFIG_PV_UVC_SPIKE=y", build["sdkconfig_append"], build["name"])
 
 
+class UvcDirectVariantTest(unittest.TestCase):
+    """A variante do spike DIRETO (rodada 16) fala com o usb_host_uvc sem o
+    esp_video: precisa do gate próprio e NÃO pode ligar o device V4L2 nem o
+    gate do spike antigo (exclusão mútua no Kconfig)."""
+
+    NAME = "esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-direct"
+    REQUIRED = (
+        "CONFIG_PV_UVC_DIRECT_SPIKE=y",
+        "CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096",
+        "CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y",
+        "CONFIG_UVC_CHECK_PAYLOAD_HEADER_EOH=n",
+    )
+    FORBIDDEN = (
+        "CONFIG_PV_UVC_SPIKE=y",
+        "CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=y",
+    )
+
+    def test_direct_variant_enables_only_the_direct_path(self):
+        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
+        direct = [build for build in builds if build["name"] == self.NAME]
+        self.assertEqual(len(direct), 1, f"variante {self.NAME} ausente ou duplicada")
+        appended = direct[0]["sdkconfig_append"]
+        for flag in self.REQUIRED:
+            self.assertIn(flag, appended)
+        for flag in self.FORBIDDEN:
+            self.assertNotIn(flag, appended)
+        self.assertIn("CONFIG_PROFESSOR_VIRTUAL=y", appended)
+
+    def test_no_other_variant_enables_the_direct_spike(self):
+        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
+        for build in builds:
+            if build["name"] == self.NAME:
+                continue
+            self.assertNotIn(
+                "CONFIG_PV_UVC_DIRECT_SPIKE=y", build["sdkconfig_append"], build["name"]
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
