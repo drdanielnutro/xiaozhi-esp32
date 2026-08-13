@@ -47,11 +47,23 @@ constexpr Rung kLadder[] = {
 };
 constexpr size_t kRungCount = sizeof(kLadder) / sizeof(kLadder[0]);
 
-// Transporte (baseline oficial do plano-mestre): 8 URBs independentes dos
-// frame buffers, urb_size=0 => o driver aloca 4x MPS por URB. 12/16 URBs só
-// entram se a bancada pedir — uma variável por vez.
-constexpr int kNumberOfUrbs = 8;
-constexpr size_t kUrbSizeAuto = 0;
+// Transporte — EXPERIMENTO E1 da rodada 17 (Codex, thread 019ffc22): URBs de
+// UM pacote ISOC (urb_size = 3072 = MPS high-bandwidth 3x1024), reproduzindo
+// dentro da pilha 2.5.1 a geometria do mundo que TRANSMITE. Evidência A/B do
+// mesmo dia, mesma placa/câmera/conector: usb_host_uvc 2.4.2 (URBs de 1
+// pacote, "bug" oficial) = canal vivo (81.798 frame errors no controle
+// t5-run17); 2.5.1 com URBs de 4 pacotes (urb_size=0 => 4x MPS) = silêncio
+// absoluto (runs 15/16/16b). Se isto transmitir, a causa raiz é a URB
+// multi-pacote high-bandwidth no DWC2 do P4 — workaround adotável e issue
+// para a Espressif. 8 URBs mantidas; 12/16 só se a bancada pedir.
+// EXPERIMENTO E6 (rodada 20): 8 -> 4 URBs. Descoberta do A/B com o controle
+// vivo: o glue V4L2 aloca "4 USB transfers ... 1 ISOC packets" e transmite;
+// TODAS as nossas execucoes diretas usaram 8 URBs e ficaram mudas — e o
+// numero de URBs era a UNICA diferenca de transporte restante entre os dois
+// mundos. Hipotese: >4 URBs ISOC em voo estouram silenciosamente o agendador
+// periodico do DWC2 (consistente com 100% do historico de bancada).
+constexpr int kNumberOfUrbs = 4;
+constexpr size_t kUrbSizeOnePacket = 3072;
 
 // Frame buffers: alocados UMA vez no stream_open (uvc_host.c:853-856 — o
 // format_select NÃO realoca), então o tamanho precisa caber o PIOR degrau:
@@ -249,28 +261,40 @@ bool ValidateJpeg(const uint8_t* data, size_t len, const char** reason) {
 // USB host com ciclo de VBUS (rodada 6 — mantido: inócuo e é o protocolo)
 // ---------------------------------------------------------------------------
 
+// ACHADO DA BANCADA (rodada 16): esta task NUNCA pode sair do laço. O padrão
+// dos exemplos oficiais (break em NO_CLIENTS/ALL_FREE) serve para SHUTDOWN —
+// mas o usbh dispara ALL_FREE incondicionalmente quando o ÚNICO device é
+// desplugado e liberado (usbh.c:680-683, num_device==0 em qualquer free).
+// Com o break, o unplug da câmera matava o daemon silenciosamente e o replug
+// nunca mais enumerava ("sem device" eterno — observado ao vivo; e é uma
+// explicação candidata para o "slot-fantasma" das rodadas 7-14). O firmware
+// de bancada não tem teardown: só loga os flags e continua.
 void UsbLibTask(void* arg) {
     (void)arg;
     while (true) {
         uint32_t event_flags = 0;
         if (usb_host_lib_handle_events(portMAX_DELAY, &event_flags) == ESP_OK) {
-            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_NO_CLIENTS) {
-                if (usb_host_device_free_all() == ESP_OK) {
-                    break;
-                }
-            }
-            if (event_flags & USB_HOST_LIB_EVENT_FLAGS_ALL_FREE) {
-                break;
+            if (event_flags != 0) {
+                printf("PV-UVC-USBLIB flags=0x%x (daemon segue vivo)\n", (unsigned)event_flags);
+                fflush(stdout);
             }
         }
     }
-    vTaskDelete(nullptr);
 }
 
-bool InstallUsbHostWithVbusCycle() {
+// EXPERIMENTO E2 da rodada 18 (ordem ratificada pelo Codex, thread 019ffc22):
+// host instalado JÁ ENERGIZADO, sem o ciclo de VBUS da rodada 6 — igual ao
+// exemplo oficial basic_uvc_stream e ao binário de controle b8ed27e (o mundo
+// que TRANSMITE). Motivo: com o driver UVC praticamente idêntico entre 2.4.2
+// e 2.5.1 (diff trivial), a geometria de URB igualada (E1, run18, mudo) e o
+// stack usb 1.4.1 nos dois mundos, o bring-up desenergizado é a diferença
+// estrutural restante entre o mundo vivo e o mudo. O ciclo da rodada 6 nunca
+// destravou nada (o EN do TPS2051C não é fiado ao P4 — fato da rodada 6);
+// removê-lo não perde função, só elimina a variável.
+bool InstallUsbHost() {
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
-        .root_port_unpowered = true,
+        .root_port_unpowered = false,
         .intr_flags = ESP_INTR_FLAG_LEVEL1,
         .enum_filter_cb = nullptr,
         .fifo_settings_custom = {},
@@ -285,16 +309,9 @@ bool InstallUsbHostWithVbusCycle() {
         printf("PV-UVC-VBUS result=FAIL reason=usb_lib_task\n");
         return false;
     }
-    printf("PV-UVC-VBUS estado=off (host instalado sem energia no root port; 1000 ms)\n");
+    printf("PV-UVC-VBUS estado=on-no-boot (E2: sem ciclo; host energizado na instalacao)\n");
     fflush(stdout);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    const int64_t started_us = esp_timer_get_time();
-    err = usb_host_lib_set_root_port_power(true);
-    printf("PV-UVC-VBUS estado=on err=0x%x apos_ms=%u\n", (unsigned)err,
-           (unsigned)((esp_timer_get_time() - started_us) / 1000));
-    fflush(stdout);
-    return err == ESP_OK;
+    return true;
 }
 
 bool InstallUvcDriver() {
@@ -333,8 +350,9 @@ const char* FormatName(enum uvc_host_stream_format format) {
             return "H264";
         case UVC_VS_FORMAT_H265:
             return "H265";
-        case UVC_VS_FORMAT_NV12:
-            return "NV12";
+        // NV12 só existe a partir do usb_host_uvc 2.5.x; o default cobre
+        // qualquer formato desconhecido e mantém o código compilável no
+        // 2.4.2 (experimento E5-lite da rodada 19).
         default:
             return "DEFAULT";
     }
@@ -692,7 +710,12 @@ void SpikeTask(void* arg) {
     // 4-14; o diagnóstico independente apontou o flood como variável nunca
     // controlada). A telemetria desta rodada é agregada: PV-UVC-STATS, 1 l/s.
     esp_log_level_set("uvc", ESP_LOG_DEBUG);
-    esp_log_level_set("uvc-isoc", ESP_LOG_INFO);
+    // E7 (rodada 21): uvc-isoc em DEBUG deliberadamente. Ponto cego achado no
+    // A/B: com INFO, completions ISOC de zero bytes sao INVISIVEIS — "canal
+    // mudo" e "URBs completando vazias" parecem identicos. O controle vivo
+    // enxergava a diferenca porque tinha o flood ligado. O custo do flood e
+    // aceito para responder UMA pergunta: ha completions no nosso binario?
+    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
 
@@ -702,7 +725,7 @@ void SpikeTask(void* arg) {
         IdleForever();
     }
 
-    if (!InstallUsbHostWithVbusCycle()) {
+    if (!InstallUsbHost()) {
         PrintSummary();
         IdleForever();
     }
@@ -780,7 +803,7 @@ void SpikeTask(void* arg) {
                     .frame_size = kFrameBufferBytes,
                     .frame_heap_caps = MALLOC_CAP_SPIRAM,
                     .number_of_urbs = kNumberOfUrbs,
-                    .urb_size = kUrbSizeAuto,
+                    .urb_size = kUrbSizeOnePacket,
                     .user_frame_buffers = nullptr,
                 },
         };

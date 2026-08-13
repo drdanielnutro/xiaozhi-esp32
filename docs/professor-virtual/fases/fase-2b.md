@@ -103,26 +103,37 @@ até a F3).
   compilar (BSP 5.2.3 trava esp_video ~2.0; upstream removeu o BSP) e a
   regressão P4/S3 completa passar — solução em aberto, decidir sob o
   plano v2.
-- Rodada 16 (mesma sessão de 2026-08-13, decisão do proprietário de
-  prosseguir): spike **direto de `usb_host_uvc` 2.5.1 SEM esp_video**
-  IMPLEMENTADO e revisado (NO_FINDINGS na 2ª rodada; 1 P0 real de posse
-  de frame corrigido — ver Notas, "T5 — Rodada 16"). Binário staged:
-  `releases/uvc-direct/merged-binary.bin` (sha256
-  `f898ca772bb0bb9c070043c125c58affb79642c34d8ea51d7489fe7874290cfe`),
-  flash por `releases/flash-direct.sh`. **Bancada PENDENTE** (protocolo
-  idêntico ao da rodada 15: partida fria de nascimento conjunto, máx. 2
-  tentativas por sessão).
-- Depois da bancada do spike direto, ordem do plano v2 + diagnóstico
-  Codex: A/B elétricos — hub USB alimentado (**exige rebuild com
-  `CONFIG_USB_HOST_HUBS_SUPPORTED=y`** — sem isso a câmera não enumera
-  atrás de hub), adaptador USB-A fêmea→USB-C macho na porta "USB OTG"
-  (mesmo controlador, conector virgem), 2ª câmera, 2ª placa, VBUS
-  medido. Proprietário sugeriu (2026-08-13) dock USB-C com alimentação
-  própria + câmera na USB-A do dock — compatível com o plano C, mesma
-  exigência da flag de hubs. Matriz: 10 cold boots por célula, SHA-256
-  do binário por célula. Alt setting ≤1024/microframe: SEM botão
-  público (MAX_MPS_IN=4096 é constante privada) — exige patch
-  upstream/issue Espressif; registrado, não tentar por vendorização.
+- Rodadas 16-22 EXECUTADAS na mesma sessão de 2026-08-13 (maratona de 7
+  flashes; ver Notas "T5 — Rodadas 17-22"). **DESCOBERTA CENTRAL: o
+  canal ISOC só transmite quando o log DEBUG por pacote do `uvc-isoc`
+  está ligado** — o atraso do printf na re-submissão das URBs estabiliza
+  uma corrida de timing no agendador ISOC do DWC2/P4. Sem o flood:
+  silêncio (5 runs, ambas as pilhas, todas as configs); com o flood:
+  dados fluem (rodada 4, run17, run22). A "moeda" da câmera era isso.
+  Regressão de software EXCLUÍDA como causa única: o problema é a
+  corrida no host (família da issue esp-usb#538 — high-bandwidth ISOC
+  quebrado no P4, MC não programado no HCCHAR).
+- Estado do worktree/placa: firmware E7 flashado (nosso spike direto +
+  pilha ANTIGA 2.0.1/2.4.2 + 4 URBs de 3072 B + flood ligado — o que
+  transmite; sha256 `deb075bc75c81fd4…`); manifesto em `main/` no estado
+  do HEAD (mundo antigo); o patch experimental 2.3.0/2.5.1 continua
+  descrito no apêndice do `../plano-claude-rodada15.md` para reaplicar.
+- Dois bugs REAIS achados e corrigidos nesta sessão: (1) daemon USB
+  morria no unplug do único device (`ALL_FREE` incondicional do usbh;
+  a task nunca pode sair do laço — provável causa do "slot-fantasma"
+  histórico); (2) gate `if(CONFIG_...)` em volta de `PRIV_REQUIRES` no
+  CMake NUNCA funciona (requisitos expandem antes do Kconfig) — gate
+  trocado para target.
+- Próxima sessão: (1) comentar na issue esp-usb#538 com o A/B completo
+  (pilhas, geometrias, e a prova do timing pelo flood — ação de
+  publicação é do proprietário); (2) resultado da pesquisa profunda №2
+  (prompt `../f2b-deep-research-prompt-2-isoc.md` entregue ao
+  proprietário — câmeras UVC BULK contornam o problema inteiro e são o
+  plano B de hardware mais promissor); (3) experimentos de timing SEM
+  flood (ex.: `urb_size` maior na pilha antiga para reduzir taxa de
+  re-submissão; prioridades altas das tasks USB como no exemplo
+  oficial); (4) A/B elétricos/hub se necessário. Matriz: 10 cold boots
+  por célula, SHA-256 por célula.
 - Fatos permanentes de bancada: TODO reboot da placa com câmera
   energizada pode deixá-la muda/travada (só replug físico ou plugagem
   pós-boot recupera); unplug sem stream aberto cria slot-fantasma no
@@ -434,6 +445,57 @@ separada: 1 P0 + 3 P1 na 1ª rodada, **NO_FINDINGS na 2ª**.
 - Builds: 25/25 testes host; clang-format ok; variante compila
   (SpikeTask/pv_uvc_direct no .map). Binário staged sha256
   `f898ca772bb0bb9c…` — bancada pendente.
+
+### T5 — Rodadas 17-22 (2026-08-13; Mac) — a caça: da regressão de pilha à corrida de timing
+
+Sequência de A/B na mesma sessão da rodada 16 (proprietário no comando dos
+7 flashes; decisões E1-E5 ratificadas pelo Codex decisor, thread 019ffc22;
+E6-E7 por evidência inequívoca de bancada). Protocolo por run: câmera fora
+→ flash → câmera plugada → boot pela captura (célula do PASS histórico).
+
+| Run | Binário | Pilha | Config | Resultado |
+|---|---|---|---|---|
+| 17 (controle) | b8ed27e (V4L2 spike + flood) | 2.0.1/2.4.2 | glue: 4 URBs×1 pacote | **VIVO**: 81.798 frame error, 8,7 MB |
+| 18 (E1) | direto | 2.3.0/2.5.1 | urb_size=3072 (1 pacote) | mudo (0 cb, 0 err) |
+| 19 (E2) | direto | 2.3.0/2.5.1 | + sem ciclo de VBUS | mudo |
+| 20 (E5-lite) | direto | **2.0.1/2.4.2** | idem | mudo |
+| 21 (E6) | direto | 2.0.1/2.4.2 | + 4 URBs (igual glue) | mudo |
+| 22 (E7) | direto | 2.0.1/2.4.2 | + **uvc-isoc DEBUG** | **VIVO**: 9.722+ frame error, completions fluindo |
+
+Fatos estabelecidos:
+
+- **Câmera e elétrica exoneradas** (run17: mesma placa/câmera/cabo
+  transmite no mesmo dia em que a pilha nova silencia).
+- **Versão do driver exonerada** (diff 2.4.2↔2.5.1 trivial: sizing de URB
+  — igualado no E1 —, LOGW de EOH, NV12; `uvc_isoc.c` idêntico; stack
+  `usb` 1.4.1 nos DOIS mundos; Kconfig/CMake idênticos).
+- Geometria de URB (E1), ciclo de VBUS (E2), pilha (E5-lite) e contagem
+  de URBs (E6) todas refutadas individualmente.
+- **E7 fecha o caso: a variável é o TIMING.** Ligar o LOGD por pacote do
+  `uvc-isoc` (printf na task do host, atrasando a re-submissão de URBs)
+  acorda o canal no MESMO binário que estava mudo. Consistente com 100%
+  do histórico (rodada 4 e run17 tinham flood; run11 foi a exceção
+  marginal — a "moeda" é a mesma corrida sem perturbação).
+- Modo tudo-ERR persiste mesmo com canal vivo (nenhum frame limpo nas
+  runs 17/22; o PASS da rodada 4 foi um 800×600 de 32 KB que coube na
+  janela) — consistente com o mecanismo da issue esp-usb#538 (host
+  programado para 1 transação/microframe perdendo 2 de 3 do
+  high-bandwidth → quase todo frame corrompido).
+- Pesquisa dirigida achou a **issue esp-usb#538** (IEC-580, 2026-08-11,
+  outra placa Waveshare P4): MAX_MPS_IN=4096 hard-coded seleciona alt
+  high-bandwidth; `usb_dwc_ll_hcchar_init()` nunca programa HCCHAR.MC;
+  regressão de seleção de alt entrou na 2.4.2 (PR #424); câmeras que
+  exigem 3072 B/µframe não têm alternativa in-spec. Nosso A/B (fabricante
+  diferente + prova de timing) é comentário valioso — postar é ação do
+  proprietário.
+- Bugs corrigidos de brinde: daemon USB (ALL_FREE) e gate CMake por
+  CONFIG (ver Contexto de retomada). Prompt de pesquisa profunda №2
+  entregue (`../f2b-deep-research-prompt-2-isoc.md`).
+
+Evidência: `t5-run17-controle-242-canal-vivo.log`,
+`t5-run18-e1-urb1pacote-mudo.log`, `t5-run19-e2-sem-vbus-mudo.log`,
+`t5-run20-e5lite-242-mudo.log`, `t5-run21-e6-4urbs-mudo.log`,
+`t5-run22-e7-flood-acorda-canal.log` (em `../evidencias/f2b/`).
 
 ### Árvore de decisão da fase (sem fixação)
 

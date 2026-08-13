@@ -1055,10 +1055,16 @@ if(CONFIG_PV_UVC_SPIKE)
     # o componente usb só existe nos targets com OTG (P4/S3), por isso o gate.
     list(APPEND MAIN_PRIV_REQUIRES_EXTRA espressif__usb)
 endif()
-if(CONFIG_PV_UVC_DIRECT_SPIKE)
-    # O spike DIRETO da F2B fala com a API pública do usb_host_uvc sem passar
-    # pelo esp_video (usb/uvc_host.h) e também controla o root port; ambos os
-    # componentes só existem nos targets com OTG (P4/S3), por isso o gate.
+# O spike DIRETO da F2B fala com a API pública do usb_host_uvc sem passar
+# pelo esp_video (usb/uvc_host.h) e também controla o root port. O gate é por
+# TARGET, não por CONFIG: o build system do IDF expande os requisitos de
+# componente ANTES de processar o Kconfig, então if(CONFIG_...) em volta de
+# PRIV_REQUIRES nunca dispara (descoberto na rodada 19 da F2B — sem a
+# declaração direta no manifesto, o include some). Os componentes usb e
+# usb_host_uvc existem em todo build P4/S3 deste projeto (dependência do
+# esp_video por target), então o requisito é seguro; o conteúdo do spike
+# continua gateado por CONFIG_PV_UVC_DIRECT_SPIKE dentro do próprio .cc.
+if(IDF_TARGET STREQUAL "esp32p4" OR IDF_TARGET STREQUAL "esp32s3")
     list(APPEND MAIN_PRIV_REQUIRES_EXTRA espressif__usb espressif__usb_host_uvc)
 endif()
 if(BOARD_TYPE STREQUAL "m5stack-stick-s3")
