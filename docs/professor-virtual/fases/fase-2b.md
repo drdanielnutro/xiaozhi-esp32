@@ -82,34 +82,46 @@ até a F3).
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T5 (bancada), pausada em 2026-08-12 após 14 rodadas.
-  Decisão do proprietário: **continuar na estação Windows** (troca da
-  fonte upstream). Mistério aberto: canal ISOC mudo (ver Notas, "rodadas
-  7-14") com código e câmera exonerados por experimento. Análise neutra
-  do Codex solicitada — registrar o resultado quando disponível (se a
-  sessão encerrar antes, refazer a consulta com os fatos das Notas).
-- Estado da placa: firmware de CONTROLE (recompilação do commit 299f3ec,
-  escada única por boot, DEBUG por pacote ligado) flashado. O firmware
-  MAIS RECENTE do spike é o do commit 1c02248 (laço por replug + janela
-  30 s) — zip em releases/ (rebuildar se ausente).
-- Protocolo Windows (próxima sessão): (1) `git pull`; (2) conectar a 7B
-  ao desktop pelo "USB TO UART" (COM3/CH343 — dossiê da placa, seção
-  conexão serial; usbipd para WSL se preciso); (3) câmera DESPLUGADA;
-  flash da variante spike (merged-binary.bin @0x0); (4) captura serial
-  115200 SEM tocar DTR/RTS (o `C:\Users\Public\pv_capture.ps1` daquela
-  estação captura COM3; conferir se não reseta a placa ao abrir); (5)
-  boot com porta USB-A vazia → plugar a câmera → escada roda sozinha
-  (firmware do laço) — replug dispara novas escadas; (6) peças de
-  diagnóstico se persistir: hub USB alimentado entre câmera e placa;
-  adaptador USB-A fêmea→USB-C macho para testar a porta "USB OTG"
-  (mesmo controlador, conector virgem).
-- Fatos que a sessão Windows precisa saber: TODO reboot da placa com
-  câmera energizada pode deixá-la muda/travada (só replug físico ou
-  plugagem pós-boot recupera); unplug sem stream aberto cria
-  slot-fantasma no driver (só reboot limpa) — por isso a ordem
-  desplugar→resetar→plugar; S_PARM≠default emudece a câmera; a câmera é
-  saudável (Photo Booth no Mac); o PASS de referência é
-  `t5-rodada4-foto-800x600.jpg` (CRC 36aa87a9).
+- Task em andamento: T5 (bancada). Rodada 15 executada em 2026-08-13 no
+  Mac (roteiro `../plano-claude-rodada15.md`, subordinado ao
+  `../plano_codex_v2.md`): pilha experimental **esp_video 2.3.0 +
+  usb_host_uvc 2.5.1** (bug de URB da 2.4.2 corrigido — URBs com **4
+  pacotes ISOC** confirmadas no log) → **canal ISOC continuou MUDO**: 2
+  partidas frias limpas, 9 escadas completas, 0 frames, 0 `frame error`,
+  0 `usb err`. O bug da 2.4.2 NÃO era a causa (ou não a única). Ver
+  Notas, "T5 — Rodada 15".
+- Estado da placa: firmware da rodada 15 flashado (merged-binary.bin
+  sha256 `1e2a988201b600b9…`, laço de escadas do commit 1c02248 sobre a
+  pilha 2.3.0/2.5.1). O binário fica em `releases/uvc-spike/` (não
+  versionado); rebuild exige reaplicar o patch do manifesto (apêndice do
+  `../plano-claude-rodada15.md`).
+- Manifesto experimental (`main/idf_component.yml`: esp_video ^2.3.0 +
+  usb_host_uvc ~2.5.1 + BSP `esp32_p4_function_ev_board` comentado)
+  REVERTIDO no worktree ao fim da rodada; patch preservado no scratchpad
+  da sessão e descrito no apêndice do plano da rodada 15. **Condição de
+  consolidação**: a placa `esp-p4-function-ev-board` precisa voltar a
+  compilar (BSP 5.2.3 trava esp_video ~2.0; upstream removeu o BSP) e a
+  regressão P4/S3 completa passar — solução em aberto, decidir sob o
+  plano v2.
+- Próxima sessão (ordem do plano v2 + diagnóstico Codex): (1) spike
+  **direto de `usb_host_uvc` 2.5.1 SEM esp_video** — 8 URBs
+  independentes (`urb_size=0` → 4×MPS), 12/16 só se necessário,
+  contadores agregados por segundo no lugar de LOGD; (2) A/B elétricos:
+  hub USB alimentado (**exige rebuild com
+  `CONFIG_USB_HOST_HUBS_SUPPORTED=y`** — sem isso a câmera não enumera
+  atrás de hub), adaptador USB-A fêmea→USB-C macho na porta "USB OTG"
+  (mesmo controlador, conector virgem), 2ª câmera, 2ª placa, VBUS
+  medido. Proprietário sugeriu (2026-08-13) dock USB-C com alimentação
+  própria + câmera na USB-A do dock — compatível com o plano C, mesma
+  exigência da flag de hubs. Matriz: 10 cold boots por célula, SHA-256
+  do binário por célula.
+- Fatos permanentes de bancada: TODO reboot da placa com câmera
+  energizada pode deixá-la muda/travada (só replug físico ou plugagem
+  pós-boot recupera); unplug sem stream aberto cria slot-fantasma no
+  driver (só reboot limpa) — por isso a ordem desplugar→resetar→plugar;
+  S_PARM≠default emudece a câmera; a câmera é saudável (Photo Booth no
+  Mac); o PASS de referência é `t5-rodada4-foto-800x600.jpg`
+  (CRC 36aa87a9).
 - Armadilhas: SEMPRE liberar a porta serial antes de flash ("multiple
   access on port"); flash é do proprietário; zip existente em releases/
   PULA o build; builds exigem o IDF 6.0.2 (no Mac:
@@ -335,6 +347,50 @@ substituir LOGD por pacote por contadores agregados por segundo. Peças:
 hub USB alimentado (**exige CONFIG_USB_HOST_HUBS_SUPPORTED=y na
 variante**) e adaptador USB-A fêmea→USB-C (porta OTG-C, conector virgem).
 Matriz de bancada: 10 cold boots por célula, SHA-256 do binário anotado.
+
+### T5 — Rodada 15 (2026-08-13; Mac) — pilha 2.5.1: URBs corrigidas, silêncio persiste
+
+Roteiro tático `../plano-claude-rodada15.md` (revisado 2×2 pelo Codex,
+NO_FINDINGS), subordinado ao `../plano_codex_v2.md`. Motivação: bug
+documentado do `usb_host_uvc` 2.4.2 (URBs isócronas capadas em 1 pacote;
+PR espressif/esp-usb#450, corrigido na 2.5.1). Binário: laço de escadas
+do commit 1c02248 recompilado com **esp_video 2.3.0 + usb_host_uvc
+2.5.1** (manifesto experimental; compilou sem adaptação de código),
+merged-binary sha256 `1e2a988201b600b974ff0ac5609fce8b423b7993508907a2b53dd3f0ca6057ba`.
+Protocolo: partida fria de nascimento conjunto (USB-C fora → 10 s →
+câmera na USB-A com placa morta → USB-C), captura pyserial sem reset,
+máx. 2 tentativas — ambas executadas.
+
+| Tentativa | Partida | Escadas completas | Degraus PASS | Callbacks/frames | `frame error` | `usb err` | Crash |
+|---|---|---|---|---|---|---|---|
+| 1 | fria limpa (POWERON) | 8 (laço automático) | 0/40 | 0 | 0 | 0 | não |
+| 2 | fria limpa (POWERON) | 1 (+1 parcial) | 0/5+ | 0 | 0 | 0 | não |
+
+Fatos novos e confirmações:
+
+- **A correção do driver está ATIVA**: `Allocating 4 USB transfers for
+  ISOC. Each: 12288 bytes, 4 ISOC packets, 3072 MPS` em TODOS os 49
+  starts de stream (era sempre 1 pacote na 2.4.2). A hipótese "bug de
+  URB da 2.4.2 é a causa do canal mudo" está **eliminada como causa
+  única**.
+- Silêncio absoluto idêntico ao das runs 13/14: enumeração em 2 s
+  perfeita (14 tamanhos JPEG), Probe/Commit respondendo
+  (payload=1984–3072 conforme degrau), S_FMT/G_FMT exatos — e zero
+  callbacks ISOC, zero erros, DQBUF `errno=1` em todo degrau.
+- Teardown limpo na pilha nova: nenhum assert `usbh_dev_close`, nenhum
+  boot-loop (a 2.0.1/2.4.2 crashava no ciclo 1 da rodada 1).
+- Observação lateral (registrada, sem hipótese): PSRAM livre cai a cada
+  degrau (28,4 → 8,6 MB ao longo de uma escada) — os buffers REQBUFS
+  não aparentam ser devolvidos entre degraus no glue 2.3.0. Não explica
+  o silêncio (degrau 1 já era mudo com 28 MB livres).
+- Sem fotos: `extract_jpeg_dump.py --all` não encontrou nenhum bloco
+  (exit 2) — coerente com 0 frames.
+
+Evidência: `../evidencias/f2b/t5-run15-stack251-silencio.log` (3 boots:
+o 1º é pré-balé com USB-A vazia, 18 ciclos "sem device" normais).
+Classificação pelo plano da rodada: **silêncio total de novo → o bug
+2.4.2 não era a causa (ou não a única)**. Próximo passo já definido (ver
+Contexto de retomada): spike direto de `usb_host_uvc` + A/B elétricos.
 
 ### Árvore de decisão da fase (sem fixação)
 
