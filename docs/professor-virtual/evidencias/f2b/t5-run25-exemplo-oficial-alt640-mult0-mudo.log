@@ -1,0 +1,1762 @@
+Adding "flash"'s dependency "all" to list of commands with default set of options.
+Executing action: all (aliases: build)
+Running ninja in directory /private/tmp/pv-uvc-official-idf602-alt640/build
+Executing "ninja all"...
+[1/4] cd /tmp/pv-uvc-official-idf602-alt640/build && /Users/institutorecriare/.espressif/tools/pyt...640/build/partition_table/partition-table.bin /tmp/pv-uvc-official-idf602-alt640/build/usb-uvc.bin[K
+usb-uvc.bin binary size 0x410a0 bytes. Smallest app partition is 0x100000 bytes. 0xbef60 bytes (75%) free.
+[2/4] Performing build step for 'bootloader'[K[1/1] cd /tmp/pv-uvc-official-idf602-alt640/build/bootloader && /Users/institutorecriare/.espressi...offset 0x8000 bootloader 0x2000 /tmp/pv-uvc-official-idf602-alt640/build/bootloader/bootloader.bin[K
+Bootloader binary size 0x5a70 bytes. 0x590 bytes (6%) free.
+[3/4] No install step for 'bootloader'[K[4/4] Completed 'bootloader'[KExecuting action: flash
+Running ninja in directory /private/tmp/pv-uvc-official-idf602-alt640/build
+Executing "ninja flash"...
+[1/5] cd /tmp/pv-uvc-official-idf602-alt640/build && /Users/institutorecriare/.espressif/tools/python/v6.0.2/venv/bin/python /Users/institutorecriare/.espressif/v6.0.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /tmp/pv-uvc-official-idf602-alt640/build/partition_table/partition-table.bin /tmp/pv-uvc-official-idf602-alt640/build/usb-uvc.bin
+usb-uvc.bin binary size 0x410a0 bytes. Smallest app partition is 0x100000 bytes. 0xbef60 bytes (75%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cd /tmp/pv-uvc-official-idf602-alt640/build/bootloader && /Users/institutorecriare/.espressif/tools/python/v6.0.2/venv/bin/python /Users/institutorecriare/.espressif/v6.0.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x2000 /tmp/pv-uvc-official-idf602-alt640/build/bootloader/bootloader.bin
+Bootloader binary size 0x5a70 bytes. 0x590 bytes (6%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] Running utility command for flash
+esptool --chip esp32p4 -p /dev/cu.usbmodem5B3E0883401 -b 460800 --before=default-reset --after=hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 2MB 0x2000 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0x10000 usb-uvc.bin
+esptool v5.3.1
+Serial port /dev/cu.usbmodem5B3E0883401:
+Connecting....
+[1A[2K[1A[2KConnected to ESP32-P4 on /dev/cu.usbmodem5B3E0883401:
+Chip type:          ESP32-P4 (revision v1.3)
+Features:           Dual Core + LP Core, 400MHz
+Crystal frequency:  40MHz
+MAC:                80:f1:b2:d3:29:16
+
+Uploading stub flasher...
+Running stub flasher...
+[1A[2K[1A[2KStub flasher running.
+Changing baud rate to 460800...
+Changed.
+
+Configuring flash size...
+
+Writing 'bootloader/bootloader.bin' at 0x00002000...
+SHA digest in image updated.
+Flash will be erased from 0x00002000 to 0x00007fff...
+Compressed 23152 bytes to 14186...
+[KWriting at 0x00002000 [                              ]   0.0% 0/14186 bytes... [KWriting at 0x00007a70 [==============================] 100.0% 14186/14186 bytes... 
+[1A[2K[1A[2KWrote 23152 bytes (14186 compressed) at 0x00002000 in 0.6 seconds (325.1 kbit/s).
+Verifying written data...
+[1A[2KHash of data verified.
+
+Writing 'partition_table/partition-table.bin' at 0x00008000...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 3072 bytes to 103...
+[KWriting at 0x00008000 [                              ]   0.0% 0/103 bytes... [KWriting at 0x00008c00 [==============================] 100.0% 103/103 bytes... 
+[1A[2K[1A[2KWrote 3072 bytes (103 compressed) at 0x00008000 in 0.0 seconds (1170.2 kbit/s).
+Verifying written data...
+[1A[2KHash of data verified.
+
+Writing 'usb-uvc.bin' at 0x00010000...
+Flash will be erased from 0x00010000 to 0x00051fff...
+Compressed 266400 bytes to 137005...
+[KWriting at 0x00010000 [                              ]   0.0% 0/137005 bytes... [KWriting at 0x0001bda6 [==>                           ]  12.0% 16384/137005 bytes... [KWriting at 0x000224e1 [======>                       ]  23.9% 32768/137005 bytes... [KWriting at 0x0002996b [=========>                    ]  35.9% 49152/137005 bytes... [KWriting at 0x00030fd6 [=============>                ]  47.8% 65536/137005 bytes... [KWriting at 0x000387f6 [================>             ]  59.8% 81920/137005 bytes... [KWriting at 0x0003edd8 [====================>         ]  71.8% 98304/137005 bytes... [KWriting at 0x000463a2 [========================>     ]  83.7% 114688/137005 bytes... [KWriting at 0x0004d1b5 [===========================>  ]  95.7% 131072/137005 bytes... [KWriting at 0x000510a0 [==============================] 100.0% 137005/137005 bytes... 
+[1A[2K[1A[2KWrote 266400 bytes (137005 compressed) at 0x00010000 in 3.5 seconds (613.8 kbit/s).
+Verifying written data...
+[1A[2KHash of data verified.
+
+Hard resetting via RTS pin...
+Executing action: monitor
+Running idf_monitor in directory /private/tmp/pv-uvc-official-idf602-alt640
+Executing "/Users/institutorecriare/.espressif/tools/python/v6.0.2/venv/bin/python /Users/institutorecriare/.espressif/v6.0.2/esp-idf/tools/idf_monitor.py -p /dev/cu.usbmodem5B3E0883401 -b 115200 --toolchain-prefix riscv32-esp-elf- --target esp32p4 --revision 100 --decode-panic backtrace /private/tmp/pv-uvc-official-idf602-alt640/build/usb-uvc.elf /private/tmp/pv-uvc-official-idf602-alt640/build/bootloader/bootloader.elf -m '/Users/institutorecriare/.espressif/tools/python/v6.0.2/venv/bin/python' '/Users/institutorecriare/.espressif/v6.0.2/esp-idf/tools/idf.py' '-p' '/dev/cu.usbmodem5B3E0883401'"...
+[0;33m--- esp-idf-monitor 1.9.0 on /dev/cu.usbmodem5B3E0883401 115200[0m
+[0;33m--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H[0m
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33ce0,len:0x15e0
+load:0x4ff28ed0,len:0xe54
+[0m--- 0x4ff28ed0: [0;33mesp_bootloader_get_description[0m[0m at [0;32m/Users/institutorecriare/.espressif/v6.0.2/esp-idf/components/esp_bootloader_format/esp_bootloader_desc.c[0m[0m:[1;31m40[0m
+load:0x4ff2bbd0,len:0x35dc
+[0m--- 0x4ff2bbd0: [0;33mis_xmc_chip_strict[0m[0m at [0;32m/Users/institutorecriare/.espressif/v6.0.2/esp-idf/components/bootloader_support/bootloader_flash/src/bootloader_flash.c[0m[0m:[1;31m925[0m
+entry 0x4ff28eda
+[0m--- 0x4ff28eda: [0;33mcall_start_cpu0[0m[0m at [0;32m/Users/institutorecriare/.espressif/v6.0.2/esp-idf/components/bootloader/subproject/main/bootloader_start.c[0m[0m:[1;31m27[0m
+[0;32mI (25) boot: ESP-IDF v6.0.2 2nd stage bootloader[0m
+[0;32mI (25) boot: compile time Aug 13 2026 18:38:04[0m
+[0;32mI (26) boot: Multicore bootloader[0m
+[0;32mI (27) boot: chip revision: v1.3[0m
+[0;32mI (28) boot: efuse block revision: v0.3[0m
+[0;32mI (32) boot.esp32p4: SPI Speed      : 80MHz[0m
+[0;32mI (36) boot.esp32p4: SPI Mode       : DIO[0m
+[0;32mI (40) boot.esp32p4: SPI Flash Size : 2MB[0m
+[0;32mI (43) boot: Enabling RNG early entropy source...[0m
+[0;32mI (48) boot: Partition Table:[0m
+[0;32mI (50) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (57) boot:  0 nvs              WiFi data        01 02 00009000 00006000[0m
+[0;32mI (63) boot:  1 phy_init         RF data          01 01 0000f000 00001000[0m
+[0;32mI (70) boot:  2 factory          factory app      00 00 00010000 00100000[0m
+[0;32mI (78) boot: End of partition table[0m
+[0;32mI (80) esp_image: segment 0: paddr=00010020 vaddr=40030020 size=0cd98h ( 52632) map[0m
+[0;32mI (97) esp_image: segment 1: paddr=0001cdc0 vaddr=30100000 size=00088h (   136) load[0m
+[0;32mI (99) esp_image: segment 2: paddr=0001ce50 vaddr=4ff00000 size=031c8h ( 12744) load[0m
+[0;32mI (106) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=22500h (140544) map[0m
+[0;32mI (134) esp_image: segment 4: paddr=00042528 vaddr=4ff031c8 size=0be5ch ( 48732) load[0m
+[0;32mI (145) esp_image: segment 5: paddr=0004e38c vaddr=4ff0f080 size=02ce4h ( 11492) load[0m
+[0;32mI (152) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (152) boot: Disabling RNG early entropy source...[0m
+[0;32mI (164) hex_psram: vendor id    : 0x0d (AP)[0m
+[0;32mI (164) hex_psram: Latency      : 0x01 (Fixed)[0m
+[0;32mI (164) hex_psram: DriveStr.    : 0x00 (25 Ohm)[0m
+[0;32mI (165) hex_psram: dev id       : 0x03 (generation 4)[0m
+[0;32mI (170) hex_psram: density      : 0x07 (256 Mbit)[0m
+[0;32mI (174) hex_psram: good-die     : 0x06 (Pass)[0m
+[0;32mI (178) hex_psram: SRF          : 0x02 (Slow Refresh)[0m
+[0;32mI (183) hex_psram: BurstType    : 0x00 ( Wrap)[0m
+[0;32mI (187) hex_psram: BurstLen     : 0x03 (2048 Byte)[0m
+[0;32mI (192) hex_psram: BitMode      : 0x01 (X16 Mode)[0m
+[0;32mI (196) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)[0m
+[0;32mI (201) hex_psram: DriveStrength: 0x00 (1/1)[0m
+[0;32mI (205) MSPI Timing: Enter psram timing tuning[0m
+[0;32mI (382) esp_psram: Found 32MB PSRAM device[0m
+[0;32mI (382) esp_psram: Speed: 200MHz[0m
+[0;32mI (384) hex_psram: psram CS IO is dedicated[0m
+[0;32mI (384) cpu_start: Multicore app[0m
+[0;32mI (1370) esp_psram: SPI SRAM memory test OK[0m
+[0;32mI (1379) cpu_start: GPIO 38 and 37 are used as console UART I/O pins[0m
+[0;32mI (1380) cpu_start: Pro cpu start user code[0m
+[0;32mI (1380) cpu_start: cpu freq: 360000000 Hz[0m
+[0;32mI (1382) app_init: Application information:[0m
+[0;32mI (1386) app_init: Project name:     usb-uvc[0m
+[0;32mI (1390) app_init: App version:      1[0m
+[0;32mI (1393) app_init: Compile time:     Aug 13 2026 18:37:29[0m
+[0;32mI (1398) app_init: ELF file SHA256:  cfe210ea7...[0m
+[0;32mI (1403) app_init: ESP-IDF:          v6.0.2[0m
+[0;32mI (1407) efuse_init: Min chip rev:     v1.0[0m
+[0;32mI (1411) efuse_init: Max chip rev:     v1.99 [0m
+[0;32mI (1415) efuse_init: Chip rev:         v1.3[0m
+[0;32mI (1419) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (1425) heap_init: At 4FF13700 len 000278C0 (158 KiB): RETENT_RAM[0m
+[0;32mI (1431) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM[0m
+[0;32mI (1436) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM[0m
+[0;32mI (1442) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM[0m
+[0;32mI (1447) heap_init: At 30100088 len 00001F78 (7 KiB): SPM[0m
+[0;32mI (1452) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator[0m
+[0;32mI (1459) spi_flash: detected chip: gd[0m
+[0;32mI (1462) spi_flash: flash io: dio[0m
+[0;33mW (1465) spi_flash: Detected size(32768k) larger than the size in the binary image header(2048k). Using the size in the binary image header.[0m
+[0;32mI (1478) sleep_gpio: Configure to isolate all GPIO pins in sleep state[0m
+[0;32mI (1484) sleep_gpio: Enable automatic switching of GPIO sleep configuration[0m
+[0;32mI (1491) main_task: Started on CPU0[0m
+[0;32mI (1491) esp_psram: Reserving pool of 146K of internal memory for DMA/internal allocations[0m
+[0;32mI (1501) main_task: Calling app_main()[0m
+[0;32mI (1501) UVC example: Installing USB Host[0m
+[0;32mI (1541) UVC example: Installing UVC driver[0m
+[0;32mI (1541) UVC example: Opening UVC device 0x0000:0x0000 640x480@15.0FPS...[0m
+[0;32mI (1541) main_task: Returned from app_main()[0m
+[0;32mI (6541) UVC example: Failed to open device[0m
+[0;32mI (11541) UVC example: Opening UVC device 0x0000:0x0000 640x480@15.0FPS...[0m
+[0;32mI (16541) UVC example: Failed to open device[0m
+[0;32mI (21541) UVC example: Opening UVC device 0x0000:0x0000 640x480@15.0FPS...[0m
+[1;31mE (22001) ENUM: LANGID 0x409 not found[0m
+*** Configuration descriptor ***
+bLength 9
+bDescriptorType 2
+wTotalLength 1463
+bNumInterfaces 5
+bConfigurationValue 1
+iConfiguration 0
+bmAttributes 0x80
+bMaxPower 500mA
+*** Interface Association Descriptor ***
+bLength 8
+bDescriptorType 11
+bFirstInterface 0
+bInterfaceCount 2
+bFunctionClass 0xe
+bFunctionSubClass 0x3
+bFunctionProtocol 0x0
+iFunction 4
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 0
+	bAlternateSetting 0
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x1
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 13
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0100
+	wTotalLength 80
+	dwClockFrequency 24000000
+	bInCollection 1
+	baInterfaceNr[0] 1
+	*** Input Terminal Descriptor (Camera) ***
+	bLength 18
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x201
+	bAssocTerminal 0
+	iTerminal 0
+	wObjectiveFocalLengthMin 0
+	wObjectiveFocalLengthMax 0
+	wOcularFocalLength 0
+	bControlSize 3
+	bmControls 0x7A 0x2A 0x2
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** Processing Unit Descriptor ***
+	bLength 11
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 3
+	bSourceID 2
+	wMaxMultiplier 16384
+	bControlSize 2
+	bmControls 0x7F 0x17 0x0
+	iProcessing 9
+	bmVideoStandards 0x24
+	*** Output Terminal Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 4
+	wTerminalType 0x101
+	bAssocTerminal 0
+	bSourceID 3
+	iTerminal 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x81	EP 1 IN
+		bmAttributes 0x3	INT
+		wMaxPacketSize 16
+		bInterval 8
+		*** Class-specific Interrupt Endpoint Descriptor ***
+		bLength 5
+		bDescriptorType 0x25
+		bDescriptorSubType 3
+		wMaxTransferSize 16
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 15
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC fc02
+	wTotalLength 33283
+	dwClockFrequency 16909312
+	bInCollection 1
+	baInterfaceNr[0] 1
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 1
+	bmCapabilities 0x0
+	wWidth 1920
+	wHeight 1080
+	dwMinBitRate 20736000
+	dwMaxBitRate 62208000
+	dwMaxVideoFrameBufSize 2073600
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 2
+	bmCapabilities 0x0
+	wWidth 640
+	wHeight 320
+	dwMinBitRate 2048000
+	dwMaxBitRate 6144000
+	dwMaxVideoFrameBufSize 204800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 3
+	bmCapabilities 0x0
+	wWidth 640
+	wHeight 480
+	dwMinBitRate 3072000
+	dwMaxBitRate 9216000
+	dwMaxVideoFrameBufSize 307200
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 4
+	bmCapabilities 0x0
+	wWidth 800
+	wHeight 600
+	dwMinBitRate 4800000
+	dwMaxBitRate 14400000
+	dwMaxVideoFrameBufSize 480000
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 5
+	bmCapabilities 0x0
+	wWidth 1024
+	wHeight 768
+	dwMinBitRate 7864320
+	dwMaxBitRate 23592960
+	dwMaxVideoFrameBufSize 786432
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 6
+	bmCapabilities 0x0
+	wWidth 1280
+	wHeight 720
+	dwMinBitRate 9216000
+	dwMaxBitRate 27648000
+	dwMaxVideoFrameBufSize 921600
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 7
+	bmCapabilities 0x0
+	wWidth 1280
+	wHeight 960
+	dwMinBitRate 12288000
+	dwMaxBitRate 36864000
+	dwMaxVideoFrameBufSize 1228800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 8
+	bmCapabilities 0x0
+	wWidth 1600
+	wHeight 1200
+	dwMinBitRate 19200000
+	dwMaxBitRate 57600000
+	dwMaxVideoFrameBufSize 1920000
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 9
+	bmCapabilities 0x0
+	wWidth 2048
+	wHeight 1536
+	dwMinBitRate 31457280
+	dwMaxBitRate 94371840
+	dwMaxVideoFrameBufSize 3145728
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 10
+	bmCapabilities 0x0
+	wWidth 2592
+	wHeight 1944
+	dwMinBitRate 50388480
+	dwMaxBitRate 151165440
+	dwMaxVideoFrameBufSize 5038848
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 11
+	bmCapabilities 0x0
+	wWidth 3264
+	wHeight 2448
+	dwMinBitRate 79902720
+	dwMaxBitRate 239708160
+	dwMaxVideoFrameBufSize 7990272
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 38
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 12
+	bmCapabilities 0x0
+	wWidth 3840
+	wHeight 2160
+	dwMinBitRate 82944000
+	dwMaxBitRate 248832000
+	dwMaxVideoFrameBufSize 8294400
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 3
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	FrameInterval[2] 1000000
+	*** VS Frame Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 13
+	bmCapabilities 0x0
+	wWidth 4000
+	wHeight 3000
+	dwMinBitRate 120000000
+	dwMaxBitRate 180000000
+	dwMaxVideoFrameBufSize 12000000
+	dwDefaultFrameInterval 666666
+	bFrameIntervalType 2
+	FrameInterval[0] 666666
+	FrameInterval[1] 1000000
+	*** VS Frame Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x07
+	bFrameIndex 14
+	bmCapabilities 0x0
+	wWidth 320
+	wHeight 240
+	dwMinBitRate 1152000
+	dwMaxBitRate 2304000
+	dwMaxVideoFrameBufSize 76800
+	dwDefaultFrameInterval 333333
+	bFrameIntervalType 2
+	FrameInterval[0] 333333
+	FrameInterval[1] 666666
+	*** Output Terminal Descriptor ***
+	bLength 63
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 0
+	wTerminalType 0x800E
+	bAssocTerminal 7
+	bSourceID 56
+	iTerminal 4
+	*** VS Color Format Descriptor ***
+	bLength 6
+	bDescriptorType 0x24
+	bDescriptorSubType 0x0D
+	bColorPrimaries 0x1
+	bTransferCharacteristics 1
+	bMatrixCoefficients 0x4
+	*** Selector Unit Descriptor ***
+	bLength 27
+	bDescriptorType 0x24
+	bDescriptorSubType 0x04
+	bUnitID 2
+	bNrInPins 12
+	baSourceID1 89
+	baSourceID2 85
+	iSelector 89
+	*** Processing Unit Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 1
+	bSourceID 0
+	wMaxMultiplier 320
+	bControlSize 240
+	bmControls 0x0 0x0 0x70
+	iProcessing 23
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 34
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 2
+	bSourceID 0
+	wMaxMultiplier 640
+	bControlSize 104
+	bmControls 0x1 0x0 0x50
+	iProcessing 70
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 3
+	bSourceID 0
+	wMaxMultiplier 640
+	bControlSize 224
+	bmControls 0x1 0x0 0xC0
+	iProcessing 93
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 4
+	bSourceID 0
+	wMaxMultiplier 800
+	bControlSize 88
+	bmControls 0x2 0x0 0x7C
+	iProcessing 146
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 5
+	bSourceID 0
+	wMaxMultiplier 1024
+	bControlSize 208
+	bmControls 0x2 0x0 0x0
+	iProcessing 225
+	bmVideoStandards 0x0
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 6
+	bSourceID 0
+	wMaxMultiplier 1280
+	bControlSize 172
+	bmControls 0x3 0x0 0x30
+	iProcessing 111
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 7
+	bSourceID 0
+	wMaxMultiplier 1280
+	bControlSize 0
+	bmControls 0x4 0x0 0x0
+	iProcessing 144
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 8
+	bSourceID 0
+	wMaxMultiplier 1600
+	bControlSize 176
+	bmControls 0x4 0x0 0xF8
+	iProcessing 36
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 9
+	bSourceID 0
+	wMaxMultiplier 1920
+	bControlSize 56
+	bmControls 0x4 0x0 0x68
+	iProcessing 60
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 10
+	bSourceID 0
+	wMaxMultiplier 2048
+	bControlSize 0
+	bmControls 0x6 0x0 0x0
+	iProcessing 224
+	bmVideoStandards 0x1
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 11
+	bSourceID 0
+	wMaxMultiplier 2560
+	bControlSize 160
+	bmControls 0x5 0x0 0x80
+	iProcessing 50
+	bmVideoStandards 0x2
+	*** Processing Unit Descriptor ***
+	bLength 30
+	bDescriptorType 0x24
+	bDescriptorSubType 0x05
+	bUnitID 12
+	bSourceID 0
+	wMaxMultiplier 2592
+	bControlSize 152
+	bmControls 0x7 0x0 0xDE
+	iProcessing 0
+	bmVideoStandards 0x3
+	*** VS Color Format Descriptor ***
+	bLength 6
+	bDescriptorType 0x24
+	bDescriptorSubType 0x0D
+	bColorPrimaries 0x1
+	bTransferCharacteristics 1
+	bMatrixCoefficients 0x4
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 1
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 192
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 2
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 384
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 3
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 512
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 4
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 640
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 5
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 800
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 6
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 944
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 7
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 640
+		wMaxPacketSize (with additional transactions in microframe) 1280
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 8
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 800
+		wMaxPacketSize (with additional transactions in microframe) 1600
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 9
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 992
+		wMaxPacketSize (with additional transactions in microframe) 1984
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 10
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 896
+		wMaxPacketSize (with additional transactions in microframe) 2688
+		bInterval 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 1
+	bAlternateSetting 11
+	bNumEndpoints 1
+	bInterfaceClass 0xe
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x82	EP 2 IN
+		bmAttributes 0x5	ISOC
+		wMaxPacketSize 1024
+		wMaxPacketSize (with additional transactions in microframe) 3072
+		bInterval 1
+*** Interface Association Descriptor ***
+bLength 8
+bDescriptorType 11
+bFirstInterface 2
+bInterfaceCount 2
+bFunctionClass 0x1
+bFunctionSubClass 0x0
+bFunctionProtocol 0x0
+iFunction 5
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 2
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x1
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0100
+	wTotalLength 39
+	dwClockFrequency 604766977
+	bInCollection 2
+	baInterfaceNr[0] 1
+	baInterfaceNr[1] 1
+	*** Input Terminal Descriptor (Camera) ***
+	bLength 12
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x201
+	bAssocTerminal 0
+	iTerminal 1
+	wObjectiveFocalLengthMin 3
+	wObjectiveFocalLengthMax 0
+	wOcularFocalLength 9225
+	bControlSize 6
+	bmControls 0x2 0x1 0x2
+	*** Extension Unit Descriptor unsupported, skipping... ***
+	*** Output Terminal Descriptor ***
+	bLength 9
+	bDescriptorType 0x24
+	bDescriptorSubType 0x03
+	bTerminalID 3
+	wTerminalType 0x101
+	bAssocTerminal 0
+	bSourceID 2
+	iTerminal 0
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 3
+	bAlternateSetting 0
+	bNumEndpoints 0
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 3
+	bAlternateSetting 1
+	bNumEndpoints 1
+	bInterfaceClass 0x1
+	bInterfaceSubClass 0x2
+	bInterfaceProtocol 0x0
+	iInterface 0
+	*** Class-specific VC Interface Descriptor ***
+	bLength 7
+	bDescriptorType 0x24
+	bDescriptorSubType 0x01
+	bcdUVC 0003
+	wTotalLength 1
+	dwClockFrequency 16917515
+	bInCollection 2
+	baInterfaceNr[0] 2
+	baInterfaceNr[1] 16
+	*** Input Terminal Descriptor (Media) ***
+	bLength 11
+	bDescriptorType 0x24
+	bDescriptorSubType 0x02
+	bTerminalID 0x1
+	wTerminalType 0x202
+	bAssocTerminal 16
+	iTerminal 1
+	bControlSize 128
+	bmControls 0xBB
+	bTransportModeSize 0
+	bmTransportModes 0x9 0x5 0x83 0x1 0xC0
+		*** Endpoint descriptor ***
+		bLength 9
+		bDescriptorType 5
+		bEndpointAddress 0x83	EP 3 IN
+		bmAttributes 0x1	ISOC
+		wMaxPacketSize 192
+		bInterval 4
+		*** Class-specific Interrupt Endpoint Descriptor ***
+		bLength 7
+		bDescriptorType 0x25
+		bDescriptorSubType 1
+		wMaxTransferSize 1
+	*** Interface descriptor ***
+	bLength 9
+	bDescriptorType 4
+	bInterfaceNumber 4
+	bAlternateSetting 0
+	bNumEndpoints 2
+	bInterfaceClass 0x3
+	bInterfaceSubClass 0x0
+	bInterfaceProtocol 0x0
+	iInterface 0
+ *** Unknown Descriptor Length: 9 Type: 33 ***
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x84	EP 4 IN
+		bmAttributes 0x3	INT
+		wMaxPacketSize 64
+		bInterval 4
+		*** Endpoint descriptor ***
+		bLength 7
+		bDescriptorType 5
+		bEndpointAddress 0x1	EP 1 OUT
+		bmAttributes 0x3	INT
+		wMaxPacketSize 64
+		bInterval 4
+[0;33mW (23591) uvc: CODEX-ALT640 selected alt=4 base_mps=640 mult=0 capacity=640 requested_limit=640[0m
+[0;32mI (23601) uvc-control: Default format from camera: 1920x1080@15.0FPS, fmt=1, frame_size=2073600, payload=3072[0m
+[0;32mI (23611) uvc: Allocating 3 USB transfers for ISOC. Each: 10240 bytes, 16 ISOC packets, 640 MPS[0m
+[0;32mI (23611) UVC example: UVC Device OPENED![0m
+[0;32mI (23721) UVC example: Stream start. Iteration 0[0m
+[0;32mI (23721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (28741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (28741) UVC example: Stream stop[0m
+[0;32mI (30841) UVC example: Stream start. Iteration 1[0m
+[0;32mI (30841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (35861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (35861) UVC example: Stream stop[0m
+[0;32mI (37961) UVC example: Stream start. Iteration 2[0m
+[0;32mI (37961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (42981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (42981) UVC example: Stream stop[0m
+[0;32mI (45081) UVC example: Stream start. Iteration 3[0m
+[0;32mI (45081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (50101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (50101) UVC example: Stream stop[0m
+[0;32mI (52201) UVC example: Stream start. Iteration 4[0m
+[0;32mI (52201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (57221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (57221) UVC example: Stream stop[0m
+[0;32mI (59321) UVC example: Stream start. Iteration 5[0m
+[0;32mI (59321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (64341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (64341) UVC example: Stream stop[0m
+[0;32mI (66441) UVC example: Stream start. Iteration 6[0m
+[0;32mI (66441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (71461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (71461) UVC example: Stream stop[0m
+[0;32mI (73561) UVC example: Stream start. Iteration 7[0m
+[0;32mI (73561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (78581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (78581) UVC example: Stream stop[0m
+[0;32mI (80681) UVC example: Stream start. Iteration 8[0m
+[0;32mI (80681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (85701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (85701) UVC example: Stream stop[0m
+[0;32mI (87801) UVC example: Stream start. Iteration 9[0m
+[0;32mI (87801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (92821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (92821) UVC example: Stream stop[0m
+[0;32mI (94921) UVC example: Stream start. Iteration 10[0m
+[0;32mI (94921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (99941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (99941) UVC example: Stream stop[0m
+[0;32mI (102041) UVC example: Stream start. Iteration 11[0m
+[0;32mI (102041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (107061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (107061) UVC example: Stream stop[0m
+[0;32mI (109161) UVC example: Stream start. Iteration 12[0m
+[0;32mI (109161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (114181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (114181) UVC example: Stream stop[0m
+[0;32mI (116281) UVC example: Stream start. Iteration 13[0m
+[0;32mI (116281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (121301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (121301) UVC example: Stream stop[0m
+[0;32mI (123401) UVC example: Stream start. Iteration 14[0m
+[0;32mI (123401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (128421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (128421) UVC example: Stream stop[0m
+[0;32mI (130521) UVC example: Stream start. Iteration 15[0m
+[0;32mI (130521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (135541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (135541) UVC example: Stream stop[0m
+[0;32mI (137641) UVC example: Stream start. Iteration 16[0m
+[0;32mI (137641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (142661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (142661) UVC example: Stream stop[0m
+[0;32mI (144761) UVC example: Stream start. Iteration 17[0m
+[0;32mI (144761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (149781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (149781) UVC example: Stream stop[0m
+[0;32mI (151881) UVC example: Stream start. Iteration 18[0m
+[0;32mI (151881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (156901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (156901) UVC example: Stream stop[0m
+[0;32mI (159001) UVC example: Stream start. Iteration 19[0m
+[0;32mI (159001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (164021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (164021) UVC example: Stream stop[0m
+[0;32mI (166121) UVC example: Stream start. Iteration 20[0m
+[0;32mI (166121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (171141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (171141) UVC example: Stream stop[0m
+[0;32mI (173241) UVC example: Stream start. Iteration 21[0m
+[0;32mI (173241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (178261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (178261) UVC example: Stream stop[0m
+[0;32mI (180361) UVC example: Stream start. Iteration 22[0m
+[0;32mI (180361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (185381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (185381) UVC example: Stream stop[0m
+[0;32mI (187481) UVC example: Stream start. Iteration 23[0m
+[0;32mI (187481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (192501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (192501) UVC example: Stream stop[0m
+[0;32mI (194601) UVC example: Stream start. Iteration 24[0m
+[0;32mI (194601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (199621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (199621) UVC example: Stream stop[0m
+[0;32mI (201721) UVC example: Stream start. Iteration 25[0m
+[0;32mI (201721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (206741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (206741) UVC example: Stream stop[0m
+[0;32mI (208841) UVC example: Stream start. Iteration 26[0m
+[0;32mI (208841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (213861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (213861) UVC example: Stream stop[0m
+[0;32mI (215961) UVC example: Stream start. Iteration 27[0m
+[0;32mI (215961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (220981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (220981) UVC example: Stream stop[0m
+[0;32mI (223081) UVC example: Stream start. Iteration 28[0m
+[0;32mI (223081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (228101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (228101) UVC example: Stream stop[0m
+[0;32mI (230201) UVC example: Stream start. Iteration 29[0m
+[0;32mI (230201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (235221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (235221) UVC example: Stream stop[0m
+[0;32mI (237321) UVC example: Stream start. Iteration 30[0m
+[0;32mI (237321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (242341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (242341) UVC example: Stream stop[0m
+[0;32mI (244441) UVC example: Stream start. Iteration 31[0m
+[0;32mI (244441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (249461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (249461) UVC example: Stream stop[0m
+[0;32mI (251561) UVC example: Stream start. Iteration 32[0m
+[0;32mI (251561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (256581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (256581) UVC example: Stream stop[0m
+[0;32mI (258681) UVC example: Stream start. Iteration 33[0m
+[0;32mI (258681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (263701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (263701) UVC example: Stream stop[0m
+[0;32mI (265801) UVC example: Stream start. Iteration 34[0m
+[0;32mI (265801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (270821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (270821) UVC example: Stream stop[0m
+[0;32mI (272921) UVC example: Stream start. Iteration 35[0m
+[0;32mI (272921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (277941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (277941) UVC example: Stream stop[0m
+[0;32mI (280041) UVC example: Stream start. Iteration 36[0m
+[0;32mI (280041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (285061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (285061) UVC example: Stream stop[0m
+[0;32mI (287161) UVC example: Stream start. Iteration 37[0m
+[0;32mI (287161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (292181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (292181) UVC example: Stream stop[0m
+[0;32mI (294281) UVC example: Stream start. Iteration 38[0m
+[0;32mI (294281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (299301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (299301) UVC example: Stream stop[0m
+[0;32mI (301401) UVC example: Stream start. Iteration 39[0m
+[0;32mI (301401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (306421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (306421) UVC example: Stream stop[0m
+[0;32mI (308521) UVC example: Stream start. Iteration 40[0m
+[0;32mI (308521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (313541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (313541) UVC example: Stream stop[0m
+[0;32mI (315641) UVC example: Stream start. Iteration 41[0m
+[0;32mI (315641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (320661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (320661) UVC example: Stream stop[0m
+[0;32mI (322761) UVC example: Stream start. Iteration 42[0m
+[0;32mI (322761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (327781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (327781) UVC example: Stream stop[0m
+[0;32mI (329881) UVC example: Stream start. Iteration 43[0m
+[0;32mI (329881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (334901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (334901) UVC example: Stream stop[0m
+[0;32mI (337001) UVC example: Stream start. Iteration 44[0m
+[0;32mI (337001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (342021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (342021) UVC example: Stream stop[0m
+[0;32mI (344121) UVC example: Stream start. Iteration 45[0m
+[0;32mI (344121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (349141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (349141) UVC example: Stream stop[0m
+[0;32mI (351241) UVC example: Stream start. Iteration 46[0m
+[0;32mI (351241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (356261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (356261) UVC example: Stream stop[0m
+[0;32mI (358361) UVC example: Stream start. Iteration 47[0m
+[0;32mI (358361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (363381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (363381) UVC example: Stream stop[0m
+[0;32mI (365481) UVC example: Stream start. Iteration 48[0m
+[0;32mI (365481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (370501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (370501) UVC example: Stream stop[0m
+[0;32mI (372601) UVC example: Stream start. Iteration 49[0m
+[0;32mI (372601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (377621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (377621) UVC example: Stream stop[0m
+[0;32mI (379721) UVC example: Stream start. Iteration 50[0m
+[0;32mI (379721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (384741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (384741) UVC example: Stream stop[0m
+[0;32mI (386841) UVC example: Stream start. Iteration 51[0m
+[0;32mI (386841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (391861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (391861) UVC example: Stream stop[0m
+[0;32mI (393961) UVC example: Stream start. Iteration 52[0m
+[0;32mI (393961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (398981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (398981) UVC example: Stream stop[0m
+[0;32mI (401081) UVC example: Stream start. Iteration 53[0m
+[0;32mI (401081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (406101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (406101) UVC example: Stream stop[0m
+[0;32mI (408201) UVC example: Stream start. Iteration 54[0m
+[0;32mI (408201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (413221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (413221) UVC example: Stream stop[0m
+[0;32mI (415321) UVC example: Stream start. Iteration 55[0m
+[0;32mI (415321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (420341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (420341) UVC example: Stream stop[0m
+[0;32mI (422441) UVC example: Stream start. Iteration 56[0m
+[0;32mI (422441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (427461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (427461) UVC example: Stream stop[0m
+[0;32mI (429561) UVC example: Stream start. Iteration 57[0m
+[0;32mI (429561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (434581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (434581) UVC example: Stream stop[0m
+[0;32mI (436681) UVC example: Stream start. Iteration 58[0m
+[0;32mI (436681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (441701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (441701) UVC example: Stream stop[0m
+[0;32mI (443801) UVC example: Stream start. Iteration 59[0m
+[0;32mI (443801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (448821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (448821) UVC example: Stream stop[0m
+[0;32mI (450921) UVC example: Stream start. Iteration 60[0m
+[0;32mI (450921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (455941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (455941) UVC example: Stream stop[0m
+[0;32mI (458041) UVC example: Stream start. Iteration 61[0m
+[0;32mI (458041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (463061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (463061) UVC example: Stream stop[0m
+[0;32mI (465161) UVC example: Stream start. Iteration 62[0m
+[0;32mI (465161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (470181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (470181) UVC example: Stream stop[0m
+[0;32mI (472281) UVC example: Stream start. Iteration 63[0m
+[0;32mI (472281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (477301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (477301) UVC example: Stream stop[0m
+[0;32mI (479401) UVC example: Stream start. Iteration 64[0m
+[0;32mI (479401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (484421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (484421) UVC example: Stream stop[0m
+[0;32mI (486521) UVC example: Stream start. Iteration 65[0m
+[0;32mI (486521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (491541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (491541) UVC example: Stream stop[0m
+[0;32mI (493641) UVC example: Stream start. Iteration 66[0m
+[0;32mI (493641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (498661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (498661) UVC example: Stream stop[0m
+[0;32mI (500761) UVC example: Stream start. Iteration 67[0m
+[0;32mI (500761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (505781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (505781) UVC example: Stream stop[0m
+[0;32mI (507881) UVC example: Stream start. Iteration 68[0m
+[0;32mI (507881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (512901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (512901) UVC example: Stream stop[0m
+[0;32mI (515001) UVC example: Stream start. Iteration 69[0m
+[0;32mI (515001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (520021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (520021) UVC example: Stream stop[0m
+[0;32mI (522121) UVC example: Stream start. Iteration 70[0m
+[0;32mI (522121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (527141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (527141) UVC example: Stream stop[0m
+[0;32mI (529241) UVC example: Stream start. Iteration 71[0m
+[0;32mI (529241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (534261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (534261) UVC example: Stream stop[0m
+[0;32mI (536361) UVC example: Stream start. Iteration 72[0m
+[0;32mI (536361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (541381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (541381) UVC example: Stream stop[0m
+[0;32mI (543481) UVC example: Stream start. Iteration 73[0m
+[0;32mI (543481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (548501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (548501) UVC example: Stream stop[0m
+[0;32mI (550601) UVC example: Stream start. Iteration 74[0m
+[0;32mI (550601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (555621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (555621) UVC example: Stream stop[0m
+[0;32mI (557721) UVC example: Stream start. Iteration 75[0m
+[0;32mI (557721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (562741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (562741) UVC example: Stream stop[0m
+[0;32mI (564841) UVC example: Stream start. Iteration 76[0m
+[0;32mI (564841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (569861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (569861) UVC example: Stream stop[0m
+[0;32mI (571961) UVC example: Stream start. Iteration 77[0m
+[0;32mI (571961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (576981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (576981) UVC example: Stream stop[0m
+[0;32mI (579081) UVC example: Stream start. Iteration 78[0m
+[0;32mI (579081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (584101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (584101) UVC example: Stream stop[0m
+[0;32mI (586201) UVC example: Stream start. Iteration 79[0m
+[0;32mI (586201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (591221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (591221) UVC example: Stream stop[0m
+[0;32mI (593321) UVC example: Stream start. Iteration 80[0m
+[0;32mI (593321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (598341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (598341) UVC example: Stream stop[0m
+[0;32mI (600441) UVC example: Stream start. Iteration 81[0m
+[0;32mI (600441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (605461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (605461) UVC example: Stream stop[0m
+[0;32mI (607561) UVC example: Stream start. Iteration 82[0m
+[0;32mI (607561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (612581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (612581) UVC example: Stream stop[0m
+[0;32mI (614681) UVC example: Stream start. Iteration 83[0m
+[0;32mI (614681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (619701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (619701) UVC example: Stream stop[0m
+[0;32mI (621801) UVC example: Stream start. Iteration 84[0m
+[0;32mI (621801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (626821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (626821) UVC example: Stream stop[0m
+[0;32mI (628921) UVC example: Stream start. Iteration 85[0m
+[0;32mI (628921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (633941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (633941) UVC example: Stream stop[0m
+[0;32mI (636041) UVC example: Stream start. Iteration 86[0m
+[0;32mI (636041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (641061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (641061) UVC example: Stream stop[0m
+[0;32mI (643161) UVC example: Stream start. Iteration 87[0m
+[0;32mI (643161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (648181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (648181) UVC example: Stream stop[0m
+[0;32mI (650281) UVC example: Stream start. Iteration 88[0m
+[0;32mI (650281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (655301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (655301) UVC example: Stream stop[0m
+[0;32mI (657401) UVC example: Stream start. Iteration 89[0m
+[0;32mI (657401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (662421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (662421) UVC example: Stream stop[0m
+[0;32mI (664521) UVC example: Stream start. Iteration 90[0m
+[0;32mI (664521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (669541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (669541) UVC example: Stream stop[0m
+[0;32mI (671641) UVC example: Stream start. Iteration 91[0m
+[0;32mI (671641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (676661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (676661) UVC example: Stream stop[0m
+[0;32mI (678761) UVC example: Stream start. Iteration 92[0m
+[0;32mI (678761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (683781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (683781) UVC example: Stream stop[0m
+[0;32mI (685881) UVC example: Stream start. Iteration 93[0m
+[0;32mI (685881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (690901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (690901) UVC example: Stream stop[0m
+[0;32mI (693001) UVC example: Stream start. Iteration 94[0m
+[0;32mI (693001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (698021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (698021) UVC example: Stream stop[0m
+[0;32mI (700121) UVC example: Stream start. Iteration 95[0m
+[0;32mI (700121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (705141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (705141) UVC example: Stream stop[0m
+[0;32mI (707241) UVC example: Stream start. Iteration 96[0m
+[0;32mI (707241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (712261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (712261) UVC example: Stream stop[0m
+[0;32mI (714361) UVC example: Stream start. Iteration 97[0m
+[0;32mI (714361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (719381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (719381) UVC example: Stream stop[0m
+[0;32mI (721481) UVC example: Stream start. Iteration 98[0m
+[0;32mI (721481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (726501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (726501) UVC example: Stream stop[0m
+[0;32mI (728601) UVC example: Stream start. Iteration 99[0m
+[0;32mI (728601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (733621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (733621) UVC example: Stream stop[0m
+[0;32mI (735721) UVC example: Stream start. Iteration 100[0m
+[0;32mI (735721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (740741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (740741) UVC example: Stream stop[0m
+[0;32mI (742841) UVC example: Stream start. Iteration 101[0m
+[0;32mI (742841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (747861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (747861) UVC example: Stream stop[0m
+[0;32mI (749961) UVC example: Stream start. Iteration 102[0m
+[0;32mI (749961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (754981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (754981) UVC example: Stream stop[0m
+[0;32mI (757081) UVC example: Stream start. Iteration 103[0m
+[0;32mI (757081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (762101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (762101) UVC example: Stream stop[0m
+[0;32mI (764201) UVC example: Stream start. Iteration 104[0m
+[0;32mI (764201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (769221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (769221) UVC example: Stream stop[0m
+[0;32mI (771321) UVC example: Stream start. Iteration 105[0m
+[0;32mI (771321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (776341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (776341) UVC example: Stream stop[0m
+[0;32mI (778441) UVC example: Stream start. Iteration 106[0m
+[0;32mI (778441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (783461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (783461) UVC example: Stream stop[0m
+[0;32mI (785561) UVC example: Stream start. Iteration 107[0m
+[0;32mI (785561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (790581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (790581) UVC example: Stream stop[0m
+[0;32mI (792681) UVC example: Stream start. Iteration 108[0m
+[0;32mI (792681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (797701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (797701) UVC example: Stream stop[0m
+[0;32mI (799801) UVC example: Stream start. Iteration 109[0m
+[0;32mI (799801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (804821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (804821) UVC example: Stream stop[0m
+[0;32mI (806921) UVC example: Stream start. Iteration 110[0m
+[0;32mI (806921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (811941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (811941) UVC example: Stream stop[0m
+[0;32mI (814041) UVC example: Stream start. Iteration 111[0m
+[0;32mI (814041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (819061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (819061) UVC example: Stream stop[0m
+[0;32mI (821161) UVC example: Stream start. Iteration 112[0m
+[0;32mI (821161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (826181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (826181) UVC example: Stream stop[0m
+[0;32mI (828281) UVC example: Stream start. Iteration 113[0m
+[0;32mI (828281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (833301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (833301) UVC example: Stream stop[0m
+[0;32mI (835401) UVC example: Stream start. Iteration 114[0m
+[0;32mI (835401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (840421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (840421) UVC example: Stream stop[0m
+[0;32mI (842521) UVC example: Stream start. Iteration 115[0m
+[0;32mI (842521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (847541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (847541) UVC example: Stream stop[0m
+[0;32mI (849641) UVC example: Stream start. Iteration 116[0m
+[0;32mI (849641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (854661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (854661) UVC example: Stream stop[0m
+[0;32mI (856761) UVC example: Stream start. Iteration 117[0m
+[0;32mI (856761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (861781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (861781) UVC example: Stream stop[0m
+[0;32mI (863881) UVC example: Stream start. Iteration 118[0m
+[0;32mI (863881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (868901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (868901) UVC example: Stream stop[0m
+[0;32mI (871001) UVC example: Stream start. Iteration 119[0m
+[0;32mI (871001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (876021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (876021) UVC example: Stream stop[0m
+[0;32mI (878121) UVC example: Stream start. Iteration 120[0m
+[0;32mI (878121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (883141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (883141) UVC example: Stream stop[0m
+[0;32mI (885241) UVC example: Stream start. Iteration 121[0m
+[0;32mI (885241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (890261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (890261) UVC example: Stream stop[0m
+[0;32mI (892361) UVC example: Stream start. Iteration 122[0m
+[0;32mI (892361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (897381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (897381) UVC example: Stream stop[0m
+[0;32mI (899481) UVC example: Stream start. Iteration 123[0m
+[0;32mI (899481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (904501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (904501) UVC example: Stream stop[0m
+[0;32mI (906601) UVC example: Stream start. Iteration 124[0m
+[0;32mI (906601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (911621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (911621) UVC example: Stream stop[0m
+[0;32mI (913721) UVC example: Stream start. Iteration 125[0m
+[0;32mI (913721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (918741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (918741) UVC example: Stream stop[0m
+[0;32mI (920841) UVC example: Stream start. Iteration 126[0m
+[0;32mI (920841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (925861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (925861) UVC example: Stream stop[0m
+[0;32mI (927961) UVC example: Stream start. Iteration 127[0m
+[0;32mI (927961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (932981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (932981) UVC example: Stream stop[0m
+[0;32mI (935081) UVC example: Stream start. Iteration 128[0m
+[0;32mI (935081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (940101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (940101) UVC example: Stream stop[0m
+[0;32mI (942201) UVC example: Stream start. Iteration 129[0m
+[0;32mI (942201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (947221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (947221) UVC example: Stream stop[0m
+[0;32mI (949321) UVC example: Stream start. Iteration 130[0m
+[0;32mI (949321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (954341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (954341) UVC example: Stream stop[0m
+[0;32mI (956441) UVC example: Stream start. Iteration 131[0m
+[0;32mI (956441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (961461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (961461) UVC example: Stream stop[0m
+[0;32mI (963561) UVC example: Stream start. Iteration 132[0m
+[0;32mI (963561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (968581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (968581) UVC example: Stream stop[0m
+[0;32mI (970681) UVC example: Stream start. Iteration 133[0m
+[0;32mI (970681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (975701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (975701) UVC example: Stream stop[0m
+[0;32mI (977801) UVC example: Stream start. Iteration 134[0m
+[0;32mI (977801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (982821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (982821) UVC example: Stream stop[0m
+[0;32mI (984921) UVC example: Stream start. Iteration 135[0m
+[0;32mI (984921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (989941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (989941) UVC example: Stream stop[0m
+[0;32mI (992041) UVC example: Stream start. Iteration 136[0m
+[0;32mI (992041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (997061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (997061) UVC example: Stream stop[0m
+[0;32mI (999161) UVC example: Stream start. Iteration 137[0m
+[0;32mI (999161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1004181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1004181) UVC example: Stream stop[0m
+[0;32mI (1006281) UVC example: Stream start. Iteration 138[0m
+[0;32mI (1006281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1011301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1011301) UVC example: Stream stop[0m
+[0;32mI (1013401) UVC example: Stream start. Iteration 139[0m
+[0;32mI (1013401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1018421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1018421) UVC example: Stream stop[0m
+[0;32mI (1020521) UVC example: Stream start. Iteration 140[0m
+[0;32mI (1020521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1025541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1025541) UVC example: Stream stop[0m
+[0;32mI (1027641) UVC example: Stream start. Iteration 141[0m
+[0;32mI (1027641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1032661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1032661) UVC example: Stream stop[0m
+[0;32mI (1034761) UVC example: Stream start. Iteration 142[0m
+[0;32mI (1034761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1039781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1039781) UVC example: Stream stop[0m
+[0;32mI (1041881) UVC example: Stream start. Iteration 143[0m
+[0;32mI (1041881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1046901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1046901) UVC example: Stream stop[0m
+[0;32mI (1049001) UVC example: Stream start. Iteration 144[0m
+[0;32mI (1049001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1054021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1054021) UVC example: Stream stop[0m
+[0;32mI (1056121) UVC example: Stream start. Iteration 145[0m
+[0;32mI (1056121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1061141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1061141) UVC example: Stream stop[0m
+[0;32mI (1063241) UVC example: Stream start. Iteration 146[0m
+[0;32mI (1063241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1068261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1068261) UVC example: Stream stop[0m
+[0;32mI (1070361) UVC example: Stream start. Iteration 147[0m
+[0;32mI (1070361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1075381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1075381) UVC example: Stream stop[0m
+[0;32mI (1077481) UVC example: Stream start. Iteration 148[0m
+[0;32mI (1077481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1082501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1082501) UVC example: Stream stop[0m
+[0;32mI (1084601) UVC example: Stream start. Iteration 149[0m
+[0;32mI (1084601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1089621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1089621) UVC example: Stream stop[0m
+[0;32mI (1091721) UVC example: Stream start. Iteration 150[0m
+[0;32mI (1091721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1096741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1096741) UVC example: Stream stop[0m
+[0;32mI (1098841) UVC example: Stream start. Iteration 151[0m
+[0;32mI (1098841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1103861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1103861) UVC example: Stream stop[0m
+[0;32mI (1105961) UVC example: Stream start. Iteration 152[0m
+[0;32mI (1105961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1110981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1110981) UVC example: Stream stop[0m
+[0;32mI (1113081) UVC example: Stream start. Iteration 153[0m
+[0;32mI (1113081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1118101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1118101) UVC example: Stream stop[0m
+[0;32mI (1120201) UVC example: Stream start. Iteration 154[0m
+[0;32mI (1120201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1125221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1125221) UVC example: Stream stop[0m
+[0;32mI (1127321) UVC example: Stream start. Iteration 155[0m
+[0;32mI (1127321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1132341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1132341) UVC example: Stream stop[0m
+[0;32mI (1134441) UVC example: Stream start. Iteration 156[0m
+[0;32mI (1134441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1139461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1139461) UVC example: Stream stop[0m
+[0;32mI (1141561) UVC example: Stream start. Iteration 157[0m
+[0;32mI (1141561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1146581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1146581) UVC example: Stream stop[0m
+[0;32mI (1148681) UVC example: Stream start. Iteration 158[0m
+[0;32mI (1148681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1153701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1153701) UVC example: Stream stop[0m
+[0;32mI (1155801) UVC example: Stream start. Iteration 159[0m
+[0;32mI (1155801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1160821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1160821) UVC example: Stream stop[0m
+[0;32mI (1162921) UVC example: Stream start. Iteration 160[0m
+[0;32mI (1162921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1167941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1167941) UVC example: Stream stop[0m
+[0;32mI (1170041) UVC example: Stream start. Iteration 161[0m
+[0;32mI (1170041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1175061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1175061) UVC example: Stream stop[0m
+[0;32mI (1177161) UVC example: Stream start. Iteration 162[0m
+[0;32mI (1177161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1182181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1182181) UVC example: Stream stop[0m
+[0;32mI (1184281) UVC example: Stream start. Iteration 163[0m
+[0;32mI (1184281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1189301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1189301) UVC example: Stream stop[0m
+[0;32mI (1191401) UVC example: Stream start. Iteration 164[0m
+[0;32mI (1191401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1196421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1196421) UVC example: Stream stop[0m
+[0;32mI (1198521) UVC example: Stream start. Iteration 165[0m
+[0;32mI (1198521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1203541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1203541) UVC example: Stream stop[0m
+[0;32mI (1205641) UVC example: Stream start. Iteration 166[0m
+[0;32mI (1205641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1210661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1210661) UVC example: Stream stop[0m
+[0;32mI (1212761) UVC example: Stream start. Iteration 167[0m
+[0;32mI (1212761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1217781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1217781) UVC example: Stream stop[0m
+[0;32mI (1219881) UVC example: Stream start. Iteration 168[0m
+[0;32mI (1219881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1224901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1224901) UVC example: Stream stop[0m
+[0;32mI (1227001) UVC example: Stream start. Iteration 169[0m
+[0;32mI (1227001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1232021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1232021) UVC example: Stream stop[0m
+[0;32mI (1234121) UVC example: Stream start. Iteration 170[0m
+[0;32mI (1234121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1239141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1239141) UVC example: Stream stop[0m
+[0;32mI (1241241) UVC example: Stream start. Iteration 171[0m
+[0;32mI (1241241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1246261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1246261) UVC example: Stream stop[0m
+[0;32mI (1248361) UVC example: Stream start. Iteration 172[0m
+[0;32mI (1248361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1253381) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1253381) UVC example: Stream stop[0m
+[0;32mI (1255481) UVC example: Stream start. Iteration 173[0m
+[0;32mI (1255481) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1260501) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1260501) UVC example: Stream stop[0m
+[0;32mI (1262601) UVC example: Stream start. Iteration 174[0m
+[0;32mI (1262601) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1267621) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1267621) UVC example: Stream stop[0m
+[0;32mI (1269721) UVC example: Stream start. Iteration 175[0m
+[0;32mI (1269721) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1274741) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1274741) UVC example: Stream stop[0m
+[0;32mI (1276841) UVC example: Stream start. Iteration 176[0m
+[0;32mI (1276841) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1281861) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1281861) UVC example: Stream stop[0m
+[0;32mI (1283961) UVC example: Stream start. Iteration 177[0m
+[0;32mI (1283961) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1288981) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1288981) UVC example: Stream stop[0m
+[0;32mI (1291081) UVC example: Stream start. Iteration 178[0m
+[0;32mI (1291081) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1296101) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1296101) UVC example: Stream stop[0m
+[0;32mI (1298201) UVC example: Stream start. Iteration 179[0m
+[0;32mI (1298201) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1303221) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1303221) UVC example: Stream stop[0m
+[0;32mI (1305321) UVC example: Stream start. Iteration 180[0m
+[0;32mI (1305321) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1310341) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1310341) UVC example: Stream stop[0m
+[0;32mI (1312441) UVC example: Stream start. Iteration 181[0m
+[0;32mI (1312441) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1317461) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1317461) UVC example: Stream stop[0m
+[0;32mI (1319561) UVC example: Stream start. Iteration 182[0m
+[0;32mI (1319561) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1324581) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1324581) UVC example: Stream stop[0m
+[0;32mI (1326681) UVC example: Stream start. Iteration 183[0m
+[0;32mI (1326681) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1331701) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1331701) UVC example: Stream stop[0m
+[0;32mI (1333801) UVC example: Stream start. Iteration 184[0m
+[0;32mI (1333801) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1338821) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1338821) UVC example: Stream stop[0m
+[0;32mI (1340921) UVC example: Stream start. Iteration 185[0m
+[0;32mI (1340921) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1345941) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1345941) UVC example: Stream stop[0m
+[0;32mI (1348041) UVC example: Stream start. Iteration 186[0m
+[0;32mI (1348041) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1353061) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1353061) UVC example: Stream stop[0m
+[0;32mI (1355161) UVC example: Stream start. Iteration 187[0m
+[0;32mI (1355161) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1360181) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1360181) UVC example: Stream stop[0m
+[0;32mI (1362281) UVC example: Stream start. Iteration 188[0m
+[0;32mI (1362281) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1367301) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1367301) UVC example: Stream stop[0m
+[0;32mI (1369401) UVC example: Stream start. Iteration 189[0m
+[0;32mI (1369401) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1374421) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1374421) UVC example: Stream stop[0m
+[0;32mI (1376521) UVC example: Stream start. Iteration 190[0m
+[0;32mI (1376521) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1381541) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1381541) UVC example: Stream stop[0m
+[0;32mI (1383641) UVC example: Stream start. Iteration 191[0m
+[0;32mI (1383641) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1388661) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1388661) UVC example: Stream stop[0m
+[0;32mI (1390761) UVC example: Stream start. Iteration 192[0m
+[0;32mI (1390761) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1395781) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1395781) UVC example: Stream stop[0m
+[0;32mI (1397881) UVC example: Stream start. Iteration 193[0m
+[0;32mI (1397881) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1402901) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1402901) UVC example: Stream stop[0m
+[0;32mI (1405001) UVC example: Stream start. Iteration 194[0m
+[0;32mI (1405001) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1410021) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1410021) UVC example: Stream stop[0m
+[0;32mI (1412121) UVC example: Stream start. Iteration 195[0m
+[0;32mI (1412121) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1417141) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1417141) UVC example: Stream stop[0m
+[0;32mI (1419241) UVC example: Stream start. Iteration 196[0m
+[0;32mI (1419241) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m
+[0;33mW (1424261) UVC example: Stream: Frame not received on time[0m
+[0;32mI (1424261) UVC example: Stream stop[0m
+[0;32mI (1426361) UVC example: Stream start. Iteration 197[0m
+[0;32mI (1426361) uvc-control: Default format from camera: 640x480@15.0FPS, fmt=1, frame_size=307200, payload=640[0m

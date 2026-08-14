@@ -288,6 +288,23 @@ fallbacks em ordem: tuning → outra câmera UVC → outra plataforma (backend
 intacto). Pesquisas externas arquivadas em `f2b-pesquisa-chatgpt.md` e
 `f2b-pesquisa-gemini.md`.
 
+**Atualização 2026-08-13 — fase ENCERRADA (deferida por hardware):** a
+bancada da rota UVC (T5, 25 rodadas; evidências em `evidencias/f2b/`)
+terminou em **FAIL de confiabilidade**: um único frame íntegro em toda a
+história (800×600, irreprodutível) e falha inclusive do exemplo oficial do
+`usb_host_uvc` (rodadas 24-25). **Nenhuma causa raiz foi demonstrada** — as
+conclusões intermediárias ("corrida de timing", "payload ≠ pacote") foram
+retiradas ou permanecem hipóteses (decision-log
+`F2B-Encerramento-UVCRejeitada`, que SUPERSEDE
+`F2B-T5-Rodadas17a22-TimingRace`). **UVC/NE-HD362 na pilha atual está
+REJEITADA para o produto por falta de confiabilidade** e não é rota ativa;
+o código experimental foi removido do firmware (evidências preservadas).
+**Rota provisória: OV5647 CSI 1280×960** (firmware normal regravado e
+funcionando) — **a F3 e as fases seguintes podem começar com essa câmera**.
+A qualidade final para extração completa do manuscrito **NÃO está
+aprovada**: o requisito de resolução/legibilidade fica pendente até a
+chegada da nova câmera CSI.
+
 ### F3 — Fatia vertical do turno por foto *(o marco central; B.5 item 9)*
 
 `POST /api/turn` multipart (chunked, timeout ≥120 s) contendo **a imagem JPEG
@@ -425,9 +442,9 @@ checklist final de validação física com o dono, tag de versão.
 |---|---|---|---|---|
 | F0 — Fundações | concluída | 2026-08-03 | c5fb376 | nenhuma — flash e tela "PV" validados no hardware em 2026-08-03 |
 | F1 — Rede e hidratação | concluída | 2026-08-04 | 8ec52ad | nenhuma — validação física completa em 2026-08-04 (boot→hidrata→roteia, §9.7, 401/503, toque corrigido, gesto de recuperação); spike (a) parcial → F8 |
-| F2 — Câmera | implementação concluída — aprovada na revisão independente; aguarda validação física (T6) | — | 46db44b | T6 em dois degraus (combinado 2026-08-04): degrau 1 flat 10 cm (bring-up: preview 5 fps, foto, legibilidade, medições); degrau 2 configuração de produção — flat 50 cm ou CSI→HDMI (a fase só fecha aqui). Degrau 1 concluído (2026-08-04/05 + A/B 2026-08-10); degrau 2 CONDICIONADO ao desenho pós-F2B (se a captura migrar para UVC, o papel do flat muda — provável preview). Medir tamanho típico do JPEG/página. Flash = ação do dono |
-| F2B — Resolução de extração | em andamento — rota UVC necessária (A/B físico 2026-08-10); spike de bancada desenhado (fase-2b.md) | — | — | spike UVC no Mac (T5, flash = dono; câmera NE-HD362 no USB-A); se PASS, A/B de extração com o backend real |
-| F3 — Turno por foto | não iniciada | — | — | — |
+| F2 — Câmera | implementação concluída — aprovada na revisão independente; aguarda validação física (T6) | — | 46db44b | T6 em dois degraus (combinado 2026-08-04): degrau 1 flat 10 cm (bring-up: preview 5 fps, foto, legibilidade, medições); degrau 2 configuração de produção — flat 50 cm ou CSI→HDMI (a fase só fecha aqui). Degrau 1 concluído (2026-08-04/05 + A/B 2026-08-10); degrau 2 na configuração de produção segue pendente — com a F2B encerrada (UVC rejeitada), a captura permanece na CSI e o desenho final aguarda a nova câmera CSI. Medir tamanho típico do JPEG/página. Flash = ação do dono |
+| F2B — Resolução de extração | encerrada — investigação deferida por hardware (2026-08-13): UVC/NE-HD362 REJEITADA por falta de confiabilidade (T5 FAIL, sem causa raiz demonstrada; T6 consolidada); OV5647 CSI 1280×960 é a rota provisória; F3+ liberadas com CSI | 2026-08-13 | — | requisito final de resolução/legibilidade do manuscrito pendente até a nova câmera CSI |
+| F3 — Turno por foto | não iniciada — liberada para começar com a CSI provisória (decisão F2B-Encerramento-UVCRejeitada) | — | — | — |
 | F4 — Turno por áudio | não iniciada | — | — | — |
 | F5 — Máquina de fases | não iniciada | — | — | — |
 | F6 — Failsafe/adulto | não iniciada | — | — | — |

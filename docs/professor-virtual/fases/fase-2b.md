@@ -1,5 +1,13 @@
 # Fase F2B — Resolução de extração (rota UVC)
 
+> **FASE ENCERRADA (2026-08-13) — investigação deferida por hardware.**
+> A rota UVC/NE-HD362 foi rejeitada para o produto por falta de
+> confiabilidade na pilha atual, **sem causa raiz demonstrada**. UVC não é
+> rota ativa; a **OV5647 CSI 1280×960** volta como câmera provisória e as
+> fases F3+ prosseguem com ela. O requisito final de resolução/legibilidade
+> permanece pendente até a chegada da nova câmera CSI. Ver "Encerramento da
+> fase" nas Notas.
+
 > Regra de ouro: cada checkbox é marcado **no mesmo commit** que conclui a
 > task — o estado nunca pode divergir do código. No encerramento da fase,
 > atualizar a tabela "Status das fases" do `plano-firmware.md` no commit
@@ -62,18 +70,21 @@ até a F3).
 - [x] T4 — Regressão: build spike + build `7b-professor-virtual` + build
       `7b` original + testes host (incluindo teste novo do `--all`) ·
       pronto quando: 3 builds verdes e testes host passando.
-- [ ] T5 — Bancada (flash = ação do dono; roteiro nas Notas): enumeração
+- [x] T5 — Bancada (flash = ação do dono; roteiro nas Notas): enumeração
       limpa + escada 800×600 → 1920×1080 → 2592×1944 → 3264×2448
       (→ 4000×3000 opcional) com `PV-UVC-RUNG … result=PASS` e
-      applied==requested; `extract_jpeg_dump.py --all`; escada 3× · pronto
-      quando: log bruto + JPGs em `../evidencias/f2b/` e tabela
-      passa/falha por degrau preenchida nas Notas.
-- [ ] T6 — Consolidação: decisão de rota F2B (UVC direto / tuning / outra
+      applied==requested; `extract_jpeg_dump.py --all`; escada 3× ·
+      **CONCLUÍDA 2026-08-13 com resultado FAIL de confiabilidade**: 25
+      rodadas (logs em `../evidencias/f2b/`), um único frame íntegro em
+      toda a história (800×600, rodada 4), irreprodutível; nenhuma causa
+      raiz demonstrada (ver "Encerramento da fase").
+- [x] T6 — Consolidação: decisão de rota F2B (UVC direto / tuning / outra
       câmera / outra plataforma) no decision-log + plano-firmware; destino
-      do código do spike (rec.: manter gateado como ferramenta de
-      bancada); desenho da integração (UVC-only vs híbrido CSI-preview) se
-      PASS · pronto quando: decisão registrada e tabela de status
-      atualizada.
+      do código do spike; desenho da integração se PASS · **CONCLUÍDA
+      2026-08-13**: rota UVC/NE-HD362 REJEITADA por falta de
+      confiabilidade; OV5647 CSI 1280×960 restaurada como rota provisória;
+      código experimental removido do firmware (evidências preservadas);
+      decisão superseding no decision-log e tabela de status atualizada.
 
 ## Contexto de retomada
 
@@ -82,70 +93,7 @@ até a F3).
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T5 (bancada). Rodada 15 executada em 2026-08-13 no
-  Mac (roteiro `../plano-claude-rodada15.md`, subordinado ao
-  `../plano_codex_v2.md`): pilha experimental **esp_video 2.3.0 +
-  usb_host_uvc 2.5.1** (bug de URB da 2.4.2 corrigido — URBs com **4
-  pacotes ISOC** confirmadas no log) → **canal ISOC continuou MUDO**: 2
-  partidas frias limpas, 9 escadas completas, 0 frames, 0 `frame error`,
-  0 `usb err`. O bug da 2.4.2 NÃO era a causa (ou não a única). Ver
-  Notas, "T5 — Rodada 15".
-- Estado da placa: firmware da rodada 15 flashado (merged-binary.bin
-  sha256 `1e2a988201b600b9…`, laço de escadas do commit 1c02248 sobre a
-  pilha 2.3.0/2.5.1). O binário fica em `releases/uvc-spike/` (não
-  versionado); rebuild exige reaplicar o patch do manifesto (apêndice do
-  `../plano-claude-rodada15.md`).
-- Manifesto experimental (`main/idf_component.yml`: esp_video ^2.3.0 +
-  usb_host_uvc ~2.5.1 + BSP `esp32_p4_function_ev_board` comentado)
-  REVERTIDO no worktree ao fim da rodada; patch preservado no scratchpad
-  da sessão e descrito no apêndice do plano da rodada 15. **Condição de
-  consolidação**: a placa `esp-p4-function-ev-board` precisa voltar a
-  compilar (BSP 5.2.3 trava esp_video ~2.0; upstream removeu o BSP) e a
-  regressão P4/S3 completa passar — solução em aberto, decidir sob o
-  plano v2.
-- Rodadas 16-22 EXECUTADAS na mesma sessão de 2026-08-13 (maratona de 7
-  flashes; ver Notas "T5 — Rodadas 17-22"). **DESCOBERTA CENTRAL: o
-  canal ISOC só transmite quando o log DEBUG por pacote do `uvc-isoc`
-  está ligado** — o atraso do printf na re-submissão das URBs estabiliza
-  uma corrida de timing no agendador ISOC do DWC2/P4. Sem o flood:
-  silêncio (5 runs, ambas as pilhas, todas as configs); com o flood:
-  dados fluem (rodada 4, run17, run22). A "moeda" da câmera era isso.
-  Regressão de software EXCLUÍDA como causa única: o problema é a
-  corrida no host (família da issue esp-usb#538 — high-bandwidth ISOC
-  quebrado no P4, MC não programado no HCCHAR).
-- Estado do worktree/placa: firmware E7 flashado (nosso spike direto +
-  pilha ANTIGA 2.0.1/2.4.2 + 4 URBs de 3072 B + flood ligado — o que
-  transmite; sha256 `deb075bc75c81fd4…`); manifesto em `main/` no estado
-  do HEAD (mundo antigo); o patch experimental 2.3.0/2.5.1 continua
-  descrito no apêndice do `../plano-claude-rodada15.md` para reaplicar.
-- Dois bugs REAIS achados e corrigidos nesta sessão: (1) daemon USB
-  morria no unplug do único device (`ALL_FREE` incondicional do usbh;
-  a task nunca pode sair do laço — provável causa do "slot-fantasma"
-  histórico); (2) gate `if(CONFIG_...)` em volta de `PRIV_REQUIRES` no
-  CMake NUNCA funciona (requisitos expandem antes do Kconfig) — gate
-  trocado para target.
-- Próxima sessão: (1) comentar na issue esp-usb#538 com o A/B completo
-  (pilhas, geometrias, e a prova do timing pelo flood — ação de
-  publicação é do proprietário); (2) resultado da pesquisa profunda №2
-  (prompt `../f2b-deep-research-prompt-2-isoc.md` entregue ao
-  proprietário — câmeras UVC BULK contornam o problema inteiro e são o
-  plano B de hardware mais promissor); (3) experimentos de timing SEM
-  flood (ex.: `urb_size` maior na pilha antiga para reduzir taxa de
-  re-submissão; prioridades altas das tasks USB como no exemplo
-  oficial); (4) A/B elétricos/hub se necessário. Matriz: 10 cold boots
-  por célula, SHA-256 por célula.
-- Fatos permanentes de bancada: TODO reboot da placa com câmera
-  energizada pode deixá-la muda/travada (só replug físico ou plugagem
-  pós-boot recupera); unplug sem stream aberto cria slot-fantasma no
-  driver (só reboot limpa) — por isso a ordem desplugar→resetar→plugar;
-  S_PARM≠default emudece a câmera; a câmera é saudável (Photo Booth no
-  Mac); o PASS de referência é `t5-rodada4-foto-800x600.jpg`
-  (CRC 36aa87a9).
-- Armadilhas: SEMPRE liberar a porta serial antes de flash ("multiple
-  access on port"); flash é do proprietário; zip existente em releases/
-  PULA o build; builds exigem o IDF 6.0.2 (no Mac:
-  `~/.espressif/tools/activate_idf_v6.0.2.sh` + PATH; no Windows,
-  ambiente próprio daquela estação).
+(vazio)
 
 ## Notas da fase
 
@@ -448,6 +396,14 @@ separada: 1 P0 + 3 P1 na 1ª rodada, **NO_FINDINGS na 2ª**.
 
 ### T5 — Rodadas 17-22 (2026-08-13; Mac) — a caça: da regressão de pilha à corrida de timing
 
+> **Nota de encerramento (2026-08-13):** a conclusão "causa raiz = corrida
+> de timing" desta seção foi **SUPERSEDIDA** (decision-log
+> `F2B-Encerramento-UVCRejeitada`). Ligar o log DEBUG alterou o
+> comportamento observado, mas isso não prova uma corrida de timing
+> específica — e a rodada 23 mostrou que o canal da pilha 2.5.1 tinha
+> completions mesmo sem flood (o "mudo" era falta de visibilidade). Os
+> fatos e logs abaixo permanecem válidos como cronologia.
+
 Sequência de A/B na mesma sessão da rodada 16 (proprietário no comando dos
 7 flashes; decisões E1-E5 ratificadas pelo Codex decisor, thread 019ffc22;
 E6-E7 por evidência inequívoca de bancada). Protocolo por run: câmera fora
@@ -496,6 +452,112 @@ Evidência: `t5-run17-controle-242-canal-vivo.log`,
 `t5-run18-e1-urb1pacote-mudo.log`, `t5-run19-e2-sem-vbus-mudo.log`,
 `t5-run20-e5lite-242-mudo.log`, `t5-run21-e6-4urbs-mudo.log`,
 `t5-run22-e7-flood-acorda-canal.log` (em `../evidencias/f2b/`).
+
+### T5 — Rodada 23 (2026-08-13; Mac) — A/B do alt setting MULT=0 (ordem direta do proprietário)
+
+O proprietário SUSPENDEU a conclusão de "causa raiz = timing" da rodada
+17-22 e ordenou um A/B controlado na pilha 2.5.1 com telemetria agregada
+(contadores dentro do driver via patch de bancada reversível — nunca
+versionado em managed_components; patches em
+`../evidencias/f2b/pv-patch-telemetria-isoc.patch` e
+`pv-patch-e8b-alt944.patch`; mecanismo: editar + remover
+`.component_hash`; reversão por cópia pristine executada no encerramento).
+
+| Binário | Alt | Transporte | Resultado app | Telemetria (t≈17 s, degrau 1) |
+|---|---|---|---|---|
+| A (controle) | high-bandwidth (auto) | 4 URBs × 3072 (1 pacote) | 0/5 sem-frame | 248.915 URBs, 13.202 pk_data, 36,7 MB, **hdr_inv=235.713 (~95%)**, uvc_err=0, eof=893, resub_fail=0 |
+| B (forçado) | **alt=6, 944 B, MULT=0** (PV-PATCH logado) | 4 URBs × 944 (1 pacote) | 0/5 sem-frame | 248.911 URBs, 40.778 pk_data, 36,9 MB, **hdr_inv=208.133 (~84%)**, uvc_err=0, eof=893, resub_fail=0 |
+
+Leitura corrigida no encerramento (2026-08-13) — os números e logs acima
+permanecem como evidência; a interpretação original desta rodada foi
+revisada:
+
+- Fato: **MULT=0 forçado via alt=6 NÃO resolveu.** Ressalva metodológica:
+  o alt=6 limitava o pipe a 944 B, mas a câmera seguia commitando
+  `dwMaxPayloadTransferSize=3072` — isoladamente, este era um teste com
+  **negociação incompatível** (pipe menor que o payload commitado), e por
+  isso não sustenta conclusão sozinho. O teste corretamente dimensionado
+  (alt=4, payload=capacity=640, MULT=0) veio na rodada 25 — e **também
+  falhou** (ver abaixo).
+- Fato medido: na pilha 2.5.1 **havia completions e dados fluindo**
+  (~16 mil completions/s, ~2,4 MB/s em A e B, sem flood algum) e **nenhum
+  frame válido foi montado**. Isso corrige a leitura de "canal mudo" das
+  rodadas 18-21 (era ausência de visibilidade: header inválido loga em
+  DEBUG e não gera nenhum W) — mas **não estabelece o mecanismo da
+  falha**.
+- `hdr_inv` alto (84-95%) é um número, não uma prova. A hipótese
+  "payload ≠ pacote / remontagem incorreta no host" explicaria os
+  contadores, mas **não foi demonstrada** (sem captura de barramento, sem
+  matriz de repetibilidade) — e a rodada 25, com payload e pipe casados em
+  640, falhou do mesmo jeito, o que a enfraquece como explicação única.
+  Tampouco se afirma que a 2.4.2 "funcionava por receber o payload
+  inteiro": o único frame íntegro de toda a história é o 800×600 da
+  rodada 4, irreprodutível.
+- `resub_fail=0` e `uvc_err=0` nas duas células: a ressubmissão não falha
+  e a câmera não marca ERR — registrado como fato, sem atribuição de
+  causa.
+- Anomalia residual em aberto (pilha antiga): E6 (mudo) vs E7 (vivo com
+  flood) no MESMO binário 2.4.2 — registrada, sem explicação comprovada.
+
+NÃO registrado como correção permanente (ordem do proprietário): sem
+matriz de repetibilidade e sem captura válida. Os caminhos técnicos que a
+hipótese de remontagem apontaria (rework do parser do driver via
+Espressif/issue, ou pipe com MPS=payload) ficam registrados como
+possibilidades não verificadas. Binários do A/B em `releases/uvc-ab/`
+(A `453313c6…`, B `49d490ad…`).
+
+### T5 — Rodadas 24-25 (2026-08-13; Mac) — exemplo oficial da Espressif também falha
+
+Última bateria antes do encerramento: tirar o nosso código da equação
+rodando o **exemplo oficial do `usb_host_uvc`** (toolchain IDF 6.0.2)
+praticamente intacto — apenas EOH check desabilitado (a NE-HD362 não seta
+o bit) e os ajustes necessários da revisão do P4.
+
+- **Rodada 24** (exemplo oficial, negociação automática): 133 starts de
+  stream, 132 timeouts, **zero `New frame!`** → FAIL. Log:
+  `../evidencias/f2b/t5-run24-exemplo-oficial-idf602-mudo.log`
+  (sha256 `54a777b017b6d7e832c7635ac2f306a44493f9f48a5607bdeb8eb70e0344300c`).
+- **Rodada 25** (exemplo oficial, alt corretamente dimensionado): alt=4,
+  `base_mps=640`, **MULT=0**, capacity=640, payload negociado=640; URBs
+  3 × 10240 bytes com 16 pacotes de 640. 198 starts, 197 timeouts,
+  **zero `New frame!`** → FAIL. Log:
+  `../evidencias/f2b/t5-run25-exemplo-oficial-alt640-mult0-mudo.log`
+  (sha256 `19073fccb3c828636e367bce89a46274052c70c1aec2f080e77650e6236c6446`).
+
+O que estas rodadas estabelecem — e o que não:
+
+- o exemplo oficial, sem nenhum código nosso, **também falha** com esta
+  câmera nesta placa;
+- **MULT=0 corretamente casado não resolve** (payload = pipe = 640);
+- high-bandwidth/MULT **não explica sozinho** a falha;
+- **nenhuma causa raiz foi identificada** por estes testes.
+
+### Encerramento da fase (2026-08-13)
+
+- **Investigação encerrada — deferida por hardware.** A rota UVC/NE-HD362
+  na pilha atual (ESP32-P4 + usb_host_uvc/esp_video) foi **rejeitada para
+  o produto por falta de confiabilidade**: 25 rodadas de bancada, um único
+  frame íntegro (800×600, rodada 4), irreprodutível; o próprio exemplo
+  oficial falha (rodadas 24-25).
+- **Nenhuma causa raiz foi demonstrada.** A conclusão "corrida de timing"
+  (rodadas 17-22, commit 360c452) foi refutada como conclusão suficiente:
+  ligar logs altera o comportamento observado, mas isso não prova uma
+  corrida específica. A hipótese "payload ≠ pacote / remontagem" (rodada
+  23) segue não comprovada. A cadeia HALTED/FLUSH/CANCELED e o tratamento
+  de headers pelo driver continuam apenas hipóteses.
+- **Rota provisória: OV5647 CSI 1280×960** — firmware normal
+  `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` regravado na placa e
+  funcionando. **F3 e fases seguintes prosseguem com essa câmera.** A
+  validação final de legibilidade/resolução para o manuscrito permanece
+  **pendente** até a chegada da nova câmera CSI.
+- Código experimental UVC (`pv_uvc_spike.*`, `pv_uvc_direct.*`, ramos no
+  `main.cc`, Kconfig e variantes `-uvc-spike`/`-uvc-direct`) **removido do
+  firmware** no commit de encerramento. Evidências, logs e patches
+  preservados em `../evidencias/f2b/`; pesquisas externas em
+  `../resultados_pesquisa/` (saídas de ferramentas de pesquisa, não
+  canônicas — ver README de lá).
+- Decisão registrada no decision-log: `F2B-Encerramento-UVCRejeitada`
+  (**SUPERSEDE** `F2B-T5-Rodadas17a22-TimingRace`).
 
 ### Árvore de decisão da fase (sem fixação)
 

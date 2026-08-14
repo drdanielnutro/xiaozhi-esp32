@@ -7,11 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#if CONFIG_PV_UVC_DIRECT_SPIKE
-#include "pv_uvc_direct.h"
-#elif CONFIG_PV_UVC_SPIKE
-#include "pv_uvc_spike.h"
-#elif CONFIG_PROFESSOR_VIRTUAL
+#if CONFIG_PROFESSOR_VIRTUAL
 #include "pv_app.h"
 #else
 #include "application.h"
@@ -31,24 +27,6 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // Initialize and run the application
-#if CONFIG_PV_UVC_DIRECT_SPIKE
-    // Spike DIRETO de usb_host_uvc da F2B (ver pv_uvc_direct.h): mesmo
-    // contrato do spike V4L2 abaixo — a task assume, o board nunca é
-    // construído e cair no app normal derrubaria o isolamento do gate.
-    if (!PvUvcDirect::Start()) {
-        ESP_LOGE(TAG, "PV-UVC-DIRECT nao pode iniciar; nada mais roda nesta build");
-    }
-#elif CONFIG_PV_UVC_SPIKE
-    // Spike de bancada da F2B: substitui o app inteiro (ver pv_uvc_spike.h). A
-    // task do spike assume daqui em diante e nunca volta; este app_main retorna
-    // e a main task se auto-deleta. Como Board::GetInstance() é lazy, o board —
-    // e com ele o CSI, a tela e o áudio — nunca é construído: tela apagada é o
-    // esperado. Se a task não nascer, nada mais roda: cair no app normal
-    // derrubaria justamente o isolamento que o gate existe para garantir.
-    if (!PvUvcSpike::Start()) {
-        ESP_LOGE(TAG, "PV-UVC-SPIKE nao pode iniciar; nada mais roda nesta build");
-    }
-#else
 #if CONFIG_PROFESSOR_VIRTUAL
     auto& app = PvApp::GetInstance();
 #else
@@ -56,5 +34,4 @@ extern "C" void app_main(void)
 #endif
     app.Initialize();
     app.Run();  // This function runs the main event loop and never returns
-#endif  // CONFIG_PV_UVC_SPIKE
 }

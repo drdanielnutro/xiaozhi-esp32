@@ -1,0 +1,33 @@
+--- /tmp/uvc_desc_pristine.c	2026-08-13 17:35:35
++++ managed_components/espressif__usb_host_uvc/uvc_descriptor_parsing.c	2026-08-13 17:35:56
+@@ -8,6 +8,7 @@
+ #include <string.h> // strncmp for guid format parsing
+ #include <math.h>   // fabsf for float comparison
+ #include "usb/usb_helpers.h"
++#include "esp_log.h" // PV-PATCH
+ #include "usb/uvc_host.h"
+ #include "uvc_check_priv.h"
+ #include "uvc_descriptors_priv.h"
+@@ -94,6 +95,22 @@
+         ep_desc = usb_parse_endpoint_descriptor_by_index(intf_desc, 0, cfg_desc->wTotalLength, &offset);
+         UVC_CHECK(ep_desc, ESP_ERR_NOT_FOUND);
+ 
++        // PV-PATCH-E8B (F2B rodada 23; BANCADA, TEMPORARIO, NUNCA VERSIONAR):
++        // forca o alt setting MULT=0 com 944 B/microframe (bAlternateSetting=6
++        // na NE-HD362), ignorando a selecao high-bandwidth. Log inequivoco de
++        // alt/MPS/MULT abaixo. Patch documentado em docs/professor-virtual/
++        // evidencias/f2b/pv-patch-e8b-alt944.patch; reversao = apagar o
++        // diretorio do componente + restaurar dependencies.lock (re-download).
++        if (USB_EP_DESC_GET_MPS(ep_desc) == 944 && USB_EP_DESC_GET_MULT(ep_desc) == 0) {
++            *ep_desc_ret = ep_desc;
++            *intf_desc_ret = intf_desc;
++            ESP_LOGW("uvc-pv-patch", "PV-PATCH alt=%d mps_base=%d mult=%d bytes_uframe=%d (FORCADO MULT=0)",
++                     intf_desc->bAlternateSetting, USB_EP_DESC_GET_MPS(ep_desc),
++                     USB_EP_DESC_GET_MULT(ep_desc),
++                     USB_EP_DESC_GET_MPS(ep_desc) * (USB_EP_DESC_GET_MULT(ep_desc) + 1));
++            return ESP_OK;
++        }
++
+         // Here we look for an interface that offers the largest MPS that is not larger than requested MPS
+         const uint8_t packets_per_frame = USB_EP_DESC_GET_MULT(ep_desc) + 1;
+         const uint16_t current_mps = USB_EP_DESC_GET_MPS(ep_desc) * packets_per_frame;

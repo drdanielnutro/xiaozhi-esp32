@@ -152,10 +152,11 @@ class ExtractJpegDumpTest(unittest.TestCase):
 
 
 class ExtractAllBlocksTest(unittest.TestCase):
-    """`--all` é o modo do spike UVC da F2B: um JPEG por degrau da escada.
+    """`--all` extrai TODOS os blocos de um log com vários dumps (nasceu na
+    bancada da F2B e continua útil para sessões CSI com mais de uma foto).
 
-    Um degrau que chega corrompido não pode levar junto os degraus bons — a
-    bancada custa flash + minutos de dump serial por resolução, e repetir tudo
+    Um bloco que chega corrompido não pode levar junto os blocos bons — a
+    bancada custa flash + minutos de dump serial por captura, e repetir tudo
     por causa de um bloco perdido inviabiliza a medição.
     """
 
@@ -211,7 +212,7 @@ class ExtractAllBlocksTest(unittest.TestCase):
             for index, line in enumerate(lines[1:-1]):
                 noisy.append(line)
                 if index % 4 == 0:
-                    noisy.append(f"I (5000{index}) PvUvcSpike: PV-UVC-WARMUP descartados={index}")
+                    noisy.append(f"I (5000{index}) PvCamera: warmup descartados={index}")
             noisy.append(lines[-1])
             blocks.append(noisy)
         with tempfile.TemporaryDirectory() as directory:
@@ -224,7 +225,7 @@ class ExtractAllBlocksTest(unittest.TestCase):
     def test_all_flag_without_any_block_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
-            log = write_log(base, ["I (100) PvUvcSpike: sem dump nenhum aqui"])
+            log = write_log(base, ["I (100) PvCamera: sem dump nenhum aqui"])
             self.assertNotEqual(run_extract(log, base, all_blocks=True), 0)
 
 
@@ -265,72 +266,24 @@ class BoardCameraFormatTest(unittest.TestCase):
                 self.assertNotIn(flag, appended, build["name"])
 
 
-class UvcSpikeVariantTest(unittest.TestCase):
-    """A variante do spike da F2B só é útil se vier com o caminho UVC ligado."""
+class UvcRemovedTest(unittest.TestCase):
+    """A F2B foi encerrada com a rota UVC rejeitada (2026-08-13): nenhuma
+    variante pode voltar a ligar os gates do experimento removido."""
 
-    NAME = "esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-spike"
-    REQUIRED = (
+    FORBIDDEN_FLAGS = (
         "CONFIG_PV_UVC_SPIKE=y",
-        "CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=y",
-        "CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096",
-        "CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y",
-    )
-
-    def test_spike_variant_enables_the_uvc_path(self):
-        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
-        spike = [build for build in builds if build["name"] == self.NAME]
-        self.assertEqual(len(spike), 1, f"variante {self.NAME} ausente ou duplicada")
-        appended = spike[0]["sdkconfig_append"]
-        for flag in self.REQUIRED:
-            self.assertIn(flag, appended)
-        # O gate depende de PROFESSOR_VIRTUAL no Kconfig: sem ele o spike nem
-        # entra no build (o glob dos fontes do PV também some).
-        self.assertIn("CONFIG_PROFESSOR_VIRTUAL=y", appended)
-
-    def test_no_other_variant_enables_the_spike(self):
-        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
-        for build in builds:
-            if build["name"] == self.NAME:
-                continue
-            self.assertNotIn("CONFIG_PV_UVC_SPIKE=y", build["sdkconfig_append"], build["name"])
-
-
-class UvcDirectVariantTest(unittest.TestCase):
-    """A variante do spike DIRETO (rodada 16) fala com o usb_host_uvc sem o
-    esp_video: precisa do gate próprio e NÃO pode ligar o device V4L2 nem o
-    gate do spike antigo (exclusão mútua no Kconfig)."""
-
-    NAME = "esp32-p4-wifi6-touch-lcd-7b-professor-virtual-uvc-direct"
-    REQUIRED = (
         "CONFIG_PV_UVC_DIRECT_SPIKE=y",
-        "CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096",
-        "CONFIG_UVC_PRINTF_CONFIGURATION_DESCRIPTOR=y",
-        "CONFIG_UVC_CHECK_PAYLOAD_HEADER_EOH=n",
-    )
-    FORBIDDEN = (
-        "CONFIG_PV_UVC_SPIKE=y",
         "CONFIG_ESP_VIDEO_ENABLE_USB_UVC_VIDEO_DEVICE=y",
     )
+    FORBIDDEN_NAMES = ("uvc-spike", "uvc-direct")
 
-    def test_direct_variant_enables_only_the_direct_path(self):
-        builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
-        direct = [build for build in builds if build["name"] == self.NAME]
-        self.assertEqual(len(direct), 1, f"variante {self.NAME} ausente ou duplicada")
-        appended = direct[0]["sdkconfig_append"]
-        for flag in self.REQUIRED:
-            self.assertIn(flag, appended)
-        for flag in self.FORBIDDEN:
-            self.assertNotIn(flag, appended)
-        self.assertIn("CONFIG_PROFESSOR_VIRTUAL=y", appended)
-
-    def test_no_other_variant_enables_the_direct_spike(self):
+    def test_no_variant_references_the_removed_uvc_experiment(self):
         builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
         for build in builds:
-            if build["name"] == self.NAME:
-                continue
-            self.assertNotIn(
-                "CONFIG_PV_UVC_DIRECT_SPIKE=y", build["sdkconfig_append"], build["name"]
-            )
+            for fragment in self.FORBIDDEN_NAMES:
+                self.assertNotIn(fragment, build["name"], build["name"])
+            for flag in self.FORBIDDEN_FLAGS:
+                self.assertNotIn(flag, build["sdkconfig_append"], build["name"])
 
 
 if __name__ == "__main__":

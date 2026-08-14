@@ -1,0 +1,111 @@
+diff --git a/main/professor_virtual/pv_uvc_direct.cc b/main/professor_virtual/pv_uvc_direct.cc
+index 10b0a8d..9c67c18 100644
+--- a/main/professor_virtual/pv_uvc_direct.cc
++++ b/main/professor_virtual/pv_uvc_direct.cc
+@@ -27,6 +27,28 @@
+ 
+ #define TAG "PvUvcDirect"
+ 
++// ---------------------------------------------------------------------------
++// Contadores da telemetria de bancada do A/B alt-setting (rodada 23).
++// Definições FRACAS: um build SEM o patch de bancada no uvc_isoc.c linka com
++// contadores parados em zero; com o patch aplicado (definições fortes no
++// componente), as fortes vencem no link e os incrementos aparecem aqui. O
++// patch vive em docs/professor-virtual/evidencias/f2b/pv-patch-telemetria-
++// isoc.patch e NUNCA é versionado dentro de managed_components.
++// ---------------------------------------------------------------------------
++extern "C" {
++uint32_t __attribute__((weak)) pv_isoc_urb_completions = 0;
++uint32_t __attribute__((weak)) pv_isoc_pkts_data = 0;
++uint32_t __attribute__((weak)) pv_isoc_pkts_empty = 0;
++uint32_t __attribute__((weak)) pv_isoc_payload_bytes = 0;
++uint32_t __attribute__((weak)) pv_isoc_status_ok = 0;
++uint32_t __attribute__((weak)) pv_isoc_status_err = 0;
++uint32_t __attribute__((weak)) pv_isoc_status_skip = 0;
++uint32_t __attribute__((weak)) pv_isoc_hdr_invalid = 0;
++uint32_t __attribute__((weak)) pv_isoc_uvc_err = 0;
++uint32_t __attribute__((weak)) pv_isoc_eof_frames = 0;
++uint32_t __attribute__((weak)) pv_isoc_resubmit_fail = 0;
++}
++
+ namespace {
+ 
+ // ---------------------------------------------------------------------------
+@@ -63,7 +85,8 @@ constexpr size_t kRungCount = sizeof(kLadder) / sizeof(kLadder[0]);
+ // mundos. Hipotese: >4 URBs ISOC em voo estouram silenciosamente o agendador
+ // periodico do DWC2 (consistente com 100% do historico de bancada).
+ constexpr int kNumberOfUrbs = 4;
+-constexpr size_t kUrbSizeOnePacket = 3072;
++// BINARIO B do A/B (rodada 23): com o alt de 944 forcado, 1 pacote/URB = 944.
++constexpr size_t kUrbSizeOnePacket = 944;
+ 
+ // Frame buffers: alocados UMA vez no stream_open (uvc_host.c:853-856 — o
+ // format_select NÃO realoca), então o tamanho precisa caber o PIOR degrau:
+@@ -150,6 +173,19 @@ void ResetRungCounters() {
+     g_ev_overflow.store(0, std::memory_order_relaxed);
+     g_ev_underflow.store(0, std::memory_order_relaxed);
+     g_ev_xfer_err.store(0, std::memory_order_relaxed);
++    // Contadores do driver (patch de bancada): reset com o stream PARADO —
++    // escritor único é a task do driver, e entre degraus não há tráfego.
++    pv_isoc_urb_completions = 0;
++    pv_isoc_pkts_data = 0;
++    pv_isoc_pkts_empty = 0;
++    pv_isoc_payload_bytes = 0;
++    pv_isoc_status_ok = 0;
++    pv_isoc_status_err = 0;
++    pv_isoc_status_skip = 0;
++    pv_isoc_hdr_invalid = 0;
++    pv_isoc_uvc_err = 0;
++    pv_isoc_eof_frames = 0;
++    pv_isoc_resubmit_fail = 0;
+ }
+ 
+ // ---------------------------------------------------------------------------
+@@ -223,13 +259,20 @@ void PrintMemory(const char* etapa) {
+ }
+ 
+ void PrintStats(unsigned t_s) {
+-    printf("PV-UVC-STATS t=%us cb=%u bytes=%u vazios=%u overflow=%u underflow=%u xfer_err=%u\n",
+-           t_s, (unsigned)g_cb_frames.load(std::memory_order_relaxed),
+-           (unsigned)g_cb_bytes.load(std::memory_order_relaxed),
+-           (unsigned)g_cb_empty.load(std::memory_order_relaxed),
+-           (unsigned)g_ev_overflow.load(std::memory_order_relaxed),
+-           (unsigned)g_ev_underflow.load(std::memory_order_relaxed),
+-           (unsigned)g_ev_xfer_err.load(std::memory_order_relaxed));
++    printf(
++        "PV-UVC-STATS t=%us cb=%u bytes=%u vazios=%u overflow=%u underflow=%u xfer_err=%u | "
++        "urb_compl=%u pk_data=%u pk_empty=%u pk_bytes=%u st_ok=%u st_err=%u st_skip=%u "
++        "hdr_inv=%u uvc_err=%u eof=%u resub_fail=%u\n",
++        t_s, (unsigned)g_cb_frames.load(std::memory_order_relaxed),
++        (unsigned)g_cb_bytes.load(std::memory_order_relaxed),
++        (unsigned)g_cb_empty.load(std::memory_order_relaxed),
++        (unsigned)g_ev_overflow.load(std::memory_order_relaxed),
++        (unsigned)g_ev_underflow.load(std::memory_order_relaxed),
++        (unsigned)g_ev_xfer_err.load(std::memory_order_relaxed), (unsigned)pv_isoc_urb_completions,
++        (unsigned)pv_isoc_pkts_data, (unsigned)pv_isoc_pkts_empty, (unsigned)pv_isoc_payload_bytes,
++        (unsigned)pv_isoc_status_ok, (unsigned)pv_isoc_status_err, (unsigned)pv_isoc_status_skip,
++        (unsigned)pv_isoc_hdr_invalid, (unsigned)pv_isoc_uvc_err, (unsigned)pv_isoc_eof_frames,
++        (unsigned)pv_isoc_resubmit_fail);
+     fflush(stdout);
+ }
+ 
+@@ -710,12 +753,13 @@ void SpikeTask(void* arg) {
+     // 4-14; o diagnóstico independente apontou o flood como variável nunca
+     // controlada). A telemetria desta rodada é agregada: PV-UVC-STATS, 1 l/s.
+     esp_log_level_set("uvc", ESP_LOG_DEBUG);
+-    // E7 (rodada 21): uvc-isoc em DEBUG deliberadamente. Ponto cego achado no
+-    // A/B: com INFO, completions ISOC de zero bytes sao INVISIVEIS — "canal
+-    // mudo" e "URBs completando vazias" parecem identicos. O controle vivo
+-    // enxergava a diferenca porque tinha o flood ligado. O custo do flood e
+-    // aceito para responder UMA pergunta: ha completions no nosso binario?
+-    esp_log_level_set("uvc-isoc", ESP_LOG_DEBUG);
++    // Rodada 23 (A/B alt-setting, ordem do proprietario): NENHUM log por
++    // pacote — nem os LOGW ("frame error"/"usb err", que passariam em INFO).
++    // O nivel ERROR silencia tudo por-pacote; a informacao migra para os
++    // contadores agregados do patch de bancada (PV-UVC-STATS). A unica
++    // excecao e o LOGE de falha de RESSUBMISSAO adicionado pelo patch —
++    // evento raro e terminal, nunca flood.
++    esp_log_level_set("uvc-isoc", ESP_LOG_ERROR);
+     esp_log_level_set("uvc-bulk", ESP_LOG_DEBUG);
+     esp_log_level_set("uvc-frame", ESP_LOG_DEBUG);
+ 

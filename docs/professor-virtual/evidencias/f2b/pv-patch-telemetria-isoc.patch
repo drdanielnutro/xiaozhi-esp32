@@ -1,0 +1,103 @@
+--- /tmp/uvc_isoc_pristine.c	2026-08-13 17:15:15
++++ managed_components/espressif__usb_host_uvc/uvc_isoc.c	2026-08-13 17:15:15
+@@ -17,6 +17,22 @@
+ 
+ static const char *TAG = "uvc-isoc";
+ 
++// PV-PATCH-TELEMETRIA (F2B rodada 23; BANCADA, TEMPORARIO, NUNCA VERSIONAR):
++// contadores agregados lidos pelo spike (definicoes FORTES; o spike tem
++// fracas). Nenhum printf por pacote — só incrementos. Documentado em
++// docs/professor-virtual/evidencias/f2b/pv-patch-telemetria-isoc.patch.
++uint32_t pv_isoc_urb_completions = 0;
++uint32_t pv_isoc_pkts_data = 0;
++uint32_t pv_isoc_pkts_empty = 0;
++uint32_t pv_isoc_payload_bytes = 0;
++uint32_t pv_isoc_status_ok = 0;
++uint32_t pv_isoc_status_err = 0;
++uint32_t pv_isoc_status_skip = 0;
++uint32_t pv_isoc_hdr_invalid = 0;
++uint32_t pv_isoc_uvc_err = 0;
++uint32_t pv_isoc_eof_frames = 0;
++uint32_t pv_isoc_resubmit_fail = 0;
++
+ /**
+  * @brief Callback function for handling Isochronous USB transfers from a UVC camera.
+  *
+@@ -42,6 +58,7 @@
+ void isoc_transfer_callback(usb_transfer_t *transfer)
+ {
+     ESP_LOGD(TAG, "%s", __FUNCTION__);
++    pv_isoc_urb_completions++; // PV-PATCH
+     uvc_stream_t *uvc_stream = (uvc_stream_t *)transfer->context;
+ 
+     // USB_TRANSFER_STATUS_NO_DEVICE is set in transfer->status.
+@@ -61,6 +78,7 @@
+         // Check USB status
+         switch (isoc_desc->status) {
+         case USB_TRANSFER_STATUS_COMPLETED:
++            pv_isoc_status_ok++; // PV-PATCH
+             break;
+         case USB_TRANSFER_STATUS_NO_DEVICE:
+         case USB_TRANSFER_STATUS_CANCELED:
+@@ -69,12 +87,14 @@
+         case USB_TRANSFER_STATUS_ERROR:
+         case USB_TRANSFER_STATUS_OVERFLOW:
+         case USB_TRANSFER_STATUS_STALL:
++            pv_isoc_status_err++; // PV-PATCH
+             ESP_LOGW(TAG, "usb err %d", isoc_desc->status);
+             uvc_stream->single_thread.skip_current_frame = true;
+             goto next_isoc_packet; // Data corrupted
+ 
+         case USB_TRANSFER_STATUS_TIMED_OUT:
+         case USB_TRANSFER_STATUS_SKIPPED:
++            pv_isoc_status_skip++; // PV-PATCH
+             goto next_isoc_packet; // Skipped and timed out ISOC transfers are not an issue
+         default:
+             assert(false);
+@@ -84,6 +104,7 @@
+         const uvc_payload_header_t *payload_header = (const uvc_payload_header_t *)payload;
+         if (!uvc_frame_payload_header_validate(payload_header, isoc_desc->actual_num_bytes)) {
+             ESP_LOGD(TAG, "invalid UVC payload header, %02x, %02x, len:%d", payload[0], payload[1], isoc_desc->actual_num_bytes);
++            pv_isoc_hdr_invalid++; // PV-PATCH
+             uvc_stream->single_thread.skip_current_frame = true;
+             goto next_isoc_packet;
+         }
+@@ -95,11 +116,15 @@
+         if (payload_data_len == 0) {
+             // This is a zero-length packet, skip it
+             ESP_LOGD(TAG, "zero-length packet, skipping");
++            pv_isoc_pkts_empty++; // PV-PATCH
+             goto next_isoc_packet;
+         }
++        pv_isoc_pkts_data++;                        // PV-PATCH
++        pv_isoc_payload_bytes += payload_data_len;  // PV-PATCH
+ 
+         // Check for error flag
+         if (payload_header->bmHeaderInfo.error) {
++            pv_isoc_uvc_err++; // PV-PATCH
+             ESP_LOGW(TAG, "frame error");
+             uvc_stream->single_thread.skip_current_frame = true;
+         }
+@@ -170,6 +195,7 @@
+ 
+         // End of Frame. Pass the frame to user
+         if (payload_header->bmHeaderInfo.end_of_frame) {
++            pv_isoc_eof_frames++; // PV-PATCH
+             bool return_frame = true; // In case streaming is stopped ATM, we must return the frame
+ 
+             // Check if the user did not stop the stream in the meantime
+@@ -197,6 +223,13 @@
+     }
+ 
+     if (UVC_ATOMIC_LOAD(uvc_stream->dynamic.streaming)) {
+-        usb_host_transfer_submit(transfer); // Restart the transfer
++        // PV-PATCH: a ressubmissao IGNORAVA o retorno — uma falha aqui drena
++        // o pool de URBs silenciosamente ate o canal morrer. Evento raro e
++        // terminal: contador + LOGE (nunca flood).
++        const esp_err_t pv_submit_ret = usb_host_transfer_submit(transfer); // Restart the transfer
++        if (pv_submit_ret != ESP_OK) {
++            pv_isoc_resubmit_fail++;
++            ESP_EARLY_LOGE(TAG, "PV-PATCH resubmit fail 0x%x", pv_submit_ret);
++        }
+     }
+ }
