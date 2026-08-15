@@ -3,11 +3,21 @@
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <freertos/task.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
+#include <cstdio>
 #include <utility>
 
+#include "esp_video_device.h"
+#include "linux/videodev2.h"
+
 #include "board.h"
+#include "esp_jpeg_common.h"
+#include "esp_jpeg_enc.h"
 #include "jpg/image_to_jpeg.h"
 #include "jpg/jpeg_to_image.h"
 
@@ -36,8 +46,13 @@ constexpr UBaseType_t kPriority = 3;
 // acumulado é descartado em vez de virar rajada.
 constexpr TickType_t kPreviewIntervalTicks = pdMS_TO_TICKS(200);
 
-// Decisão F2-SensorFormat: qualidade 85 para caderno/A4 legível.
-constexpr uint8_t kJpegQuality = 85;
+// Ordem do proprietário (2026-08-15, supersede o q85 da decisão
+// F2-SensorFormat): extrair o potencial MÁXIMO da câmera provisória para
+// decidir mantê-la ou descartá-la — 100 no marco de avaliação (o ganho sobre
+// 95 concentra-se no ringing em bordas de texto, que é o que a extração lê;
+// o custo é só tamanho/tempo). Reduzir depois do veredito é uma linha. O
+// outro limitador era a subamostragem de croma — ver EncodeUyvyJpeg422.
+constexpr uint8_t kJpegQuality = 100;
 
 // O preview falha em série durante o warm-up de ~5 s do ISP (25 tentativas a
 // 5 fps). Loga uma vez a cada 25 falhas para não afogar o console.
@@ -54,6 +69,125 @@ void FreeCapture(PvCameraCaptureResult& result) {
         heap_caps_free(result.rgb);
     }
     result = PvCameraCaptureResult{};
+}
+
+// Codifica um frame UYVY em JPEG com croma 4:2:2, falando direto com o
+// esp_new_jpeg. Por que não usar o image_to_jpeg() do core: aquele caminho
+// fixa subamostragem 4:2:0, que descarta metade da resolução de cor — e o
+// UYVY do ISP já É 4:2:2, então 4:2:2 no JPEG preserva a cor na resolução em
+// que ela nasceu (o traço de caneta colorida é onde a diferença aparece;
+// 4:4:4 não acrescentaria nada, a fonte não tem mais croma que isso). Vive
+// aqui no módulo PV para não alterar o core compartilhado com o upstream.
+// Sucesso: devolve o JPEG em buffer de PSRAM cuja posse é do chamador.
+bool EncodeUyvyJpeg422(const uint8_t* src, uint16_t width, uint16_t height, uint8_t quality,
+                       uint8_t** out, size_t* out_len) {
+    const int size = static_cast<int>(width) * static_cast<int>(height) * 2;
+    uint8_t* yuyv = static_cast<uint8_t*>(jpeg_calloc_align(size, 16));
+    if (yuyv == nullptr) {
+        return false;
+    }
+    // UYVY (Cb Y0 Cr Y1) -> YUYV (Y0 Cb Y1 Cr), o packed 4:2:2 do encoder.
+    const uint8_t* s = src;
+    uint8_t* d = yuyv;
+    for (int i = 0; i < size; i += 4) {
+        d[0] = s[1];
+        d[1] = s[0];
+        d[2] = s[3];
+        d[3] = s[2];
+        s += 4;
+        d += 4;
+    }
+
+    jpeg_enc_config_t cfg = DEFAULT_JPEG_ENC_CONFIG();
+    cfg.width = width;
+    cfg.height = height;
+    cfg.src_type = JPEG_PIXEL_FORMAT_YCbYCr;
+    cfg.subsampling = JPEG_SUBSAMPLE_422;
+    cfg.quality = quality;
+    cfg.rotate = JPEG_ROTATE_0D;
+    cfg.task_enable = false;
+
+    jpeg_enc_handle_t handle = nullptr;
+    if (jpeg_enc_open(&cfg, &handle) != JPEG_ERR_OK) {
+        jpeg_free_align(yuyv);
+        return false;
+    }
+
+    const size_t out_cap = static_cast<size_t>(width) * height * 3 / 2 + 64 * 1024;
+    uint8_t* outbuf =
+        static_cast<uint8_t*>(heap_caps_malloc(out_cap, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (outbuf == nullptr) {
+        jpeg_enc_close(handle);
+        jpeg_free_align(yuyv);
+        return false;
+    }
+
+    int written = 0;
+    const jpeg_error_t ret =
+        jpeg_enc_process(handle, yuyv, size, outbuf, static_cast<int>(out_cap), &written);
+    jpeg_enc_close(handle);
+    jpeg_free_align(yuyv);
+    if (ret != JPEG_ERR_OK || written <= 0) {
+        heap_caps_free(outbuf);
+        return false;
+    }
+    *out = outbuf;
+    *out_len = static_cast<size_t>(written);
+    return true;
+}
+
+// Linha de base numérica do tuning (pedido do proprietário, 2026-08-15): a
+// cada captura, loga os valores EFETIVOS que o pipeline IPA deixou aplicados
+// no ISP do P4 — ganhos R/B do AWB, brilho, contraste, saturação e matiz. É o
+// insumo para o futuro A/B dessas variáveis: sem medir o ponto de partida,
+// não dá para saber onde há ganho real. Leitura pura (G_EXT_CTRLS) no device
+// do ISP; o esp_video conta referências no open, então abrir aqui não
+// reinicializa nada. Falha vira log e nada mais — telemetria nunca derruba a
+// captura.
+void LogIspTuningBaseline() {
+    static int isp_fd = -2;  // -2 = nunca tentou; -1 = tentou e falhou
+    if (isp_fd == -2) {
+        isp_fd = open(ESP_VIDEO_ISP1_DEVICE_NAME, O_RDONLY);
+        if (isp_fd < 0) {
+            ESP_LOGW(TAG, "Telemetria do ISP indisponível (open %s falhou, errno=%d)",
+                     ESP_VIDEO_ISP1_DEVICE_NAME, errno);
+            isp_fd = -1;
+        }
+    }
+    if (isp_fd < 0) {
+        return;
+    }
+    struct Item {
+        uint32_t id;
+        const char* name;
+    };
+    const Item items[] = {
+        {V4L2_CID_RED_BALANCE, "red"}, {V4L2_CID_BLUE_BALANCE, "blue"},
+        {V4L2_CID_BRIGHTNESS, "bri"},  {V4L2_CID_CONTRAST, "con"},
+        {V4L2_CID_SATURATION, "sat"},  {V4L2_CID_HUE, "hue"},
+    };
+    char line[112];
+    size_t used = 0;
+    for (const Item& item : items) {
+        struct v4l2_ext_control ctrl = {};
+        struct v4l2_ext_controls ctrls = {};
+        ctrl.id = item.id;
+        ctrls.ctrl_class = V4L2_CTRL_CLASS_USER;
+        ctrls.count = 1;
+        ctrls.controls = &ctrl;
+        const bool ok = ioctl(isp_fd, VIDIOC_G_EXT_CTRLS, &ctrls) == 0;
+        const int wrote = ok ? std::snprintf(line + used, sizeof(line) - used, " %s=%ld", item.name,
+                                             (long)ctrl.value)
+                             : std::snprintf(line + used, sizeof(line) - used, " %s=?", item.name);
+        if (wrote > 0) {
+            used += (size_t)wrote;
+        }
+        if (used >= sizeof(line)) {
+            break;
+        }
+    }
+    // red/blue em milésimos (denominador 1000 do V4L2_CID_RED_BALANCE_DEN).
+    ESP_LOGI(TAG, "PV-CAM-ISP%s", line);
 }
 
 }  // namespace
@@ -292,9 +426,19 @@ void PvCamera::RunCaptureJpeg() {
     // típico por página) e o alarme precoce de fragmentação: o maior bloco
     // livre importa mais que o total, porque a foto e o decodificado da tela
     // de revisão são alocações contíguas de centenas de KB / megabytes.
+    LogIspTuningBaseline();
+
     const int64_t encode_started_us = esp_timer_get_time();
-    const bool ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format,
-                                  kJpegQuality, &jpeg_data, &jpeg_len);
+    // UYVY (o formato real do ISP na 7B) vai pelo caminho 4:2:2 do PV; outro
+    // formato qualquer cai no image_to_jpeg do core (4:2:0), que trata todos.
+    bool ok;
+    if (raw.format == V4L2_PIX_FMT_UYVY) {
+        ok =
+            EncodeUyvyJpeg422(raw.data, raw.width, raw.height, kJpegQuality, &jpeg_data, &jpeg_len);
+    } else {
+        ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format, kJpegQuality,
+                           &jpeg_data, &jpeg_len);
+    }
     const int64_t encode_ms = (esp_timer_get_time() - encode_started_us) / 1000;
     const uint16_t width = raw.width;
     const uint16_t height = raw.height;
