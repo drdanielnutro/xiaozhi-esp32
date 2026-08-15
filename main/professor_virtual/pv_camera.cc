@@ -16,8 +16,6 @@
 #include "linux/videodev2.h"
 
 #include "board.h"
-#include "esp_jpeg_common.h"
-#include "esp_jpeg_enc.h"
 #include "jpg/image_to_jpeg.h"
 #include "jpg/jpeg_to_image.h"
 
@@ -46,13 +44,15 @@ constexpr UBaseType_t kPriority = 3;
 // acumulado é descartado em vez de virar rajada.
 constexpr TickType_t kPreviewIntervalTicks = pdMS_TO_TICKS(200);
 
-// Ordem do proprietário (2026-08-15, supersede o q85 da decisão
-// F2-SensorFormat): extrair o potencial MÁXIMO da câmera provisória para
-// decidir mantê-la ou descartá-la — 100 no marco de avaliação (o ganho sobre
-// 95 concentra-se no ringing em bordas de texto, que é o que a extração lê;
-// o custo é só tamanho/tempo). Reduzir depois do veredito é uma linha. O
-// outro limitador era a subamostragem de croma — ver EncodeUyvyJpeg422.
-constexpr uint8_t kJpegQuality = 100;
+// Decisão F2-SensorFormat: qualidade 85 para caderno/A4 legível.
+//
+// A rodada de 2026-08-15 subiu isto para 100 (com croma 4:2:2) e MEDIU o
+// resultado: arquivo 7,7x maior (157 KB -> 1,2 MB) e nitidez estatisticamente
+// igual (laplaciano 307 vs 281, dentro da variação entre fotos do MESMO
+// firmware, 42-388). Conclusão: a compressão nunca foi o gargalo — o limite
+// está na óptica/foco/resolução. Revertido para não pagar 7,7x no upload ao
+// backend por ganho nulo.
+constexpr uint8_t kJpegQuality = 85;
 
 // O preview falha em série durante o warm-up de ~5 s do ISP (25 tentativas a
 // 5 fps). Loga uma vez a cada 25 falhas para não afogar o console.
@@ -69,71 +69,6 @@ void FreeCapture(PvCameraCaptureResult& result) {
         heap_caps_free(result.rgb);
     }
     result = PvCameraCaptureResult{};
-}
-
-// Codifica um frame UYVY em JPEG com croma 4:2:2, falando direto com o
-// esp_new_jpeg. Por que não usar o image_to_jpeg() do core: aquele caminho
-// fixa subamostragem 4:2:0, que descarta metade da resolução de cor — e o
-// UYVY do ISP já É 4:2:2, então 4:2:2 no JPEG preserva a cor na resolução em
-// que ela nasceu (o traço de caneta colorida é onde a diferença aparece;
-// 4:4:4 não acrescentaria nada, a fonte não tem mais croma que isso). Vive
-// aqui no módulo PV para não alterar o core compartilhado com o upstream.
-// Sucesso: devolve o JPEG em buffer de PSRAM cuja posse é do chamador.
-bool EncodeUyvyJpeg422(const uint8_t* src, uint16_t width, uint16_t height, uint8_t quality,
-                       uint8_t** out, size_t* out_len) {
-    const int size = static_cast<int>(width) * static_cast<int>(height) * 2;
-    uint8_t* yuyv = static_cast<uint8_t*>(jpeg_calloc_align(size, 16));
-    if (yuyv == nullptr) {
-        return false;
-    }
-    // UYVY (Cb Y0 Cr Y1) -> YUYV (Y0 Cb Y1 Cr), o packed 4:2:2 do encoder.
-    const uint8_t* s = src;
-    uint8_t* d = yuyv;
-    for (int i = 0; i < size; i += 4) {
-        d[0] = s[1];
-        d[1] = s[0];
-        d[2] = s[3];
-        d[3] = s[2];
-        s += 4;
-        d += 4;
-    }
-
-    jpeg_enc_config_t cfg = DEFAULT_JPEG_ENC_CONFIG();
-    cfg.width = width;
-    cfg.height = height;
-    cfg.src_type = JPEG_PIXEL_FORMAT_YCbYCr;
-    cfg.subsampling = JPEG_SUBSAMPLE_422;
-    cfg.quality = quality;
-    cfg.rotate = JPEG_ROTATE_0D;
-    cfg.task_enable = false;
-
-    jpeg_enc_handle_t handle = nullptr;
-    if (jpeg_enc_open(&cfg, &handle) != JPEG_ERR_OK) {
-        jpeg_free_align(yuyv);
-        return false;
-    }
-
-    const size_t out_cap = static_cast<size_t>(width) * height * 3 / 2 + 64 * 1024;
-    uint8_t* outbuf =
-        static_cast<uint8_t*>(heap_caps_malloc(out_cap, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-    if (outbuf == nullptr) {
-        jpeg_enc_close(handle);
-        jpeg_free_align(yuyv);
-        return false;
-    }
-
-    int written = 0;
-    const jpeg_error_t ret =
-        jpeg_enc_process(handle, yuyv, size, outbuf, static_cast<int>(out_cap), &written);
-    jpeg_enc_close(handle);
-    jpeg_free_align(yuyv);
-    if (ret != JPEG_ERR_OK || written <= 0) {
-        heap_caps_free(outbuf);
-        return false;
-    }
-    *out = outbuf;
-    *out_len = static_cast<size_t>(written);
-    return true;
 }
 
 // Linha de base numérica do tuning (pedido do proprietário, 2026-08-15): a
@@ -429,16 +364,8 @@ void PvCamera::RunCaptureJpeg() {
     LogIspTuningBaseline();
 
     const int64_t encode_started_us = esp_timer_get_time();
-    // UYVY (o formato real do ISP na 7B) vai pelo caminho 4:2:2 do PV; outro
-    // formato qualquer cai no image_to_jpeg do core (4:2:0), que trata todos.
-    bool ok;
-    if (raw.format == V4L2_PIX_FMT_UYVY) {
-        ok =
-            EncodeUyvyJpeg422(raw.data, raw.width, raw.height, kJpegQuality, &jpeg_data, &jpeg_len);
-    } else {
-        ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format, kJpegQuality,
-                           &jpeg_data, &jpeg_len);
-    }
+    const bool ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format,
+                                  kJpegQuality, &jpeg_data, &jpeg_len);
     const int64_t encode_ms = (esp_timer_get_time() - encode_started_us) / 1000;
     const uint16_t width = raw.width;
     const uint16_t height = raw.height;

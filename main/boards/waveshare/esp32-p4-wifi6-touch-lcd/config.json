@@ -150,8 +150,8 @@
                 "CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y",
                 "CONFIG_PROFESSOR_VIRTUAL=y",
                 "CONFIG_LV_USE_KEYBOARD=y",
-                "CONFIG_CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE=y",
-                "CONFIG_CAMERA_OV5647_CUSTOMIZED_IPA_JSON_CONFIGURATION_FILE_PATH=\"main/professor_virtual/camera_tuning/ov5647_pv.json\""
+                "CONFIG_ESP_CONSOLE_UART_CUSTOM=y",
+                "CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600"
             ]
         },
         {

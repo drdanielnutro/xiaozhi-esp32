@@ -653,6 +653,16 @@ void PvCameraScreen::ApplyZoomLocked() {
         // no canto (alinhamento centralizado colocaria conteúdo à esquerda do
         // zero e confundiria os limites de rolagem).
         lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_DEFAULT);
+        // OBRIGATÓRIO e nesta ordem (LVGL 9.5.0): sair de CONTAIN não restaura
+        // a escala sozinho. `lv_image_set_inner_align()` chama
+        // `lv_image_set_scale(LV_SCALE_NONE)` ANTES de trocar o alinhamento, e
+        // `lv_image_set_scale()` tem a guarda `if (align >
+        // _LV_IMAGE_ALIGN_AUTO_TRANSFORM) return;` — com align ainda em
+        // CONTAIN (que vem depois do marcador no enum), a chamada é engolida.
+        // Resultado sem esta linha: o objeto fica 1280x960 e rolável, mas a
+        // foto continua desenhada a ~45%, encolhida no canto — um "100%"
+        // falso. Refazer a chamada DEPOIS de DEFAULT passa pela guarda.
+        lv_image_set_scale(image_, LV_SCALE_NONE);
         lv_obj_set_size(image_, decoded_width_, decoded_height_);
         const bool overflows = decoded_width_ > area_w || decoded_height_ > area_h;
         if (overflows) {
