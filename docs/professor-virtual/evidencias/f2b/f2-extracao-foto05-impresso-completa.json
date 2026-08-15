@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "id": "item_1",
+      "titulo": "Exercício 3",
+      "enunciado": "Enumere em ordem as etapas do plantio da cana-de-açúcar no Brasil Colônia.",
+      "tarefas": [
+        {
+          "id": "item_1_task_1",
+          "enunciado": "[ABERTA] Enumere em ordem as etapas do plantio da cana-de-açúcar no Brasil Colônia:\n( ) Novamente, as matas eram destruídas para dar lugar a novos canaviais.\n( ) Com ferramentas simples, as áreas destinadas às plantações de cana eram desmatadas.\n( ) Para não ter prejuízos, os colonizadores buscavam novas áreas de vegetação nativa.\n( ) Em seguida, faziam uso das queimadas para limpar o terreno.\n( ) A cana era cultivada sem um sistema de adubação e irrigação do solo, o que causava o desgaste do solo.\n( ) Após o uso intenso do solo para a plantação de cana, o terreno perdia os nutrientes.\n\n[IMAGEM: Tipo: alternativa visual | Composição: conjunto de seis caixas para numeração vinculadas a frases | Elementos: seis formas retangulares de cantos arredondados | Textos visíveis: não se aplica | Organização espacial: dispostas em uma coluna vertical à esquerda de cada sentença | Dados/valores: não se aplica | Cores/estilo: contorno em tom salmão claro sobre fundo branco | Resumo reconstituível: Seis caixas destinadas a numeração ordinal, posicionadas à esquerda de seis frases que descrevem etapas do plantio de cana-de-açúcar para fins de ordenação.]",
+          "origem": null,
+          "disciplina": "História",
+          "pagina": 119
+        }
+      ]
+    },
+    {
+      "id": "item_2",
+      "titulo": "Exercício 4",
+      "enunciado": "Leia o relato a seguir, escrito em 1627 pelo Frei Vicente de Salvador.\n\nEra grande a falta que em todo o estado do Brasil havia de graxa ou azeite de peixe, assim para reboque dos barcos e navios, como para se alumiarem os engenhos, que trabalham toda a noite, [...]\n\nFrei Vicente do Salvador. \"De como o governador veio de Pernambuco para a Bahia [...]\". In: *História do Brasil*, 20 dez. 1627. Livro primeiro. p. 117.",
+      "tarefas": [
+        {
+          "id": "item_2_task_1",
+          "enunciado": "[MC] O relato justifica as ações dos colonizadores em relação:\na) à extração do pau-brasil.\nb) ao cultivo da cana-de-açúcar.\nc) à caça às baleias.\n\n[IMAGEM: Tipo: alternativa visual | Composição: conjunto de três campos circulares para marcação de alternativas | Elementos: 3 círculos ou ovais | Textos visíveis: não se aplica | Organização espacial: alinhados verticalmente à esquerda das letras das alternativas a, b e c | Dados/valores: não se aplica | Cores/estilo: contorno alaranjado | Resumo reconstituível: Três campos circulares dispostos verticalmente para assinalar a alternativa correta em uma questão de múltipla escolha.]",
+          "origem": "Frei Vicente do Salvador. História do Brasil, 20 dez. 1627. p. 117",
+          "disciplina": "História",
+          "pagina": 119
+        }
+      ]
+    }
+  ],
+  "illegible_pages": []
+}
