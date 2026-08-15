@@ -25,7 +25,10 @@ readonly OTADATA_OFFSET=0x10d000
 readonly CHIP=esp32p4
 readonly BAUD=460800
 
-readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# ${BASH_SOURCE[0]} não existe no zsh (e com `set -u` vira erro fatal); $0 cobre
+# o caso de o script ser invocado como `zsh scripts/pv/flash_app.sh`.
+readonly SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
+readonly REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
 readonly IDF_PYTHON="$HOME/.espressif/tools/python/v6.0.2/venv/bin/python"
 
 APP_BIN="${1:-$REPO_ROOT/build/xiaozhi.bin}"
