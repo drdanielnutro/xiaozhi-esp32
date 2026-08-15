@@ -183,10 +183,16 @@ private:
     size_t decoded_stride_ = 0;
 
     // Geometria já aplicada ao objeto de imagem NO MODO PREVIEW; recalculada
-    // só quando o tamanho do frame muda (na prática, uma vez) ou quando a
-    // revisão mexeu no objeto (zerada em ExitReview).
+    // quando o tamanho do frame muda, quando a ÁREA muda de tamanho, ou
+    // quando a revisão mexeu no objeto (zerada em ExitReview).
+    //
+    // A área entra na chave porque comparar só o frame deixaria a escala
+    // velha para sempre se a área mudasse com o mesmo frame — e é exatamente
+    // isso que acontece quando os botões entram e saem em torno da imagem.
     uint16_t applied_width_ = 0;
     uint16_t applied_height_ = 0;
+    int32_t applied_area_w_ = 0;
+    int32_t applied_area_h_ = 0;
 
     Mode mode_ = Mode::Preview;
     bool capturing_ = false;

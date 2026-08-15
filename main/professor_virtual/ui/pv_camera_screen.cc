@@ -111,8 +111,10 @@ bool PvCameraScreen::EnsureScreenLocked() {
     lv_obj_set_style_pad_all(screen, kScreenPad, 0);
     lv_obj_set_style_pad_row(screen, kRowGap, 0);
 
-    auto* title = lv_label_create(screen);
-    lv_label_set_text(title, PvStrings::kCameraTitle);
+    // Sem título: o rótulo de estado logo abaixo já diz o que fazer, e numa
+    // tela paisagem exibindo página RETRATO a altura é o recurso escasso —
+    // cada linha a menos vira área de imagem. A constante kCameraTitle
+    // permanece em pv_strings.h para outros usos.
 
     // Rótulo ÚNICO de estado/medições. Fica sempre visível e sempre com uma
     // linha (LONG_CLIP): mudar de estado — "Processando...", "1280×960 · 342
@@ -240,6 +242,8 @@ bool PvCameraScreen::Show() {
     zoom_actual_size_ = false;
     applied_width_ = 0;
     applied_height_ = 0;
+    applied_area_w_ = 0;
+    applied_area_h_ = 0;
     lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
     lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
@@ -465,6 +469,8 @@ void PvCameraScreen::ExitReview() {
     // recalcular tudo do zero.
     applied_width_ = 0;
     applied_height_ = 0;
+    applied_area_w_ = 0;
+    applied_area_h_ = 0;
     lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
     lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
@@ -597,16 +603,18 @@ void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
     if (width == 0 || height == 0 || preview_area_ == nullptr || image_ == nullptr) {
         return;
     }
-    if (width == applied_width_ && height == applied_height_) {
-        return;
-    }
-
-    // O tamanho útil só é conhecido depois que o flex resolve o flex_grow da
-    // área de preview; a tela ainda pode não ter sido desenhada uma vez.
+    // A leitura da área vem ANTES do early-return: ela faz parte da chave do
+    // cache. `lv_obj_update_layout` sai de imediato quando não há layout
+    // invalidado, então medir a cada frame é barato.
     lv_obj_update_layout(screen_);
     const int32_t area_w = lv_obj_get_content_width(preview_area_);
     const int32_t area_h = lv_obj_get_content_height(preview_area_);
     if (area_w <= 0 || area_h <= 0) {
+        // Ainda sem layout resolvido; não marca o cache, tenta no próximo.
+        return;
+    }
+    if (width == applied_width_ && height == applied_height_ && area_w == applied_area_w_ &&
+        area_h == applied_area_h_) {
         return;
     }
 
@@ -630,6 +638,8 @@ void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
     lv_obj_center(image_);
     applied_width_ = width;
     applied_height_ = height;
+    applied_area_w_ = area_w;
+    applied_area_h_ = area_h;
     ESP_LOGI(TAG, "Preview %ux%u em %" LV_PRId32 "x%" LV_PRId32 " (escala %" LV_PRId32 "/256)",
              (unsigned)width, (unsigned)height, area_w, area_h, scale);
 }
