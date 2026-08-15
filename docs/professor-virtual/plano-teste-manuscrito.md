@@ -131,3 +131,30 @@ Ressalvas honestas: uma página, uma letra, uma condição de luz; respostas
 curtas (uma palavra). Falta exercitar respostas longas (a letra **c**, que
 pede uma frase), letra de criança mais nova, luz ruim e página amassada.
 Nada disso é bloqueio para a F3 — são casos a acompanhar.
+
+### Rodadas adicionais (mesma sessão) — letras b) e c)
+
+Continuação pedida pelo proprietário, já com o veredito da câmera decidido.
+Agora com o **estado da lição completo**: tarefa corrente declarada,
+`wrong_answer_count` da tarefa e `history_block` no formato exato de
+`_build_history_block`. Fato do código confirmado: o contador só incrementa
+em veredito `wrong` com foto (`main.py` → `increment_wrong_answer`), então
+`teach` não conta.
+
+| # | O que estava na folha | Tarefa | wac | histórico | Veredito | Explicação |
+|---|---|---|---|---|---|---|
+| 5 | "6 jovens" (cursivo apagado) | b) | 0 | o `teach` anterior | **correct** | "em cada uma das fileiras há exatamente 6 cantores" — e NÃO repetiu a dica do histórico |
+| 6 | "Multiplicar 3 por 6" (frase, letra imitando a de criança) | c) | 0 | vazio | **correct** | "**Multiplicar 3 por 6** (ou 3 × 6) é exatamente a melhor forma…" |
+
+A rodada #6 é a evidência mais forte do conjunto: o modelo **citou a frase
+manuscrita palavra por palavra**. Transcrição literal não é sorte nem
+inferência a partir do enunciado. Além disso, entendeu que a questão pedia o
+**método** (não o resultado) e gerou o apoio visual com `3 × 6 = 18`.
+
+Placar do teste: **5 de 5** — resposta errada, resposta certa, linha em
+branco, cursiva apagada e frase inteira em letra difícil.
+
+Nota de montagem: a rodada #6 foi feita após o proprietário trocar a barra de
+luz por um **ring light circular**, que deu iluminação mais uniforme. É uma
+melhoria barata e recomendável, mas NÃO é condição do resultado: as rodadas
+1-5 passaram com a iluminação anterior.
