@@ -232,9 +232,12 @@ class ExtractAllBlocksTest(unittest.TestCase):
 class BoardCameraFormatTest(unittest.TestCase):
     """O modo do sensor é parte do contrato da F2 e não pode vazar de volta.
 
-    Desde 2026-08-15 a variante de bancada testa RAW10 1920x1080 (decisão
-    PV-CamRes1080p); as demais variantes PV seguem em RAW10 1280x960 binning.
-    Em TODAS elas o RAW8 800x800 do assistente XiaoZhi continua proibido.
+    Todas as variantes PV usam RAW10 1280x960 binning. O modo 1920x1080 fica
+    COMPILADO mas NÃO é o default: a bancada de 2026-08-15 provou que o ISP do
+    P4 não sustenta esse modo (tempestade de "ISP: fifo overflow" na
+    interrupção, nenhum frame entregue, UI e toque sufocados) — decisão
+    PV-CamRes1080p-Reprovado. Em TODAS as variantes o RAW8 800x800 do
+    assistente XiaoZhi continua proibido.
     """
 
     RAW10_1280 = "CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS=y"
@@ -279,13 +282,14 @@ class BoardCameraFormatTest(unittest.TestCase):
             else:
                 self.fail(f"{build['name']}: default inesperado {defaults[0]}")
 
-    def test_bench_variant_is_the_1080p_experiment(self):
-        bench = [b for b in self.builds if b["name"] == self.BENCH]
-        self.assertEqual(len(bench), 1, f"variante {self.BENCH} ausente ou duplicada")
-        appended = bench[0]["sdkconfig_append"]
-        self.assertIn(self.RAW10_1920, appended)
-        self.assertIn(self.DEFAULT_1920, appended)
-        self.assertNotIn(self.DEFAULT_1280, appended)
+    def test_no_variant_defaults_to_1080p(self):
+        """Regressão da bancada de 2026-08-15: com 1920x1080 como default o ISP
+        do P4 entra em 'fifo overflow' contínuo, nenhum frame chega ao app e a
+        UI/toque ficam inutilizáveis. O modo pode ficar compilado (retomada
+        futura é trocar 1 linha), mas nunca ser o default sem nova bancada."""
+        for build in self.builds:
+            appended = build["sdkconfig_append"]
+            self.assertNotIn(self.DEFAULT_1920, appended, build["name"])
 
     def test_other_variants_keep_raw8_800x800(self):
         for build in self.builds:
