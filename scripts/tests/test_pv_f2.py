@@ -230,31 +230,62 @@ class ExtractAllBlocksTest(unittest.TestCase):
 
 
 class BoardCameraFormatTest(unittest.TestCase):
-    """O modo do sensor é parte do contrato da F2 e não pode vazar de volta."""
+    """O modo do sensor é parte do contrato da F2 e não pode vazar de volta.
 
-    RAW10_FLAGS = (
-        "CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS=y",
-        "CONFIG_CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1280X960_BINNING_45FPS=y",
-    )
+    Desde 2026-08-15 a variante de bancada testa RAW10 1920x1080 (decisão
+    PV-CamRes1080p); as demais variantes PV seguem em RAW10 1280x960 binning.
+    Em TODAS elas o RAW8 800x800 do assistente XiaoZhi continua proibido.
+    """
+
+    RAW10_1280 = "CONFIG_CAMERA_OV5647_MIPI_RAW10_1280X960_BINNING_45FPS=y"
+    DEFAULT_1280 = "CONFIG_CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1280X960_BINNING_45FPS=y"
+    RAW10_1920 = "CONFIG_CAMERA_OV5647_MIPI_RAW10_1920X1080_30FPS=y"
+    DEFAULT_1920 = "CONFIG_CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW10_1920X1080_30FPS=y"
     RAW8_ON = "CONFIG_CAMERA_OV5647_MIPI_RAW8_800X800_50FPS=y"
     RAW8_OFF = "CONFIG_CAMERA_OV5647_MIPI_RAW8_800X800_50FPS=n"
+    BENCH = "esp32-p4-wifi6-touch-lcd-7b-professor-virtual"
 
     def setUp(self):
         self.builds = json.loads(BOARD_CONFIG.read_text(encoding="utf-8"))["builds"]
         self.assertTrue(self.builds)
 
-    def test_professor_virtual_variants_use_raw10_1280x960(self):
+    def test_professor_virtual_variants_use_raw10(self):
         names = []
         for build in self.builds:
             if "professor-virtual" not in build["name"]:
                 continue
             names.append(build["name"])
             appended = build["sdkconfig_append"]
-            for flag in self.RAW10_FLAGS:
-                self.assertIn(flag, appended, build["name"])
+            self.assertIn(self.RAW10_1280, appended, build["name"])
             self.assertIn(self.RAW8_OFF, appended, build["name"])
             self.assertNotIn(self.RAW8_ON, appended, build["name"])
         self.assertTrue(names, "nenhuma variante professor-virtual no config.json")
+
+    def test_exactly_one_default_format_per_pv_variant(self):
+        """O driver traduz o índice do formato default por uma tabela paralela e,
+        se o formato escolhido não estiver COMPILADO, cai em silêncio no índice 0
+        (ov5647.c: get_ov5647_actual_format_index). Duas defaults, ou uma default
+        sem o formato correspondente, viram bug mudo de resolução."""
+        for build in self.builds:
+            if "professor-virtual" not in build["name"]:
+                continue
+            appended = build["sdkconfig_append"]
+            defaults = [f for f in appended if "_MIPI_DEFAULT_FMT_" in f and f.endswith("=y")]
+            self.assertEqual(len(defaults), 1, f"{build['name']}: {defaults}")
+            if defaults[0] == self.DEFAULT_1920:
+                self.assertIn(self.RAW10_1920, appended, build["name"])
+            elif defaults[0] == self.DEFAULT_1280:
+                self.assertIn(self.RAW10_1280, appended, build["name"])
+            else:
+                self.fail(f"{build['name']}: default inesperado {defaults[0]}")
+
+    def test_bench_variant_is_the_1080p_experiment(self):
+        bench = [b for b in self.builds if b["name"] == self.BENCH]
+        self.assertEqual(len(bench), 1, f"variante {self.BENCH} ausente ou duplicada")
+        appended = bench[0]["sdkconfig_append"]
+        self.assertIn(self.RAW10_1920, appended)
+        self.assertIn(self.DEFAULT_1920, appended)
+        self.assertNotIn(self.DEFAULT_1280, appended)
 
     def test_other_variants_keep_raw8_800x800(self):
         for build in self.builds:
@@ -262,7 +293,7 @@ class BoardCameraFormatTest(unittest.TestCase):
                 continue
             appended = build["sdkconfig_append"]
             self.assertIn(self.RAW8_ON, appended, build["name"])
-            for flag in self.RAW10_FLAGS:
+            for flag in (self.RAW10_1280, self.DEFAULT_1280, self.RAW10_1920, self.DEFAULT_1920):
                 self.assertNotIn(flag, appended, build["name"])
 
 
