@@ -1,0 +1,37 @@
+Auditoria Git da investigação UVC F2B
+Snapshot: 2026-08-14
+HEAD auditado: 360c4527d8a0e84c6e1c98d7e89cfb111d0f91b3
+
+Commits da investigação, em ordem:
+7acbf49 2026-08-10 F2B: abre a fase — rota UVC necessária (A/B físico), spike de bancada desenhado
+b7122e8 2026-08-10 F2B/T1: inspeção da API real do caminho UVC — fatos nas Notas, sdkconfig da variante spike fechada
+2f283fe 2026-08-10 F2B/T2: decisões estruturais ratificadas pelo Codex — 8 itens no decision-log
+234a37c 2026-08-10 F2B/T3: spike UVC implementado — módulo autocontido, variante de release e --all no extrator
+4325032 2026-08-11 F2B/T4: regressão verde — 3 builds (spike, PV, 7b original) + 21 testes host
+6cf4a94 2026-08-11 F2B/T5: rodada 1 falha (ISOC sem frames + assert no close) — tuning da rodada 2 aplicado
+299f3ec 2026-08-11 F2B/T5: causa raiz das rodadas 1-2 — checagem EOH rejeitava todos os pacotes; rodada 3
+b8ed27e 2026-08-11 F2B/T5: rodada 4 (diagnóstico) — religa o LOGD por pacote do uvc-isoc
+8f564c4 2026-08-11 F2B/T5: MARCO — 800x600 PASS na rodada 4 (1ª foto UVC pelo P4); rodada 5 = device único para a escada
+d3bb419 2026-08-11 F2B/T5: rodada 6 — replug da câmera por firmware (ciclo de VBUS antes do driver UVC)
+43b974c 2026-08-11 F2B/T5: rodada 6 executada — VBUS não é controlável por software nesta placa; consolida a narrativa da bancada
+1ea1863 2026-08-11 F2B/T5: rodada 10 — escada em laço disparada por replug (nenhum reboot no meio)
+9018939 2026-08-11 F2B/T5: rodada 11 — fps=10 via S_PARM + janela de captura de 30 s por degrau
+1c02248 2026-08-12 F2B/T5: rodada 12 — REVERTE o fps=10 (câmera emudece nesse modo); janela de 30 s mantida
+be9911d 2026-08-12 F2B/T5: consolida rodadas 7-14 e handoff para a estação Windows
+05d9b6e 2026-08-12 F2B/T5: diagnóstico independente do Codex — controle inválido (binários diferentes), aposta no pipe ISOC high-bandwidth
+ed94dec 2026-08-13 F2B/T5: rodada 15 — pilha 2.5.1 corrige as URBs (4 pacotes ISOC), canal segue mudo
+37f1dcf 2026-08-13 F2B/T5: rodada 16 — spike DIRETO de usb_host_uvc (sem esp_video), revisado
+360c452 2026-08-13 F2B/T5: rodadas 17-22 — causa raiz encontrada: corrida de timing no ISOC do DWC2/P4
+
+Estado do worktree antes da criação deste relatório:
+- As exclusões de pv_uvc_spike.{h,cc} e pv_uvc_direct.{h,cc} estavam staged.
+- A remoção dos ramos UVC de CMake, Kconfig, config.json, main.cc e testes estava modificada, mas não staged.
+- O encerramento em fase-2b.md, plano-firmware.md e decision-log.jsonl estava modificado, mas não commitado.
+- Portanto, o texto do diário que fala em “commit de encerramento” ainda não correspondia a um commit existente neste snapshot.
+
+Comandos usados para esta auditoria:
+git log --reverse --format='%h %ad %s' --date=short 7acbf49^..HEAD
+git status --short
+git diff --cached --name-status
+git diff --name-status
+git show e git diff nos commits e arquivos UVC citados no relatório

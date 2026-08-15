@@ -1,0 +1,461 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Relatório factual da investigação UVC — ESP32-P4 7B + NE-HD362",
+    "description": "Auditoria técnica dos testes UVC da F2B, separando observações, limitações e opinião.",
+    "generatedAt": "2026-08-14T11:50:25-03:00",
+    "sources": [
+      {
+        "id": "evidence_audit",
+        "label": "Recontagem dos logs e matriz factual dos ensaios",
+        "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/audit-uvc.sql",
+        "query": {
+          "engine": "SQLite-compatible VALUES snapshot",
+          "language": "sql",
+          "description": "Snapshot tabular conferido contra os logs brutos da F2B; não atribui causa.",
+          "executed_at": "2026-08-14T11:50:25-03:00",
+          "filters": [
+            "Somente evidências locais da F2B até a rodada 25",
+            "Pesquisas externas excluídas como prova de bancada"
+          ],
+          "metric_definitions": [
+            "stream_starts_without_new_frame = número de linhas Stream start no arquivo quando o mesmo arquivo contém zero linhas New frame!",
+            "timeout_lines = número literal de linhas Frame not received on time",
+            "new_frame_lines = número literal de linhas New frame!"
+          ]
+        }
+      },
+      {
+        "id": "phase_logbook",
+        "label": "Diário técnico da F2B",
+        "path": "docs/professor-virtual/fases/fase-2b.md"
+      },
+      {
+        "id": "git_audit",
+        "label": "Auditoria Git da implementação UVC",
+        "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/git-audit-f2b.txt"
+      },
+      {
+        "id": "decision_log",
+        "label": "Registro de decisões da F2B",
+        "path": ".claude/autonomy/decision-log.jsonl"
+      },
+      {
+        "id": "source_notes",
+        "label": "Notas de fonte, hashes e limitações",
+        "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/source-notes.md"
+      }
+    ],
+    "charts": [
+      {
+        "id": "official_attempts_chart",
+        "title": "Starts de stream sem frame no exemplo oficial",
+        "subtitle": "Contagem literal dos logs; cada arquivo termina durante a última iteração observada.",
+        "question": "Quantas iterações do exemplo oficial foram iniciadas sem qualquer linha New frame! em cada teste?",
+        "rationale": "As duas rodadas usam o mesmo aplicativo oficial e a mesma métrica, evitando comparar ensaios heterogêneos.",
+        "intent": "comparison",
+        "type": "bar",
+        "dataset": "official_example_counts",
+        "sourceId": "evidence_audit",
+        "encodings": {
+          "x": {
+            "field": "teste",
+            "type": "nominal",
+            "label": "Teste"
+          },
+          "y": {
+            "field": "stream_starts_without_new_frame",
+            "type": "quantitative",
+            "label": "Starts sem New frame!",
+            "format": "number"
+          },
+          "tooltip": [
+            {
+              "field": "timeout_lines",
+              "type": "quantitative",
+              "label": "Timeouts"
+            },
+            {
+              "field": "new_frame_lines",
+              "type": "quantitative",
+              "label": "New frame!"
+            }
+          ]
+        },
+        "valueFormat": "number",
+        "layout": "full"
+      }
+    ],
+    "tables": [
+      {
+        "id": "test_matrix_table",
+        "title": "Matriz cronológica dos testes UVC",
+        "subtitle": "Cada linha preserva a variável, a observação e o limite da conclusão.",
+        "dataset": "test_matrix",
+        "sourceId": "evidence_audit",
+        "defaultSort": {
+          "field": "ordem",
+          "direction": "asc"
+        },
+        "density": "dense",
+        "layout": "full",
+        "columns": [
+          {
+            "field": "ordem",
+            "label": "#",
+            "format": "number"
+          },
+          {
+            "field": "teste",
+            "label": "Teste",
+            "type": "text"
+          },
+          {
+            "field": "camada",
+            "label": "Camada",
+            "type": "text"
+          },
+          {
+            "field": "variavel",
+            "label": "Variável",
+            "type": "text"
+          },
+          {
+            "field": "resultado_factual",
+            "label": "Resultado factual",
+            "type": "text"
+          },
+          {
+            "field": "limite_da_conclusao",
+            "label": "Limite da conclusão",
+            "type": "text"
+          },
+          {
+            "field": "evidencia",
+            "label": "Evidência",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "blocks": [
+      {
+        "id": "report_title",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "evidence_audit",
+        "body": "# Relatório factual da investigação UVC — ESP32-P4 7B + NE-HD362\n\n**Auditoria de 14/08/2026.** Não foi demonstrada uma causa raiz. O resultado comprovado é mais restrito: a combinação NE-HD362 + Waveshare 7B + pilhas testadas não entregou captura repetível. Nos 19 logs brutos preservados há um único degrau PASS, correspondente a um JPEG válido de 800×600 e 32.405 bytes. O resultado não voltou a ocorrer, mas o ELF exato da rodada 4 não aparece novamente nos logs. Nenhuma captura válida em 1920×1080 ou acima foi preservada."
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "evidence_audit",
+        "body": "## Resumo técnico\n\nO experimento passou por três superfícies: spike V4L2/`esp_video`, spike direto de `usb_host_uvc` e exemplo oficial do ESP-IDF 6.0.2. Problemas reais de configuração, lifecycle e build foram corrigidos, mas nenhuma correção tornou a captura repetível. A rodada 24 registrou 133 starts e zero `New frame!`; a rodada 25, com `MULT=0` e payload=pipe=640, registrou 198 starts e zero `New frame!`."
+      },
+      {
+        "id": "official_chart_block",
+        "type": "chart",
+        "layout": "full",
+        "chartId": "official_attempts_chart"
+      },
+      {
+        "id": "key_findings",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "evidence_audit",
+        "body": "## Achados principais\n\n- A câmera enumerou, anunciou formatos e abriu streams no P4.\n- O único JPEG íntegro de bancada tem 800×600 e 32.405 bytes; o resultado não foi reproduzido.\n- O exemplo oficial reproduziu a ausência de frames, portanto o código do Professor Virtual não é requisito para a falha.\n- A rodada 23 mediu completions e dados no driver quando o aplicativo via zero callbacks de frame; o termo anterior ‘canal mudo’ não prova ausência de tráfego.\n- O teste corretamente casado em `MULT=0` também falhou; high-bandwidth/MULT não explica sozinho o resultado.\n- Timing, remontagem de payload, HALTED/FLUSH/CANCELED, câmera, placa e elétrica continuam sem causalidade demonstrada."
+      },
+      {
+        "id": "scope_definitions",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "source_notes",
+        "body": "## Escopo, dados e definições\n\n‘Confirmado’ significa sustentado por log bruto, imagem, diff, código ou hash local. O diário registra 25 rodadas, enquanto o diretório contém 19 logs; esses números são apresentados separadamente. Pesquisas externas foram excluídas como prova de bancada. Zero callback de frame no app não foi convertido em zero transação USB."
+      },
+      {
+        "id": "test_matrix_block",
+        "type": "table",
+        "layout": "full",
+        "tableId": "test_matrix_table"
+      },
+      {
+        "id": "implementation_work",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "git_audit",
+        "body": "## O que foi feito\n\nFoi implementado um spike V4L2 com escada de resoluções, validação JPEG e dump; depois, um spike direto sobre `usb_host_uvc` com buffers em PSRAM e telemetria agregada. Foram adicionadas variantes de build, gates Kconfig/CMake e testes do extrator. Em bancada, variaram-se EOH, prioridades, buffers, lifecycle, FPS, janela de captura, versão da pilha, quantidade/tamanho de URBs, sequência de VBUS, alt settings e nível de log. Por fim, o exemplo oficial foi executado fora do XiaoZhi."
+      },
+      {
+        "id": "what_failed",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "evidence_audit",
+        "body": "## O que deu errado\n\nProblemas confirmados incluíram rejeição por EOH, assert no teardown, falha de `open→close→open`, daemon USB que podia encerrar no unplug e requisito CMake condicionado tarde demais. Esses pontos foram corrigidos ou contornados. A falha restante foi a ausência de um MJPEG completo entregue ao aplicativo: conforme o ensaio, apareceram timeouts, `frame error`, headers inválidos ou completions sem frame. Nenhum desses sintomas localiza sozinho a causa."
+      },
+      {
+        "id": "withdrawn_conclusions",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "decision_log",
+        "body": "## Conclusões retiradas\n\nA afirmação ‘causa raiz = corrida de timing’ foi retirada: DEBUG mudou o comportamento, mas não identifica uma corrida específica. A afirmação ‘high-bandwidth/MULT é a causa’ também excede os dados, pois a rodada 25 falhou em MULT=0 corretamente casado. Também não foi provado que câmera e placa estão perfeitas, nem que o defeito geral do software USB foi completamente mapeado."
+      },
+      {
+        "id": "methodology",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "source_notes",
+        "body": "## Metodologia e qualidade da evidência\n\nAs contagens foram refeitas diretamente nos logs. Três falhas metodológicas foram preservadas: um controle comparou binário diferente do PASS real; silêncio no app foi confundido com ausência de tráfego; e o primeiro teste MULT=0 manteve payload commitado maior que o pipe. O gráfico foi limitado às rodadas 24–25 porque os demais ensaios diferem em duração, pilha e protocolo."
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "source_notes",
+        "body": "## Limitações e testes ausentes\n\nNão há evidência local de execução com segunda câmera, câmera oficial conhecida, transporte BULK, segunda placa, hub alimentado, OTG-C, captura de barramento, patch real de `HCCHAR.EC/MULT` ou matriz de dez partidas frias. O patch exato alt 4/640 da rodada 25 não foi arquivado, embora os parâmetros estejam registrados no log de runtime. Essas lacunas impedem generalização para toda câmera UVC ou todo ESP32-P4."
+      },
+      {
+        "id": "recommendation",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "evidence_audit",
+        "body": "## Opinião e recomendação\n\nÉ correto encerrar a NE-HD362/UVC como rota ativa do Professor Virtual na pilha atual: o requisito exigia alta resolução repetível e o resultado foi um único frame 800×600 que não voltou a ser obtido. O mesmo ELF bit a bit não foi reexecutado nos logs. Isso não é uma prova de impossibilidade geral da UVC. A rota só deveria ser reaberta diante de uma mudança material: outra câmera/placa, transporte diferente, correção nova do stack/HCD ou captura de barramento que permita localizar a falha."
+      },
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "layout": "full",
+        "body": "## Questões que continuam abertas\n\n1. Os bytes já chegam incorretos do barramento ou são classificados/remontados incorretamente no host?\n2. A mesma placa funciona de forma repetível com uma câmera UVC da lista oficial ou com transporte BULK?\n3. Uma segunda unidade da NE-HD362 ou uma segunda 7B reproduz exatamente o comportamento?\n4. Uma alteração explícita no HCD muda o resultado sob protocolo repetível?"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-14T11:50:25-03:00",
+    "status": "ready",
+    "datasets": {
+      "official_example_counts": [
+        {
+          "teste": "Rodada 24",
+          "stream_starts_without_new_frame": 133,
+          "timeout_lines": 132,
+          "new_frame_lines": 0
+        },
+        {
+          "teste": "Rodada 25",
+          "stream_starts_without_new_frame": 198,
+          "timeout_lines": 197,
+          "new_frame_lines": 0
+        }
+      ],
+      "test_matrix": [
+        {
+          "ordem": 1,
+          "teste": "Rodada 1",
+          "camada": "V4L2 2.0.1 / UVC 2.4.2",
+          "variavel": "baseline; 2 URBs de 3072 B",
+          "evidencia": "t5-rodada1-isoc-sem-frames.log",
+          "resultado_factual": "Enumeração e formato funcionaram; zero frame; 19 asserts usbh_dev_close no log.",
+          "limite_da_conclusao": "O baseline e o teardown falharam."
+        },
+        {
+          "ordem": 2,
+          "teste": "Rodada 2",
+          "camada": "V4L2 2.0.1 / UVC 2.4.2",
+          "variavel": "DEBUG e EOH ligado",
+          "evidencia": "t5-rodada2-eoh-rejeita-pacotes.log",
+          "resultado_factual": "13.140 headers inválidos registrados; muitos eram 0c 4d.",
+          "limite_da_conclusao": "A checagem EOH rejeitava payloads desta câmera."
+        },
+        {
+          "ordem": 3,
+          "teste": "Rodada 3",
+          "camada": "V4L2",
+          "variavel": "EOH desligado e dreno",
+          "evidencia": "fase-2b.md; sem log separado",
+          "resultado_factual": "Diário registra escada sem crash e sem frame.",
+          "limite_da_conclusao": "Força menor por ausência de log bruto individual."
+        },
+        {
+          "ordem": 4,
+          "teste": "Rodada 4",
+          "camada": "V4L2 + DEBUG por pacote",
+          "variavel": "replug físico fresco",
+          "evidencia": "t5-rodada4-800x600-pass.log + JPEG",
+          "resultado_factual": "Um JPEG 800×600 de 32.405 B; 15.011 frame error; quatro opens seguintes falharam.",
+          "limite_da_conclusao": "Prova uma captura possível; ela não voltou a ocorrer, mas o mesmo ELF não foi reexecutado nos logs."
+        },
+        {
+          "ordem": 5,
+          "teste": "Rodada 5",
+          "camada": "V4L2",
+          "variavel": "device único; reconfiguração",
+          "evidencia": "t5-rodada5-ciclo-ok-camera-travada.log",
+          "resultado_factual": "Cinco degraus reconfigurados; cinco falhas sem frame.",
+          "limite_da_conclusao": "Reopen deixou de bloquear, mas a captura não apareceu."
+        },
+        {
+          "ordem": 6,
+          "teste": "Rodada 6",
+          "camada": "V4L2",
+          "variavel": "root port inicialmente sem power",
+          "evidencia": "t5-rodada6-vbus-nao-destrava.log",
+          "resultado_factual": "Enumeração ocorreu; cinco falhas sem frame.",
+          "limite_da_conclusao": "O comando de root port não recuperou o stream neste ensaio."
+        },
+        {
+          "ordem": 7,
+          "teste": "Rodadas 7–14",
+          "camada": "V4L2",
+          "variavel": "replug, reset, laço, fps 10, janela 30 s",
+          "evidencia": "run11, run13, run14 e diário",
+          "resultado_factual": "run11 teve frame errors; runs 13/14 sem PASS; fps 10 revertido.",
+          "limite_da_conclusao": "Nenhuma captura válida; nem toda rodada tem log separado."
+        },
+        {
+          "ordem": 8,
+          "teste": "Rodada 15",
+          "camada": "V4L2 2.3.0 / UVC 2.5.1",
+          "variavel": "URBs de 4 pacotes",
+          "evidencia": "t5-run15-stack251-silencio.log",
+          "resultado_factual": "49 alocações com 4 pacotes; 47 RUNG FAIL; zero PASS.",
+          "limite_da_conclusao": "A geometria antiga de 1 pacote não explica sozinha a falha."
+        },
+        {
+          "ordem": 9,
+          "teste": "Rodada 17",
+          "camada": "Controle V4L2 2.0.1/2.4.2",
+          "variavel": "binário com flood DEBUG",
+          "evidencia": "t5-run17-controle-242-canal-vivo.log",
+          "resultado_factual": "81.798 linhas frame error; zero frame válido no arquivo.",
+          "limite_da_conclusao": "Houve atividade, não captura válida."
+        },
+        {
+          "ordem": 10,
+          "teste": "Rodada 18",
+          "camada": "Direto UVC 2.5.1",
+          "variavel": "8 URBs; 1 pacote de 3072 B",
+          "evidencia": "t5-run18-e1-urb1pacote-mudo.log",
+          "resultado_factual": "Alocação confirma 1 pacote; stats do app em zero; zero PASS.",
+          "limite_da_conclusao": "Igualar a geometria não restaurou a captura."
+        },
+        {
+          "ordem": 11,
+          "teste": "Rodada 19",
+          "camada": "Direto UVC 2.5.1",
+          "variavel": "sem sequência de VBUS",
+          "evidencia": "t5-run19-e2-sem-vbus-mudo.log",
+          "resultado_factual": "Stats do app em zero; zero PASS.",
+          "limite_da_conclusao": "Retirar a sequência de VBUS não restaurou a captura."
+        },
+        {
+          "ordem": 12,
+          "teste": "Rodada 20",
+          "camada": "Direto UVC 2.4.2",
+          "variavel": "pilha antiga",
+          "evidencia": "t5-run20-e5lite-242-mudo.log",
+          "resultado_factual": "Zero PASS; final registra desconexão e daemon vivo.",
+          "limite_da_conclusao": "Trocar somente a pilha não restaurou a captura."
+        },
+        {
+          "ordem": 13,
+          "teste": "Rodada 21",
+          "camada": "Direto UVC 2.4.2",
+          "variavel": "4 URBs",
+          "evidencia": "t5-run21-e6-4urbs-mudo.log",
+          "resultado_factual": "Zero PASS; final registra desconexão e daemon vivo.",
+          "limite_da_conclusao": "Quatro URBs não restauraram a captura."
+        },
+        {
+          "ordem": 14,
+          "teste": "Rodada 22",
+          "camada": "Direto UVC 2.4.2",
+          "variavel": "DEBUG por pacote",
+          "evidencia": "t5-run22-e7-flood-acorda-canal.log",
+          "resultado_factual": "10.484 linhas frame error; zero frame válido.",
+          "limite_da_conclusao": "O log mudou o observado, mas não identifica a causa."
+        },
+        {
+          "ordem": 15,
+          "teste": "Rodada 23A",
+          "camada": "Direto UVC 2.5.1 instrumentado",
+          "variavel": "high-bandwidth automático",
+          "evidencia": "t5-run23a-controle-hb-headers-invalidos.log",
+          "resultado_factual": "t=17 s: 248.915 completions, 13.202 pacotes com dados, 235.713 headers inválidos; zero frame.",
+          "limite_da_conclusao": "O canal tinha tráfego; a perda não foi localizada."
+        },
+        {
+          "ordem": 16,
+          "teste": "Rodada 23B",
+          "camada": "Direto UVC 2.5.1 instrumentado",
+          "variavel": "alt 6; 944 B; MULT=0",
+          "evidencia": "t5-run23b-alt944-mult0-headers-invalidos.log",
+          "resultado_factual": "t=17 s: 248.911 completions, 40.778 pacotes com dados, 208.133 headers inválidos; zero frame.",
+          "limite_da_conclusao": "Payload maior que pipe; teste não valida MULT=0 sozinho."
+        },
+        {
+          "ordem": 17,
+          "teste": "Rodada 24",
+          "camada": "Exemplo oficial IDF 6.0.2",
+          "variavel": "seleção automática",
+          "evidencia": "t5-run24-exemplo-oficial-idf602-mudo.log",
+          "resultado_factual": "133 starts; 132 timeouts; zero New frame!",
+          "limite_da_conclusao": "O exemplo oficial também falhou nesta combinação."
+        },
+        {
+          "ordem": 18,
+          "teste": "Rodada 25",
+          "camada": "Exemplo oficial + patch de alt",
+          "variavel": "alt 4; payload=pipe=640; MULT=0",
+          "evidencia": "t5-run25-exemplo-oficial-alt640-mult0-mudo.log",
+          "resultado_factual": "198 starts; 197 timeouts; zero New frame!",
+          "limite_da_conclusao": "MULT=0 casado não resolveu; causa segue aberta."
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "evidence_audit",
+      "label": "Recontagem dos logs e matriz factual dos ensaios",
+      "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/audit-uvc.sql",
+      "query": {
+        "engine": "SQLite-compatible VALUES snapshot",
+        "language": "sql",
+        "description": "Snapshot tabular conferido contra os logs brutos da F2B; não atribui causa.",
+        "executed_at": "2026-08-14T11:50:25-03:00",
+        "filters": [
+          "Somente evidências locais da F2B até a rodada 25",
+          "Pesquisas externas excluídas como prova de bancada"
+        ],
+        "metric_definitions": [
+          "stream_starts_without_new_frame = número de linhas Stream start no arquivo quando o mesmo arquivo contém zero linhas New frame!",
+          "timeout_lines = número literal de linhas Frame not received on time",
+          "new_frame_lines = número literal de linhas New frame!"
+        ]
+      }
+    },
+    {
+      "id": "phase_logbook",
+      "label": "Diário técnico da F2B",
+      "path": "docs/professor-virtual/fases/fase-2b.md"
+    },
+    {
+      "id": "git_audit",
+      "label": "Auditoria Git da implementação UVC",
+      "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/git-audit-f2b.txt"
+    },
+    {
+      "id": "decision_log",
+      "label": "Registro de decisões da F2B",
+      "path": ".claude/autonomy/decision-log.jsonl"
+    },
+    {
+      "id": "source_notes",
+      "label": "Notas de fonte, hashes e limitações",
+      "path": "docs/professor-virtual/relatorios/uvc-2026-08-14/source-notes.md"
+    }
+  ]
+}

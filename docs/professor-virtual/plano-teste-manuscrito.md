@@ -87,3 +87,47 @@ serviria para qualquer resposta; mesmo veredito para resposta certa e errada
 Fotos, JSON da extração e JSON de cada tutoria em
 `docs/professor-virtual/evidencias/f2b/`, com a anotação do que foi escrito à
 mão em cada rodada.
+
+---
+
+## RESULTADO — 2026-08-15: **PASSOU**
+
+Executado com a página 106 ("MÃOS À OBRA!", coral em fileiras, 4 questões
+abertas), foto da placa (OV5647 CSI 1280×960, q85, tuning default), girada
+90° para a vertical antes do envio. Resposta escrita **a lápis**, traço
+fraco. Modelo da tutoria: `gemini-flash-latest`. Extração: `gemini-pro-latest`.
+
+Nenhuma imagem foi cortada: a API recebeu sempre a **página inteira**
+(960×1280 após rotação). Os recortes existentes nas evidências foram usados
+apenas para leitura humana.
+
+| # | O que estava na folha | Tarefa declarada | Tentativa | Veredito | Explicação |
+|---|---|---|---|---|---|
+| 1 | "Quatro" (errado) | a) | 1ª | **wrong** | dica sem revelar: "conte quantos degraus: o de baixo, o do meio e o de cima" |
+| 2 | *nada* (linha vazia) | b) | 1ª | **teach** | foi ensinar, não julgou |
+| 3 | "Quatro" (errado) | a) | 3ª | **wrong** | "são 3 fileiras! **Apague e escreva 3**" |
+| 4 | "Três" (correto) | a) | 1ª | **correct** | "Você contou certinho: 3 fileiras" |
+
+Todos os critérios de aceitação foram cumpridos:
+
+- **Nenhum `unidentifiable`.**
+- **Vereditos se diferenciaram** entre resposta errada (#1) e correta (#4),
+  com a MESMA chamada e mudando só o que estava escrito a lápis. É a prova
+  de que o modelo lê o CONTEÚDO, não apenas detecta que há tinta.
+- **Discriminação por tarefa provada** (#1 vs #2): mesma foto, perguntas
+  diferentes, vereditos diferentes e coerentes com cada linha. Como não há
+  histórico entre chamadas, a diferença só pode vir de olhar a linha certa.
+- **Reconhecimento de escrita existente** (#3): "apague e escreva 3" só faz
+  sentido se viu algo escrito.
+
+### Conclusão
+
+A **OV5647 CSI 1280×960 lê manuscrito a lápis** com qualidade suficiente
+para o laço central do produto. A premissa que motivou a F2B — "a CSI é
+insuficiente e exige câmera UVC" — está **refutada por evidência direta**,
+com o código real do backend.
+
+Ressalvas honestas: uma página, uma letra, uma condição de luz; respostas
+curtas (uma palavra). Falta exercitar respostas longas (a letra **c**, que
+pede uma frase), letra de criança mais nova, luz ruim e página amassada.
+Nada disso é bloqueio para a F3 — são casos a acompanhar.

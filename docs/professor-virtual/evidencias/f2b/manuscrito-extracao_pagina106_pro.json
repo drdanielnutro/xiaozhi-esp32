@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "item_1",
+      "titulo": "Mãos à obra - Exercício 1",
+      "enunciado": "1 Lílian é regente de um coral juvenil. No ensaio, ela organizou os cantores, lado a lado, em fileiras.\n\n[IMAGEM: Tipo: ilustração | Composição: desenho de um coral juvenil disposto em degraus com uma regente à frente | Elementos: regente (mulher adulta), cantores (jovens/crianças), pódio, estante de partitura, degraus (arquibancada) | Textos visíveis: não se aplica | Organização espacial: regente na parte inferior virada para o coral; coral organizado em três fileiras horizontais (degraus), uma acima da outra | Dados/valores: 3 fileiras; 6 cantores em cada fileira, totalizando 18 cantores | Cores/estilo: desenho colorido em estilo cartoon | Resumo reconstituível: ilustração colorida em estilo cartoon mostrando uma regente de frente para um coral juvenil. O coral está disposto em uma arquibancada com 3 degraus (fileiras). Em cada degrau há exatamente 6 jovens cantando lado a lado.]\n\nAgora, responda às perguntas a seguir.",
+      "tarefas": [
+        {
+          "id": "item_1_task_1",
+          "enunciado": "[ABERTA] a) A regente Lílian organizou os jovens em quantas fileiras?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_2",
+          "enunciado": "[ABERTA] b) Quantos jovens ficaram em cada fileira?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_3",
+          "enunciado": "[ABERTA] c) Escreva uma forma de determinar o total de jovens presentes no ensaio usando a quantidade de fileiras e a quantidade de estudantes em cada uma delas.",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_4",
+          "enunciado": "[ABERTA] d) Quantos jovens havia no ensaio?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        }
+      ]
+    }
+  ],
+  "illegible_pages": []
+}

@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "item_1",
+      "titulo": "MÃOS À OBRA! - Exercício 1",
+      "enunciado": "**MÃOS À OBRA!**\n\n1. Lilian é regente de um coral juvenil. No ensaio, ela organizou os cantores, lado a lado, em fileiras.\n\n[IMAGEM: Tipo: ilustração | Composição: grupo de crianças em um coral dispostas em fileiras horizontais sobre degraus de um palco | Elementos: 18 crianças cantando, uma regente (Lilian) segurando uma batuta, uma estante de partituras, degraus, cortina vermelha ao fundo | Textos visíveis: não se aplica | Organização espacial: as crianças estão organizadas em três fileiras horizontais paralelas de seis integrantes cada; a regente está posicionada à direita do grupo | Dados/valores: 3 fileiras com 6 crianças por fileira; totalizando 18 crianças | Cores/estilo: ilustração colorida em estilo cartoon, com traços definidos e cores vibrantes | Resumo reconstituível: ilustração de um coral composto por 18 crianças organizadas em 3 fileiras iguais de 6 pessoas. À direita, encontra-se a regente Lilian com sua batuta e estante de partitura.]\n\nAgora, responda às perguntas a seguir.",
+      "tarefas": [
+        {
+          "id": "item_1_task_1",
+          "enunciado": "[ABERTA] a) A regente Lilian organizou os jovens em quantas fileiras?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_2",
+          "enunciado": "[ABERTA] b) Quantos jovens ficaram em cada fileira?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_3",
+          "enunciado": "[ABERTA] c) Escreva uma forma de determinar o total de jovens presentes no ensaio usando a quantidade de fileiras e a quantidade de estudantes em cada uma delas.",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_4",
+          "enunciado": "[ABERTA] d) Quantos jovens havia no ensaio?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        }
+      ]
+    }
+  ],
+  "illegible_pages": []
+}

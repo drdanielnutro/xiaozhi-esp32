@@ -1,0 +1,40 @@
+{
+  "items": [
+    {
+      "id": "item_1",
+      "titulo": "MÃOS À OBRA! - Exercício 1",
+      "enunciado": "**MÃOS À OBRA!**\n\n1 Lilian é regente de um coral juvenil. No ensaio, ela organizou os cantores, lado a lado, em fileiras.\n\n[IMAGEM: Tipo: ilustração | Composição: um coral juvenil organizado em fileiras sobre degraus de um palco com uma regente à frente | Elementos: 20 crianças cantando, uma regente (mulher com batuta), patamares do palco, cortinas vermelhas ao fundo | Textos visíveis: não se aplica | Organização espacial: as crianças estão dispostas em 4 fileiras horizontais; cada fileira está em um degrau diferente e contém 5 crianças; a regente está posicionada à frente e à esquerda do grupo | Dados/valores: 4 fileiras de 5 crianças cada, totalizando 20 crianças cantoras | Cores/estilo: ilustração colorida em estilo cartoon infantil | Resumo reconstituível: Ilustração de um coral com 20 crianças organizadas em uma grade de 4 fileiras por 5 colunas sobre os degraus de um palco, sendo regidas por uma mulher posicionada à frente do grupo.]\n\nAgora, responda às perguntas a seguir.",
+      "tarefas": [
+        {
+          "id": "item_1_task_1",
+          "enunciado": "[ABERTA] Agora, responda às perguntas a seguir.\na) A regente Lilian organizou os jovens em quantas fileiras?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_2",
+          "enunciado": "[ABERTA] Agora, responda às perguntas a seguir.\nb) Quantos jovens ficaram em cada fileira?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_3",
+          "enunciado": "[ABERTA] Agora, responda às perguntas a seguir.\nc) Escreva uma forma de determinar o total de jovens presentes no ensaio usando a quantidade de fileiras e a quantidade de estudantes em cada uma delas.",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        },
+        {
+          "id": "item_1_task_4",
+          "enunciado": "[ABERTA] Agora, responda às perguntas a seguir.\nd) Quantos jovens havia no ensaio?",
+          "origem": null,
+          "disciplina": "Matemática",
+          "pagina": 106
+        }
+      ]
+    }
+  ],
+  "illegible_pages": []
+}
