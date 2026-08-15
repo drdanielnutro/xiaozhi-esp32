@@ -16,6 +16,8 @@
 #include "linux/videodev2.h"
 
 #include "board.h"
+#include "esp_jpeg_common.h"
+#include "esp_jpeg_enc.h"
 #include "jpg/image_to_jpeg.h"
 #include "jpg/jpeg_to_image.h"
 
@@ -58,6 +60,22 @@ constexpr uint8_t kJpegQuality = 85;
 // 5 fps). Loga uma vez a cada 25 falhas para não afogar o console.
 constexpr uint32_t kPreviewFailureLogInterval = 25;
 
+// A câmera é montada girada em relação à página: a foto sai DEITADA. Isso não
+// atrapalha a leitura de texto pelo backend, mas quebra a interpretação
+// ESPACIAL — medido em 2026-08-15 com o código real: a mesma foto deitada fez
+// o modelo descrever a ilustração como "4 fileiras de 5, total 20"; girada,
+// acertou "3 fileiras de 6, total 18". Como essa descrição vira o contexto
+// visual do tutor, o erro reprovaria uma criança que respondeu certo — falha
+// silenciosa. Vale para qualquer figura, tabela, gráfico ou associação.
+//
+// Giramos AQUI (no dispositivo, que é quem conhece a própria montagem) e não
+// no backend, que serve outros clientes e não deve presumir orientação.
+//
+// 270D = 90° anti-horário, que é o sentido que deixa a página em pé nesta
+// montagem (o enum do encoder conta no sentido HORÁRIO). Se um dia o gabinete
+// mudar, este é o único ponto a ajustar.
+constexpr jpeg_rotate_t kCaptureRotation = JPEG_ROTATE_270D;
+
 // Libera os DOIS buffers de uma captura e zera a estrutura. Ponto único: com a
 // posse do JPEG e a do decodificado andando juntas, esquecer uma delas num
 // caminho de erro é a forma mais fácil de vazar megabytes de PSRAM.
@@ -69,6 +87,86 @@ void FreeCapture(PvCameraCaptureResult& result) {
         heap_caps_free(result.rgb);
     }
     result = PvCameraCaptureResult{};
+}
+
+// Codifica um frame UYVY em JPEG JÁ GIRADO (ver kCaptureRotation), falando
+// direto com o esp_new_jpeg. Por que não usar o image_to_jpeg() do core:
+// aquele caminho fixa JPEG_ROTATE_0D e é compartilhado com o upstream, então
+// a rotação vive aqui, no módulo do PV, sem tocar em código comum.
+//
+// A rotação é feita PELO ENCODER, durante a codificação: não custa buffer
+// extra nem uma passada a mais sobre os pixels. O encoder só a habilita sob
+// as condições que este caminho satisfaz (entrada YCbYCr, subamostragem
+// 4:2:0, largura e altura múltiplas de 16 — 1280x960 atende).
+//
+// ATENÇÃO: com rotação de 90°/270° as dimensões TROCAM. Quem chama precisa
+// inverter width/height ao registrar o resultado.
+//
+// Sucesso: devolve o JPEG em buffer de PSRAM cuja posse é do chamador.
+bool EncodeUyvyJpegRotated(const uint8_t* src, uint16_t width, uint16_t height, uint8_t quality,
+                           uint8_t** out, size_t* out_len) {
+    if ((width % 16) != 0 || (height % 16) != 0) {
+        // O encoder ignoraria a rotação em silêncio e devolveria a imagem
+        // deitada — pior que falhar, porque ninguém perceberia.
+        ESP_LOGE(TAG, "Rotação exige dimensões múltiplas de 16 (%ux%u)", (unsigned)width,
+                 (unsigned)height);
+        return false;
+    }
+
+    const int size = static_cast<int>(width) * static_cast<int>(height) * 2;
+    uint8_t* yuyv = static_cast<uint8_t*>(jpeg_calloc_align(size, 16));
+    if (yuyv == nullptr) {
+        return false;
+    }
+    // UYVY (Cb Y0 Cr Y1) -> YUYV (Y0 Cb Y1 Cr), o packed 4:2:2 que o encoder
+    // aceita como YCbYCr.
+    const uint8_t* s = src;
+    uint8_t* d = yuyv;
+    for (int i = 0; i < size; i += 4) {
+        d[0] = s[1];
+        d[1] = s[0];
+        d[2] = s[3];
+        d[3] = s[2];
+        s += 4;
+        d += 4;
+    }
+
+    jpeg_enc_config_t cfg = DEFAULT_JPEG_ENC_CONFIG();
+    cfg.width = width;
+    cfg.height = height;
+    cfg.src_type = JPEG_PIXEL_FORMAT_YCbYCr;
+    cfg.subsampling = JPEG_SUBSAMPLE_420;  // exigido para a rotação
+    cfg.quality = quality;
+    cfg.rotate = kCaptureRotation;
+    cfg.task_enable = false;
+
+    jpeg_enc_handle_t handle = nullptr;
+    if (jpeg_enc_open(&cfg, &handle) != JPEG_ERR_OK) {
+        jpeg_free_align(yuyv);
+        return false;
+    }
+
+    const size_t out_cap = static_cast<size_t>(width) * height * 3 / 2 + 64 * 1024;
+    uint8_t* outbuf =
+        static_cast<uint8_t*>(heap_caps_malloc(out_cap, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    if (outbuf == nullptr) {
+        jpeg_enc_close(handle);
+        jpeg_free_align(yuyv);
+        return false;
+    }
+
+    int written = 0;
+    const jpeg_error_t ret =
+        jpeg_enc_process(handle, yuyv, size, outbuf, static_cast<int>(out_cap), &written);
+    jpeg_enc_close(handle);
+    jpeg_free_align(yuyv);
+    if (ret != JPEG_ERR_OK || written <= 0) {
+        heap_caps_free(outbuf);
+        return false;
+    }
+    *out = outbuf;
+    *out_len = static_cast<size_t>(written);
+    return true;
 }
 
 // Linha de base numérica do tuning (pedido do proprietário, 2026-08-15): a
@@ -364,11 +462,28 @@ void PvCamera::RunCaptureJpeg() {
     LogIspTuningBaseline();
 
     const int64_t encode_started_us = esp_timer_get_time();
-    const bool ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format,
-                                  kJpegQuality, &jpeg_data, &jpeg_len);
+    // UYVY (o formato real do ISP na 7B) vai pelo caminho do PV, que já entrega
+    // a foto EM PÉ. Se ele falhar, cai no image_to_jpeg do core: uma foto
+    // deitada é muito melhor que nenhuma foto, e o log registra o desvio.
+    uint16_t width = raw.width;
+    uint16_t height = raw.height;
+    bool ok = false;
+    if (raw.format == V4L2_PIX_FMT_UYVY) {
+        ok = EncodeUyvyJpegRotated(raw.data, raw.width, raw.height, kJpegQuality, &jpeg_data,
+                                   &jpeg_len);
+        if (ok) {
+            // 90°/270° trocam as dimensões.
+            width = raw.height;
+            height = raw.width;
+        } else {
+            ESP_LOGW(TAG, "Codificação com rotação falhou; usando o caminho sem rotação");
+        }
+    }
+    if (!ok) {
+        ok = image_to_jpeg(raw.data, raw.len, raw.width, raw.height, raw.format, kJpegQuality,
+                           &jpeg_data, &jpeg_len);
+    }
     const int64_t encode_ms = (esp_timer_get_time() - encode_started_us) / 1000;
-    const uint16_t width = raw.width;
-    const uint16_t height = raw.height;
     // Posse do frame bruto era nossa desde o CaptureRaw; o JPEG já foi gerado.
     heap_caps_free(raw.data);
     raw.data = nullptr;
