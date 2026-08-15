@@ -72,8 +72,10 @@ constexpr uint32_t kPreviewFailureLogInterval = 25;
 // no backend, que serve outros clientes e não deve presumir orientação.
 //
 // 270D = 90° anti-horário, que é o sentido que deixa a página em pé nesta
-// montagem (o enum do encoder conta no sentido HORÁRIO). Se um dia o gabinete
-// mudar, este é o único ponto a ajustar.
+// montagem (o enum do encoder conta no sentido HORÁRIO). CONFIRMADO na
+// bancada em 2026-08-15: a foto sai em pé e a extração real leu a ilustração
+// corretamente sem nenhum giro manual. Se um dia o gabinete mudar, este é o
+// único ponto a ajustar.
 constexpr jpeg_rotate_t kCaptureRotation = JPEG_ROTATE_270D;
 
 // Libera os DOIS buffers de uma captura e zera a estrutura. Ponto único: com a

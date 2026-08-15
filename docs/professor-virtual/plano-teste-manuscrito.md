@@ -158,3 +158,19 @@ Nota de montagem: a rodada #6 foi feita após o proprietário trocar a barra de
 luz por um **ring light circular**, que deu iluminação mais uniforme. É uma
 melhoria barata e recomendável, mas NÃO é condição do resultado: as rodadas
 1-5 passaram com a iluminação anterior.
+
+### Rotação no firmware — confirmada na bancada (2026-08-15)
+
+Gravado o firmware com `kCaptureRotation = JPEG_ROTATE_270D`. Resultado:
+
+- log reporta `Foto pronta: 960x1280` (era 1280x960) — a rotação foi aplicada;
+- nenhum aviso de fallback nem de dimensão inválida;
+- codificação em 580 ms contra 552 ms antes: girar dentro do encoder **não
+  custa tempo** perceptível;
+- a foto sai **em pé de primeira** (sentido correto na primeira tentativa);
+- a extração real (`gemini-pro-latest`) sobre essa foto, **sem nenhum giro
+  manual**, leu a ilustração corretamente: "3 fileiras, 6 cantores por
+  fileira, totalizando 18", `illegible_pages: []`.
+
+A cadeia dispositivo → backend está fechada: a placa entrega a imagem já na
+orientação que o modelo interpreta bem.
