@@ -33,16 +33,23 @@ consegui ler".
 
 ## Protocolo
 
-1. **Página.** Usar a MESMA página já extraída (119), para reaproveitar os
-   enunciados da extração limpa. Se for outra página: fotografar primeiro
-   LIMPA (para a extração) e depois COM as respostas (para a tutoria) — é a
-   ordem de produção.
-2. **Respostas, rodada A — erradas e específicas.** Anotar ANTES o que foi
-   escrito. Ex.: numerar as seis frases do exercício 3 numa ordem errada
-   conhecida; marcar a alternativa **a)** no exercício 4 (a correta é **c**,
-   caça às baleias). Respostas erradas específicas são o que permite provar
-   leitura: um "correct" pode ser sorte, mas citar o que a criança escreveu,
-   não.
+1. **Página — precisa ter questões ABERTAS.** Correção do proprietário
+   (2026-08-15): a página 119 NÃO serve de referência, porque suas respostas
+   são apenas dígitos em caixas e marcação de alternativa. Reconhecer um
+   dígito ou uma marca é tarefa muito mais fácil que ler manuscrito, e
+   aprovaria a câmera por engano. Usar uma página cujas respostas exijam
+   **frases escritas à mão**.
+   Como a página é nova, seguir a ordem de produção: fotografar primeiro
+   LIMPA (para a extração dos enunciados) e depois COM as respostas (para a
+   tutoria).
+2. **Respostas, rodada A — erradas e específicas.** Anotar ANTES, palavra por
+   palavra, o que foi escrito. A resposta deve ser uma frase com conteúdo
+   verificável e errado (não um rabisco vago), para que a explicação do tutor
+   só possa citá-la se de fato a leu. Respostas erradas específicas são o que
+   permite provar leitura: um "correct" pode ser sorte, mas citar o que a
+   criança escreveu, não.
+   Escrever a lápis, com a letra natural da criança — é o caso real, e é o
+   mais difícil (traço fino, contraste baixo).
 3. **Respostas, rodada B — corretas.** Mesma página ou equivalente.
 4. **Captura.** Mesma luz e distância das fotos anteriores; preview
    estabilizado alguns segundos antes de disparar; exportar pelo diagnóstico.
