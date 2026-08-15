@@ -153,6 +153,9 @@ private:
     void SetStatusLocked(const char* text);
 
     lv_obj_t* screen_ = nullptr;
+    // Coluna à esquerda da barra de ações: empilha o rótulo de estado sobre a
+    // área de preview. Só estrutural — nada mexe nele depois da construção.
+    lv_obj_t* content_ = nullptr;
     lv_obj_t* status_label_ = nullptr;
     lv_obj_t* preview_area_ = nullptr;
     lv_obj_t* image_ = nullptr;

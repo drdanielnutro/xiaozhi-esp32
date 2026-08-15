@@ -31,10 +31,24 @@
 
 namespace {
 
-// Altura fixa da barra de ações. Fixa DE PROPÓSITO: os botões de captura e de
-// revisão entram e saem sem mudar a altura da área de preview — e, portanto,
-// sem mudar a escala calculada para a imagem.
-constexpr int32_t kActionBarHeight = 68;
+// Largura fixa da barra de ações, que vive na LATERAL DIREITA. Fixa DE
+// PROPÓSITO: os botões de captura e de revisão entram e saem, e o rótulo do
+// zoom alterna entre "100%" e "Ajustar" — com largura de conteúdo, cada uma
+// dessas trocas mudaria a largura da área de preview e forçaria recálculo de
+// escala no meio da sessão.
+//
+// A barra ficou na lateral porque a imagem agora é RETRATO numa tela
+// paisagem: nessa combinação a escala é limitada pela ALTURA, então altura é
+// o recurso caro e largura é barata. Tirar a barra de baixo devolveu ~80 px
+// de altura à imagem; 160 px de largura custam quase nada (a largura só
+// passaria a limitar acima de ~570 px) e ainda acomodam o indicador de
+// conexão no topo da coluna.
+constexpr int32_t kActionBarWidth = 160;
+
+// Espaço reservado no topo da barra para o indicador de conexão, que é
+// desenhado por cima (fica fora do layout, ancorado no canto superior
+// direito). Sem esta folga ele cobriria o primeiro botão.
+constexpr int32_t kBadgeClearance = 48;
 
 constexpr int32_t kScreenPad = 16;
 constexpr int32_t kRowGap = 12;
@@ -50,7 +64,14 @@ lv_obj_t* CreateActionButton(lv_obj_t* parent, const char* text, lv_event_cb_t c
     lv_obj_set_style_bg_opa(button, LV_OPA_40, LV_STATE_DISABLED);
     lv_obj_set_style_text_color(button, lv_color_hex(PvUi::kColorMuted), LV_STATE_DISABLED);
     lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, user_data);
+    // Todos com a mesma largura na coluna lateral. A ALTURA continua sendo de
+    // conteúdo: rótulos longos ("Exportar (diagnóstico)") quebram em duas
+    // linhas sem consequência, porque o que precisa ser fixo é a largura.
+    lv_obj_set_width(button, LV_PCT(100));
     auto* label = lv_label_create(button);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(label, LV_PCT(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(label, text);
     lv_obj_center(label);
     if (out_label != nullptr) {
@@ -105,11 +126,27 @@ bool PvCameraScreen::EnsureScreenLocked() {
         return true;
     }
 
+    // Raiz em LINHA: conteúdo à esquerda, barra de ações na lateral direita.
     auto* screen = PvUi::CreateScreen();
-    lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(screen, kScreenPad, 0);
-    lv_obj_set_style_pad_row(screen, kRowGap, 0);
+    lv_obj_set_style_pad_column(screen, kRowGap, 0);
+
+    // Coluna de conteúdo: consome toda a largura que sobra da barra e empilha
+    // o rótulo de estado sobre a área de preview. Puramente estrutural —
+    // transparente e sem padding, para não roubar área da imagem.
+    auto* content = lv_obj_create(screen);
+    lv_obj_remove_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_height(content, LV_PCT(100));
+    lv_obj_set_flex_grow(content, 1);
+    lv_obj_set_style_bg_opa(content, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(content, 0, 0);
+    lv_obj_set_style_pad_all(content, 0, 0);
+    lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(content, kRowGap, 0);
+    content_ = content;
 
     // Sem título: o rótulo de estado logo abaixo já diz o que fazer, e numa
     // tela paisagem exibindo página RETRATO a altura é o recurso escasso —
@@ -120,7 +157,7 @@ bool PvCameraScreen::EnsureScreenLocked() {
     // linha (LONG_CLIP): mudar de estado — "Processando...", "1280×960 · 342
     // KB", "Exportando..." — nunca muda a altura da área de preview, e por
     // isso nunca invalida a escala já aplicada à imagem.
-    auto* status = lv_label_create(screen);
+    auto* status = lv_label_create(content);
     lv_label_set_long_mode(status, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(status, LV_PCT(100));
     lv_obj_set_style_text_align(status, LV_TEXT_ALIGN_CENTER, 0);
@@ -131,7 +168,7 @@ bool PvCameraScreen::EnsureScreenLocked() {
     // Área do preview/foto: ocupa toda a altura que sobra entre o rótulo de
     // estado e a barra de ações. Sem layout próprio — a imagem e o aviso são
     // centralizados na mão, e ambos ocupam o mesmo lugar (um por vez).
-    auto* area = lv_obj_create(screen);
+    auto* area = lv_obj_create(content);
     lv_obj_remove_flag(area, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_width(area, LV_PCT(100));
     lv_obj_set_flex_grow(area, 1);
@@ -171,13 +208,16 @@ bool PvCameraScreen::EnsureScreenLocked() {
     // esconder/mostrar botões — o layout se refaz sozinho.
     auto* bar = lv_obj_create(screen);
     lv_obj_remove_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(bar, LV_PCT(100), kActionBarHeight);
+    lv_obj_set_size(bar, kActionBarWidth, LV_PCT(100));
     lv_obj_set_style_bg_opa(bar, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(bar, 0, 0);
     lv_obj_set_style_pad_all(bar, 0, 0);
-    lv_obj_set_flex_flow(bar, LV_FLEX_FLOW_ROW);
+    // Folga no topo para o indicador de conexão, que é desenhado por cima.
+    lv_obj_set_style_pad_top(bar, kBadgeClearance, 0);
+    lv_obj_set_flex_flow(bar, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(bar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(bar, kRowGap, 0);
     action_bar_ = bar;
 
     CreateActionButton(bar, PvStrings::kCameraBackButton, OnBackClicked, this, nullptr);
@@ -204,6 +244,11 @@ bool PvCameraScreen::EnsureScreenLocked() {
     // deliberadamente redundantes e não podem ser removidos.
     auto* version = lv_label_create(bar);
     lv_obj_set_style_text_color(version, lv_color_hex(PvUi::kColorMuted), 0);
+    // Quebra de linha e centralização: a coluna é estreita e a string de
+    // versão pode crescer.
+    lv_label_set_long_mode(version, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(version, LV_PCT(100));
+    lv_obj_set_style_text_align(version, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text_fmt(version, "v%s", esp_app_get_description()->version);
     lv_obj_set_ext_click_area(version, 40);
     PvUi::AttachConfigGesture(version);
