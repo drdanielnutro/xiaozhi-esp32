@@ -144,6 +144,10 @@ private:
     void Loop();
     bool EnsurePreviewBuffers();
     void GrabPreviewFrame();
+    // Gira o frame de preview de `src` para `dst` (ver `preview_rotated_`).
+    // Roda SÓ na task da câmera, fora do `state_mutex_`: é uma transformação
+    // de pixels, não uma troca de índices.
+    bool RotatePreviewFrame(const uint8_t* src, uint8_t* dst);
     void RunCaptureJpeg();
     void Notify(Event event);
 
@@ -178,6 +182,27 @@ private:
     int ready_index_ = -1;
     int display_index_ = -1;
     size_t ready_len_ = 0;
+
+    // Rotação do preview para RETRATO (a câmera é montada girada em relação à
+    // página; a FOTO já sai em pé pelo encoder JPEG — ver kCaptureRotation no
+    // .cc). Feita pela PPA, o acelerador do P4: a task escreve o frame
+    // landscape no `rotate_scratch_` e a PPA gira para o buffer de exibição.
+    //
+    // O handle da PPA é guardado como void* de propósito: `driver/ppa.h` só
+    // existe nos targets com esse periférico, e o cabeçalho do PV é incluído
+    // por código que compila em qualquer target.
+    //
+    // Se o scratch ou o cliente PPA falharem, `preview_rotated_` fica falso e
+    // o preview segue landscape, exatamente como antes — degradação sem
+    // quebra. `preview_out_*` são as dimensões PUBLICADAS ao consumidor, que
+    // trocam quando a rotação está ativa.
+    uint8_t* rotate_scratch_ = nullptr;
+    void* ppa_client_ = nullptr;
+    bool preview_rotated_ = false;
+    uint16_t preview_out_width_ = 0;
+    uint16_t preview_out_height_ = 0;
+    uint32_t rotate_frames_ = 0;
+    int64_t rotate_total_us_ = 0;
 
     std::atomic<bool> capture_in_flight_{false};
 

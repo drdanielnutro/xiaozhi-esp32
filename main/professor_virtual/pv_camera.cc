@@ -15,6 +15,13 @@
 #include "esp_video_device.h"
 #include "linux/videodev2.h"
 
+// A PPA (Pixel Processing Accelerator) só existe nos targets que a declaram.
+// Sem ela, o preview simplesmente não gira — ver `preview_rotated_`.
+#if defined(CONFIG_SOC_PPA_SUPPORTED)
+#include "driver/ppa.h"
+#define PV_PREVIEW_ROTATE 1
+#endif
+
 #include "board.h"
 #include "esp_jpeg_common.h"
 #include "esp_jpeg_enc.h"
@@ -77,6 +84,18 @@ constexpr uint32_t kPreviewFailureLogInterval = 25;
 // corretamente sem nenhum giro manual. Se um dia o gabinete mudar, este é o
 // único ponto a ajustar.
 constexpr jpeg_rotate_t kCaptureRotation = JPEG_ROTATE_270D;
+
+#ifdef PV_PREVIEW_ROTATE
+// Mesmo giro da foto, no acelerador de pixels. ATENÇÃO à convenção: o enum do
+// encoder JPEG conta no sentido HORÁRIO (esp_jpeg_common.h) e o da PPA conta
+// no ANTI-HORÁRIO (hal/ppa_types.h), então 270° horário == 90° anti-horário.
+// Se o preview sair 180° em relação à foto, é este o único ponto a trocar.
+constexpr ppa_srm_rotation_angle_t kPreviewRotation = PPA_SRM_ROTATION_ANGLE_90;
+
+// O log do tempo de rotação é amortizado: a 5 fps, uma linha por frame só
+// afogaria o console sem acrescentar informação.
+constexpr uint32_t kRotateLogInterval = 50;
+#endif
 
 // Libera os DOIS buffers de uma captura e zera a estrutura. Ponto único: com a
 // posse do JPEG e a do decodificado andando juntas, esquecer uma delas num
@@ -385,8 +404,103 @@ bool PvCamera::EnsurePreviewBuffers() {
         }
     }
     buffer_size_ = size;
-    ESP_LOGI(TAG, "Double-buffer de preview: 2 x %u bytes em PSRAM", (unsigned)size);
+
+    // Sem rotação é o padrão seguro: se qualquer peça abaixo faltar, o preview
+    // continua saindo landscape, exatamente como antes.
+    preview_out_width_ = frame_width_;
+    preview_out_height_ = frame_height_;
+
+#ifdef PV_PREVIEW_ROTATE
+    if (rotate_scratch_ == nullptr) {
+        // Mesmo alinhamento e mesma vida útil dos buffers de exibição: a PPA
+        // exige alinhamento de cache no destino, e liberar qualquer um deles
+        // enquanto a tela referencia um frame seria uso-após-liberação.
+        rotate_scratch_ = static_cast<uint8_t*>(
+            heap_caps_aligned_alloc(64, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    }
+    if (rotate_scratch_ != nullptr && ppa_client_ == nullptr) {
+        // Registrado UMA vez. Registrar por frame seria desperdício e uma
+        // fonte de falha intermitente.
+        ppa_client_config_t cfg = {};
+        cfg.oper_type = PPA_OPERATION_SRM;
+        cfg.max_pending_trans_num = 1;
+        ppa_client_handle_t handle = nullptr;
+        const esp_err_t err = ppa_register_client(&cfg, &handle);
+        if (err == ESP_OK) {
+            ppa_client_ = handle;
+        } else {
+            ESP_LOGW(TAG, "PPA indisponível (err %d); preview segue deitado", (int)err);
+        }
+    }
+    if (rotate_scratch_ != nullptr && ppa_client_ != nullptr) {
+        preview_rotated_ = true;
+        preview_out_width_ = frame_height_;
+        preview_out_height_ = frame_width_;
+    } else if (rotate_scratch_ == nullptr) {
+        ESP_LOGW(TAG, "Sem PSRAM para o buffer de rotação; preview segue deitado");
+    }
+#endif
+
+    ESP_LOGI(TAG,
+             "Double-buffer de preview: 2 x %u bytes em PSRAM; rotação=%s; saída %ux%u; "
+             "PSRAM livre %u B, maior bloco %u B",
+             (unsigned)size, preview_rotated_ ? "sim" : "não", (unsigned)preview_out_width_,
+             (unsigned)preview_out_height_, (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
     return true;
+}
+
+bool PvCamera::RotatePreviewFrame(const uint8_t* src, uint8_t* dst) {
+#ifdef PV_PREVIEW_ROTATE
+    if (ppa_client_ == nullptr || src == nullptr || dst == nullptr) {
+        return false;
+    }
+    ppa_srm_oper_config_t oper = {};
+    oper.in.buffer = src;
+    oper.in.pic_w = frame_width_;
+    oper.in.pic_h = frame_height_;
+    oper.in.block_w = frame_width_;
+    oper.in.block_h = frame_height_;
+    oper.in.block_offset_x = 0;
+    oper.in.block_offset_y = 0;
+    oper.in.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
+
+    oper.out.buffer = dst;
+    oper.out.buffer_size = buffer_size_;
+    oper.out.pic_w = preview_out_width_;
+    oper.out.pic_h = preview_out_height_;
+    oper.out.block_offset_x = 0;
+    oper.out.block_offset_y = 0;
+    oper.out.srm_cm = PPA_SRM_COLOR_MODE_RGB565;
+
+    oper.rotation_angle = kPreviewRotation;
+    oper.scale_x = 1.0f;
+    oper.scale_y = 1.0f;
+    oper.mode = PPA_TRANS_MODE_BLOCKING;
+
+    // Bloqueante de propósito: estamos na task da câmera, que já é exclusiva
+    // com a captura por construção. O driver cuida da sincronização de cache
+    // (write-back da entrada, invalidate da saída) — não fazer isso à mão.
+    const int64_t started_us = esp_timer_get_time();
+    const esp_err_t err =
+        ppa_do_scale_rotate_mirror(static_cast<ppa_client_handle_t>(ppa_client_), &oper);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Rotação do preview falhou (err %d)", (int)err);
+        return false;
+    }
+    rotate_total_us_ += esp_timer_get_time() - started_us;
+    if (++rotate_frames_ >= kRotateLogInterval) {
+        ESP_LOGI(TAG, "Rotação do preview: %u us/frame (média de %u frames)",
+                 (unsigned)(rotate_total_us_ / rotate_frames_), (unsigned)rotate_frames_);
+        rotate_frames_ = 0;
+        rotate_total_us_ = 0;
+    }
+    return true;
+#else
+    (void)src;
+    (void)dst;
+    return false;
+#endif
 }
 
 void PvCamera::GrabPreviewFrame() {
@@ -407,10 +521,21 @@ void PvCamera::GrabPreviewFrame() {
         }
     }
 
+    // Com rotação, o board escreve landscape no scratch e a PPA gira para o
+    // buffer de exibição. Sem rotação, escreve direto no buffer — caminho
+    // idêntico ao de antes. Nos dois casos tudo acontece DENTRO da janela
+    // `writing_index_`, antes de publicar `ready_index_`: o protocolo de
+    // empréstimo não muda em nada.
     CameraPreviewFrame request;
-    request.buffer = buffers_[index];
+    request.buffer = preview_rotated_ ? rotate_scratch_ : buffers_[index];
     request.buffer_size = buffer_size_;
-    const bool ok = camera_->AcquirePreviewFrame(request);
+    bool ok = camera_->AcquirePreviewFrame(request);
+    if (ok && preview_rotated_) {
+        // Falha aqui reaproveita o caminho de erro abaixo: o frame é
+        // DESCARTADO, nunca publicado pela metade (meio buffer girado
+        // apareceria como imagem rasgada).
+        ok = RotatePreviewFrame(rotate_scratch_, buffers_[index]);
+    }
 
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
@@ -575,9 +700,12 @@ bool PvCamera::AcquireDisplayFrame(PvCameraPreviewFrame& frame) {
     display_index_ = ready_index_;
     frame.data = buffers_[display_index_];
     frame.len = ready_len_;
-    frame.width = frame_width_;
-    frame.height = frame_height_;
-    frame.stride = static_cast<size_t>(frame_width_) * 2;
+    // Dimensões do que está DE FATO no buffer: giradas quando a rotação está
+    // ativa. A tela usa isto para calcular a escala, então publicar as
+    // dimensões do sensor aqui produziria imagem cisalhada na diagonal.
+    frame.width = preview_out_width_;
+    frame.height = preview_out_height_;
+    frame.stride = static_cast<size_t>(preview_out_width_) * 2;
     return true;
 }
 
