@@ -117,6 +117,23 @@ verdes; testes host passam; decisões registradas no decision-log.
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
   2026-08-16); conexão só na T8.
+- Revisão independente, rodada 2 (2026-08-16, Codex effort high, sessão
+  nova): das correções da rodada 1, 8 CONFIRMADAS e 2 incompletas que
+  compunham 1 P0 e 1 P1 novos; o adiamento do harness de fakes (P1f) foi
+  ACEITO ("deixa de ser bloqueante da F3 enquanto dívida de cobertura",
+  condicionado à F8 e à T8). CORRIGIDOS em seguida: P0 — o destino da
+  foto passa a vir do http_status, não só da etapa: 200 (mesmo com corpo
+  perdido/inválido/eco divergente) = turno APLICADO e 409 = indeterminado
+  ⇒ a foto SAI da revisão (to_preview) nos dois casos, inclusive no ramo
+  de geração obsoleta, que agora preserva a evidência do status e marca o
+  espelho como velho; 502/4xx sem efeito mantêm a revisão. P1 — guarda de
+  envio troca `hydrate_in_flight()` por `hydration_pending()` (em
+  execução OU resultado pronto ainda não consumido por TakeHydration —
+  sem vão, pois `hydration_ready_` é gravado antes de `in_flight` cair).
+  LIMITE DE RODADAS: o teto de 2 revisões foi atingido; estas duas
+  correções NÃO passaram por verificação independente — pendência
+  apresentada ao proprietário junto com a T8 (uma rodada extra de
+  verificação exige autorização dele).
 - Revisão independente, rodada 1 (2026-08-16, Codex effort high via
   `codex exec` — o MCP ficou com token da conta antiga após troca de
   conta do proprietário; fallback técnico previsto): 1 P0, 6 P1, 4 P2.

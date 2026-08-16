@@ -153,6 +153,16 @@ public:
     bool health_in_flight() const { return health_in_flight_.load(); }
     bool turn_in_flight() const { return turn_in_flight_.load(); }
 
+    // "Hidratação pendente" de ponta a ponta: em execução OU com resultado
+    // pronto que o PvApp ainda não consumiu com TakeHydration(). Existe para a
+    // guarda de envio do turno (revisão F3 rodada 2, P1): entre o worker
+    // gravar o resultado e a task principal aplicá-lo ao espelho existe uma
+    // janela em que `hydrate_in_flight()` já é false, mas o espelho corrente
+    // ainda é o ANTIGO — um turno aceito nessa janela usaria sessão/tarefa
+    // velhas. O resultado é gravado com `hydration_ready_ = true` ANTES de
+    // `hydrate_in_flight_` cair, então esta disjunção não tem vão no meio.
+    bool hydration_pending();
+
 private:
     // Item da fila interna: o job e a geração de conectividade do pedido.
     struct JobItem {

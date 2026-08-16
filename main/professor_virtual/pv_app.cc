@@ -832,18 +832,19 @@ void PvApp::HandleSendRequested() {
     // se sabe para qual tarefa a foto é, e sem sessão ativa o backend
     // recusaria. Melhor recusar aqui, sem gastar 120 s e sem queimar um UUID.
     //
-    // `hydrate_in_flight` entra na lista (revisão F3, P1d): com uma hidratação
-    // em voo o espelho está sendo TROCADO, e um espelho em troca não é base
-    // para turno — a foto poderia sair marcada para a tarefa antiga.
+    // `hydration_pending` entra na lista (revisão F3, P1d): com uma hidratação
+    // pendente o espelho está sendo TROCADO — em execução OU já pronto e ainda
+    // não aplicado (revisão F3 rodada 2, P1) —, e um espelho em troca não é
+    // base para turno: a foto poderia sair marcada para a tarefa antiga.
     // `audio_.busy()` também (P1e): a voz de um turno anterior, abandonada pela
     // UI, precisa terminar antes que outra resposta toque por cima dela.
     if (!network_connected_ || !PvSettings::IsConfigured() || !hydrated_ ||
-        !CanSendTurn(session_state_) || worker_.hydrate_in_flight() || audio_.busy()) {
+        !CanSendTurn(session_state_) || worker_.hydration_pending() || audio_.busy()) {
         ESP_LOGW(TAG,
                  "Envio recusado: rede=%d configurado=%d hidratado=%d sessão utilizável=%d "
-                 "hidratação em voo=%d voz tocando=%d",
+                 "hidratação pendente=%d voz tocando=%d",
                  (int)network_connected_, (int)PvSettings::IsConfigured(), (int)hydrated_,
-                 (int)CanSendTurn(session_state_), (int)worker_.hydrate_in_flight(),
+                 (int)CanSendTurn(session_state_), (int)worker_.hydration_pending(),
                  (int)audio_.busy());
         camera_screen_.ShowNotice(PvStrings::kTurnNotReady);
         return;
@@ -900,16 +901,25 @@ bool PvApp::HandleTurnDone() {
     if (result.generation != net_generation_ || !network_connected_) {
         // Resultado de uma geração anterior: a rede caiu ou o adulto abriu a
         // configuração com o HTTP em voo. Não decide rota, não toca a máquina
-        // de estados e não vira resposta pedagógica.
-        ESP_LOGW(TAG, "Turno obsoleto descartado (geração %u != %u)",
-                 static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_));
+        // de estados e não vira resposta pedagógica. Mas a EVIDÊNCIA do
+        // http_status não é apagada (revisão F3 rodada 2, P0): um 200 (mesmo
+        // com corpo perdido) significa turno APLICADO, e um 409 significa
+        // resultado indeterminado — nos dois casos a foto em revisão não pode
+        // voltar a ficar enviável, senão um clique novo aplicaria o mesmo
+        // conteúdo de novo, silenciosamente, com outro UUID.
+        const bool maybe_applied =
+            result.backend.http_status == 200 || result.backend.http_status == 409;
+        ESP_LOGW(TAG, "Turno obsoleto descartado (geração %u != %u, HTTP %d)",
+                 static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_),
+                 result.backend.http_status);
         if (turn_phase_ == PvTurnPhase::Sending) {
             // A tela pode ter continuado no ar (queda de rede com rota
             // carregada mantém a tela da criança): destravá-la é obrigatório.
             // Sem `answered`: a geração já mudou, então não há re-hidratação
-            // desta geração para esperar.
-            FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/false,
-                                /*to_preview=*/false, /*answered=*/false);
+            // desta geração para esperar (a da reconexão fará a re-consulta;
+            // `rehydrate` marca o espelho como velho até lá).
+            FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/maybe_applied,
+                                /*to_preview=*/maybe_applied, /*answered=*/false);
         } else {
             pending_request_id_.clear();
         }
@@ -949,9 +959,18 @@ bool PvApp::HandleTurnDone() {
             // interface; sem resposta, a re-hidratação vem da reconexão — mas
             // marcamos o espelho como velho do mesmo jeito, porque um timeout
             // pode ter deixado o turno aplicado sem ninguém saber.
+            //
+            // O DESTINO da foto vem do http_status, não só da etapa (revisão
+            // F3 rodada 2, P0): 200 com corpo interrompido/inválido/eco
+            // divergente = turno APLICADO; 409 = indeterminado (pode ter sido
+            // aplicado). Nos dois casos a foto sai da revisão — reenviá-la
+            // seria dupla aplicação silenciosa. 502 (veredicto descartado no
+            // servidor, §7.5) e 4xx sem efeito mantêm a revisão.
             const bool answered = result.backend.http_status != 0;
+            const bool maybe_applied =
+                result.backend.http_status == 200 || result.backend.http_status == 409;
             FinishTurnWithError(answered ? PvStrings::kTurnErrServer : PvStrings::kTurnErrNetwork,
-                                /*rehydrate=*/true, /*to_preview=*/false, answered);
+                                /*rehydrate=*/true, /*to_preview=*/maybe_applied, answered);
             return true;
         }
         // Etapa de mídia: o 200 já chegou, logo o turno FOI aplicado. Voltar à

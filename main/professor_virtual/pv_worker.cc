@@ -358,6 +358,14 @@ bool PvWorker::TakeHydration(HydrationResult& result, PvSessionState& state, PvL
     return true;
 }
 
+bool PvWorker::hydration_pending() {
+    if (hydrate_in_flight_.load()) {
+        return true;
+    }
+    std::lock_guard<std::mutex> lock(result_mutex_);
+    return hydration_ready_;
+}
+
 bool PvWorker::TakeTurn(TurnResult& result) {
     std::lock_guard<std::mutex> lock(result_mutex_);
     if (!turn_ready_) {
