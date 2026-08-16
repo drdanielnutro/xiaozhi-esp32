@@ -75,20 +75,24 @@ verdes; testes host passam; decisões registradas no decision-log.
       veredicto/posição) + `DownloadMedia` com token e validação de
       MIME/extensão (`audio/wav`+`.wav`, `image/jpeg`+`.jpg`) · pronto
       quando: parse coberto por teste host; build PV verde.
-- [ ] T5 — `PvWorker`: job de turno (POST + downloads + resultado com
-      geração de conectividade) e re-hidratação pós-turno; regra de erro:
-      após QUALQUER erro com resposta do servidor (409/502/4xx/5xx),
-      re-consultar estado antes de mostrar qualquer coisa; após 409,
-      descartar ids pendentes, re-hidratar e só então permitir turno novo
-      com UUID novo; nunca reproduzir 409/502 como resposta pedagógica;
-      sem retry automático · pronto quando: build PV verde e fluxo de
-      estados revisado contra o contrato.
+- [x] T5 — `PvWorker`: job composto de turno (decisão F3-D4: POST +
+      download do WAV + download do JPEG numa única cadeia com UMA
+      tentativa HTTP por etapa, sem retry; resultado com etapa que
+      interrompeu, http_status preservado e geração de conectividade;
+      entrada e saída por slots sob mutex com posse movida; um turno em
+      voo por vez) · pronto quando: build PV verde e semântica de erro
+      documentada para a T6.
 - [ ] T6 — PvApp + UI: fluxo completo na tela (revisão → "Enviar" →
       processando → resposta: imagem do tutor + voz + som de feedback →
       re-hidratação → volta ao preview/rota); comandos bloqueados fora de
-      `idle` (mini-máquina da F3); erros com toast/telas conforme §9.7
-      (401/503 → configuração; nunca resposta pedagógica) · pronto quando:
-      build PV verde e caminho de cada erro rastreável no código.
+      `idle` (mini-máquina da F3); regra de erro do contrato: após
+      QUALQUER erro com resposta do servidor (409/502/4xx/5xx),
+      re-consultar estado antes de mostrar qualquer coisa; após 409,
+      descartar ids pendentes, re-hidratar e só então permitir turno novo
+      com UUID novo; nunca reproduzir 409/502 como resposta pedagógica;
+      erros com toast/telas conforme §9.7 (401/503 → configuração) ·
+      pronto quando: build PV verde e caminho de cada erro rastreável no
+      código.
 - [ ] T7 — Regressão e medição: build
       `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` + build
       `esp32-p4-wifi6-touch-lcd-7b` original + testes host
