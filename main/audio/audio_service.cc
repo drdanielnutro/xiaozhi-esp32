@@ -1,5 +1,6 @@
 #include "audio_service.h"
 #include <esp_log.h>
+#include <algorithm>
 #include <cstring>
 
 #define RATE_CVT_CFG(_src_rate, _dest_rate, _channel)        \
@@ -730,6 +731,89 @@ void AudioService::PlaySound(const std::string_view& ogg) {
     demuxer->Process(buf, size);
 }
 
+bool AudioService::PlayPcm(std::vector<int16_t>&& pcm, int sample_rate) {
+    if (codec_ == nullptr || sample_rate <= 0 || pcm.empty() || service_stopped_.load()) {
+        return false;
+    }
+
+    if (!codec_->output_enabled()) {
+        esp_timer_stop(audio_power_timer_);
+        esp_timer_start_periodic(audio_power_timer_, AUDIO_POWER_CHECK_INTERVAL_MS * 1000);
+        codec_->EnableOutput(true);
+    }
+
+    // Private converter: output_resampler_ belongs to the Opus decode path
+    // and is reconfigured by SetDecodeSampleRate() at any time.
+    esp_ae_rate_cvt_handle_t resampler = nullptr;
+    if (sample_rate != codec_->output_sample_rate()) {
+        esp_ae_rate_cvt_cfg_t cfg = RATE_CVT_CFG(sample_rate, codec_->output_sample_rate(), ESP_AUDIO_MONO);
+        auto ret = esp_ae_rate_cvt_open(&cfg, &resampler);
+        if (resampler == nullptr) {
+            ESP_LOGE(TAG, "PlayPcm: failed to create resampler %d -> %d, error code: %d",
+                     sample_rate, codec_->output_sample_rate(), ret);
+            return false;
+        }
+    }
+
+    uint32_t generation;
+    {
+        std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+        generation = playback_generation_;
+        pcm_enqueue_in_flight_ = true;
+        playback_drained_notified_ = false;
+    }
+
+    const size_t frame_samples = (size_t)sample_rate * OPUS_FRAME_DURATION_MS / 1000;
+    bool completed = true;
+    for (size_t offset = 0; offset < pcm.size(); offset += frame_samples) {
+        // The last frame may be partial; it is played, not dropped.
+        const size_t count = std::min(frame_samples, pcm.size() - offset);
+        auto task = std::make_unique<AudioTask>();
+        task->type = kAudioTaskTypeDecodeToPlaybackQueue;
+        if (resampler != nullptr) {
+            uint32_t target_size = 0;
+            esp_ae_rate_cvt_get_max_out_sample_num(resampler, count, &target_size);
+            task->pcm.resize(target_size);
+            uint32_t actual_output = target_size;
+            esp_ae_rate_cvt_process(resampler, (esp_ae_sample_t)(pcm.data() + offset), count,
+                                    (esp_ae_sample_t)task->pcm.data(), &actual_output);
+            task->pcm.resize(actual_output);
+        } else {
+            task->pcm.assign(pcm.begin() + offset, pcm.begin() + offset + count);
+        }
+
+        std::unique_lock<std::mutex> lock(audio_queue_mutex_);
+        audio_queue_cv_.wait(lock, [this, generation]() {
+            return service_stopped_.load() || playback_generation_ != generation ||
+                audio_playback_queue_.size() < MAX_PLAYBACK_TASKS_IN_QUEUE;
+        });
+        if (service_stopped_.load() || playback_generation_ != generation) {
+            completed = false;
+            break;
+        }
+        audio_playback_queue_.push_back(std::move(task));
+        audio_queue_cv_.notify_all();
+    }
+
+    if (resampler != nullptr) {
+        esp_ae_rate_cvt_close(resampler);
+    }
+
+    // The producer mark must clear even on abort; if playback already caught
+    // up (short audio), the drained notification fires from here.
+    bool notify_drained = false;
+    {
+        std::lock_guard<std::mutex> lock(audio_queue_mutex_);
+        pcm_enqueue_in_flight_ = false;
+        notify_drained = MarkPlaybackDrainedLocked();
+        audio_queue_cv_.notify_all();
+    }
+    if (notify_drained && callbacks_.on_playback_drained) {
+        callbacks_.on_playback_drained();
+    }
+    return completed;
+}
+
 bool AudioService::IsIdle() {
     std::lock_guard<std::mutex> lock(audio_queue_mutex_);
     return audio_encode_queue_.empty() && IsPlaybackDrainedLocked() && audio_testing_queue_.empty();
@@ -764,7 +848,7 @@ void AudioService::ResetDecoder() {
 
 bool AudioService::IsPlaybackDrainedLocked() const {
     return audio_decode_queue_.empty() && audio_playback_queue_.empty() &&
-        !decode_in_flight_ && !output_in_flight_;
+        !decode_in_flight_ && !output_in_flight_ && !pcm_enqueue_in_flight_;
 }
 
 bool AudioService::MarkPlaybackDrainedLocked() {

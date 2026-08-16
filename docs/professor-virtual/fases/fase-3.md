@@ -57,7 +57,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       tratamento 409/502/timeout no MVP F3 [sem retransmissão automática];
       quais sons locais entram na F3; destino do export provisório da F2)
       · pronto quando: decisões registradas no decision-log.
-- [ ] T2 — `AudioService::PlayPcm` aditivo em `main/audio/audio_service.*`
+- [x] T2 — `AudioService::PlayPcm` aditivo em `main/audio/audio_service.*`
       (PCM s16le mono 16 kHz → fila de playback; sem bloquear tasks de
       áudio; sem tocar o caminho Opus existente) · pronto quando: build PV
       verde e regressão 7b original verde.

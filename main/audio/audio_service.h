@@ -133,6 +133,16 @@ public:
     bool PushPacketToDecodeQueue(std::unique_ptr<AudioStreamPacket> packet, bool wait = false);
     std::unique_ptr<AudioStreamPacket> PopPacketFromSendQueue();
     void PlaySound(const std::string_view& sound);
+    // Plays raw mono s16le PCM through the playback queue, slicing it into
+    // 60 ms frames and resampling to the codec output rate with a private
+    // converter (the Opus output_resampler_ is never shared). Blocks the
+    // CALLER while feeding the queue (up to the full audio duration), so it
+    // must never run on the LVGL task, the caller's main event task, or any
+    // audio task/callback. Aborts on Stop()/ResetDecoder() (playback
+    // generation change). Returns true when ALL of the PCM was accepted by
+    // the pipeline — not when the speaker finished; track completion with
+    // IsPlaybackIdle()/on_playback_drained.
+    bool PlayPcm(std::vector<int16_t>&& pcm, int sample_rate);
     bool ReadAudioData(std::vector<int16_t>& data, int sample_rate, int samples);
     void ResetDecoder();
     void SetModelsList(srmodel_list_t* models_list);
@@ -176,6 +186,10 @@ private:
     std::deque<std::unique_ptr<AudioTask>> audio_playback_queue_;
     bool decode_in_flight_ = false;
     bool output_in_flight_ = false;
+    // True while PlayPcm() is still feeding frames. Part of the drained
+    // condition: without it the playback queue can momentarily empty between
+    // two PCM frames and fire on_playback_drained early.
+    bool pcm_enqueue_in_flight_ = false;
     bool playback_drained_notified_ = true;
     uint32_t playback_generation_ = 0;
     // For server AEC
