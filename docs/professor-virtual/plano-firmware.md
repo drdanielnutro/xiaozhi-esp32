@@ -117,7 +117,12 @@ adição exige justificativa):**
    `ui/*.cc`, INCLUDE_DIRS, EMBED dos `.ogg` do PV.
 4. `main/boards/waveshare/esp32-p4-wifi6-touch-lcd/config.json` — 2 variantes novas (Q2).
 5. `main/audio/audio_service.{h,cc}` — método `PlayPcm` aditivo (Q3 vigente:
-   recebe o PCM extraído do WAV baixado por `audio_url`).
+   recebe o PCM extraído do WAV baixado por `audio_url`) e, desde a F3/T8,
+   o gate `#if CONFIG_PROFESSOR_VIRTUAL` que NÃO constrói o motor AFE/esp-sr
+   no modo PV (decisão F3-AfeGate: o PV só reproduz e grava pré-AFE; com a
+   pilha esp-sr vinculada o firmware PV crash-loopava antes de app_main —
+   bissecção física de 2026-08-16; caminho do assistente preservado no
+   `#else`).
 
 Nenhum arquivo ou componente novo entra no escopo por conta da Task 12.
 

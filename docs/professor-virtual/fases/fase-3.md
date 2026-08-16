@@ -136,6 +136,27 @@ verdes; testes host passam; decisões registradas no decision-log.
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
   2026-08-16); conexão só na T8.
+- T8, incidente de boot (2026-08-16): o primeiro flash da F3 entrou em
+  crash-loop ANTES de app_main ("assert failed: esp_startup_start_app
+  app_startup.c:83" — criação da task principal do FreeRTOS falha), com
+  PSRAM/XIP saudáveis e pools de heap presentes. DIAGNÓSTICO por bissecção
+  física + 2 sondas (todas gravadas pelo proprietário, NVS preservada):
+  F2 boota; T2 e T5 bootam; T6 crasha; sonda 1 (T6 sem vínculo do
+  PvAudio) boota; sonda 2 (T6 completo, apenas sem construir o
+  AfeAudioEngine) boota com PvAudio disponível. GATILHO DEMONSTRADO: o
+  VÍNCULO da pilha AFE/esp-sr (wakenet/dl_lib, arrastada pelo linker a
+  partir da T6 via PvAudio→AudioService::Initialize; +736 KB de binário).
+  Correlação registrada: com esp-sr vinculado, RETENT_RAM cai de 111 para
+  98 KiB no heap_init. CAUSA RAIZ DO ASSERT NÃO DEMONSTRADA (postura
+  F2B). CORREÇÃO (decisão F3-AfeGate, Codex decisor): gate
+  CONFIG_PROFESSOR_VIRTUAL em audio_service.cc — o PV não constrói o
+  motor AFE (só reproduz e, na F4, grava pré-AFE); guardas de nulo já
+  existentes + WARN nos pontos de ativação; caminho do assistente
+  intacto no #else; lista fechada do plano atualizada. Flash ~480 KB
+  menor no PV (medição, não justificativa). QUESTÃO ABERTA CONDICIONAL
+  (F8): só se a F4 medir eco que exija tratamento, investigar o
+  mecanismo link/layout e decidir tap pós-AFE ou alternativa;
+  reintroduzir AFE exige nova decisão + validação física de boot.
 - Revisão independente, rodada 3 (2026-08-16, autorizada explicitamente
   pelo proprietário; escopo restrito às correções da rodada 2): destino
   da foto pelo http_status VERIFICADO como correto e completo;

@@ -86,6 +86,19 @@ void AudioService::Initialize(AudioCodec* codec) {
         }
     }
 
+#if CONFIG_PROFESSOR_VIRTUAL
+    // Professor Virtual runs WITHOUT the AFE/esp-sr engine, deliberately: it
+    // only plays audio (PlaySound/PlayPcm) and records through the pre-AFE
+    // path (ReadAudioData) — no wake word, no VAD, no AEC. Beyond being
+    // unused, linking the esp-sr stack makes the PV firmware crash-loop
+    // BEFORE app_main (assert in esp_startup_start_app; physically bisected
+    // with two probe builds on the 7B board, 2026-08-16, decision F3-AfeGate
+    // in the decision log). The exact assert mechanism was not demonstrated;
+    // the correlation and the conditional follow-up are recorded in the F3
+    // phase notes. Every audio_engine_ consumer handles nullptr already
+    // (InitializeAudioEngine() returns false).
+    audio_engine_ = nullptr;
+#else
 #if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32P4
     audio_engine_ = std::make_unique<AfeAudioEngine>();
 #else
@@ -106,6 +119,7 @@ void AudioService::Initialize(AudioCodec* codec) {
             callbacks_.on_wake_word_detected(wake_word);
         }
     });
+#endif  // CONFIG_PROFESSOR_VIRTUAL
 
     esp_timer_create_args_t audio_power_timer_args = {
         .callback = [](void* arg) {
@@ -613,6 +627,8 @@ std::unique_ptr<AudioStreamPacket> AudioService::PopPacketFromSendQueue() {
 void AudioService::EncodeWakeWord() {
     if (audio_engine_) {
         audio_engine_->EncodeWakeWordData();
+    } else {
+        ESP_LOGW(TAG, "Audio engine is not available in this build");
     }
 }
 
@@ -903,6 +919,9 @@ bool AudioService::IsAfeWakeWord() {
 
 bool AudioService::InitializeAudioEngine() {
     if (!audio_engine_) {
+        // Only reachable from the enable paths (wake word / voice processing):
+        // warn once per attempt, since this build has no engine on purpose.
+        ESP_LOGW(TAG, "Audio engine is not available in this build");
         return false;
     }
     if (audio_engine_initialized_) {
