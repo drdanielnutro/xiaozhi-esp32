@@ -110,7 +110,24 @@ verdes; testes host passam; decisões registradas no decision-log.
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-(vazio)
+- Task em andamento: T8 — validação física com o backend real (ação do
+  proprietário; placa ficou desconectada por combinado durante T1–T7).
+- Último passo concluído: rodada 2 da revisão independente verificada,
+  P0/P1 remanescentes corrigidos (cf2c5f6), builds PV e 7b verdes, host
+  tests 155+249+114.
+- Próximo passo exato: (1) proprietário conecta a placa e o backend na
+  LAN (192.168.15.9:8001); (2) flash da variante
+  `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` (zip em releases/);
+  (3) roteiro da T8: boot→hidrata→Tutoria mostra a tarefa→"Tirar foto da
+  tarefa"→revisão→"Enviar"→resposta com imagem+voz+som de feedback→
+  re-hidratação→volta ao preview; anotar os marcos "RAM turno" do log
+  serial (antes do POST / fim do job / WAV+PCM vivos); se possível,
+  induzir 1 erro (backend desligado no meio) para ver o caminho de erro.
+- Decisões pendentes do proprietário: autorizar (ou não) uma 3ª rodada
+  de verificação do Codex sobre as duas correções da rodada 2 (o teto de
+  2 rodadas foi atingido).
+- Estado do worktree: limpo; MCP codex-council com token da conta antiga
+  (usar `codex exec` CLI ou reiniciar a sessão para reautenticar).
 
 ## Notas da fase
 
