@@ -252,6 +252,51 @@ void TestOddChunkPadding() {
     Check(!Parse(broken, info_broken, error_broken), "sem o padding, o layout é rejeitado");
 }
 
+// (4b) o último chunk do arquivo também obedece à regra do padding: COM o byte
+// de preenchimento o RIFF fecha no fim físico; SEM ele o arquivo acaba no meio
+// da estrutura e tem de ser recusado (revisão F3, P2a).
+void TestFinalOddChunk() {
+    std::printf("\n[último chunk ímpar]\n");
+    std::vector<uint8_t> chunks;
+    AppendChunk(chunks, "fmt ", FmtPcm16k());
+    AppendChunk(chunks, "data", PcmBody({4, -4}));
+    AppendChunk(chunks, "junk", std::vector<uint8_t>(3, 0x44));  // 3 bytes + 1 de padding
+    const std::vector<uint8_t> padded = BuildRiff(chunks);
+
+    PvWavInfo info;
+    PvWavError error = PvWavError::None;
+    Check(Parse(padded, info, error), "último chunk ímpar COM padding aceito");
+    CheckEqSize(info.data_offset, 44, "offset do data preservado");
+
+    // Mesmo arquivo, sem o byte de padding final: o passeio pelos chunks
+    // termina em len + 1. O ChunkSize do RIFF é reescrito para isolar o caso —
+    // sem isso a recusa viria do envelope, não do fim dos chunks.
+    std::vector<uint8_t> unpadded = padded;
+    unpadded.pop_back();
+    FixRiffSize(unpadded);
+    ExpectReject(unpadded, PvWavError::TrailingGarbage, "último chunk ímpar SEM padding rejeitado");
+}
+
+// (4c) sobra de 1 a 7 bytes depois do último chunk: curta demais para ser um
+// cabeçalho, então o laço de chunks simplesmente pararia antes do fim do
+// arquivo e o resto viraria conteúdo não interpretado.
+void TestTrailingBytes() {
+    std::printf("\n[bytes sobrando no fim]\n");
+    for (size_t extra = 1; extra <= 7; extra++) {
+        std::vector<uint8_t> file = BuildCanonical({1, 2});
+        file.insert(file.end(), extra, 0x45);
+        FixRiffSize(file);  // isola o caso: o envelope continua coerente
+        ExpectReject(file, PvWavError::TrailingGarbage, "sobra curta no fim rejeitada");
+    }
+
+    // 8 bytes sobrando JÁ são um cabeçalho de chunk: aí a recusa é a do
+    // cabeçalho, não a da sobra — e o arquivo com sobra ZERO continua aceito.
+    std::vector<uint8_t> exact = BuildCanonical({1, 2});
+    PvWavInfo info;
+    PvWavError error = PvWavError::None;
+    Check(Parse(exact, info, error), "sem sobra o arquivo continua aceito");
+}
+
 // Um fmt de 18 bytes (com cbSize) continua sendo PCM canônico.
 void TestFmtWithExtension() {
     std::printf("\n[fmt com cbSize]\n");
@@ -503,6 +548,8 @@ int main() {
     TestExtraChunkBeforeData();
     TestExtraChunkAfterData();
     TestOddChunkPadding();
+    TestFinalOddChunk();
+    TestTrailingBytes();
     TestFmtWithExtension();
     TestRiffSize();
     TestEnvelope();

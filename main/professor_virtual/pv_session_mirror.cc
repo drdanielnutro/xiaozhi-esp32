@@ -2,6 +2,8 @@
 
 #include <cJSON.h>
 
+#include <climits>
+
 namespace {
 
 // Leitores tolerantes: campo ausente ou de tipo inesperado vira default.
@@ -118,6 +120,32 @@ bool RequireExactString(const cJSON* object, const char* key, const char* expect
     return value != nullptr && std::string(value) == expected;
 }
 
+// Caminho de mídia do contrato v1.1: RELATIVO à base configurada e sempre sob
+// a rota fixa "/api/media/". Esta é uma checagem de SEGURANÇA, não de estilo:
+// o download manda o token do dispositivo no cabeçalho, e uma URL absoluta
+// (ou um caminho fora da rota de mídia) faria o firmware entregar essa
+// credencial a um host que o adulto nunca configurou. Um servidor comprometido
+// — ou um campo adulterado no caminho — não pode escolher para onde o token
+// vai (revisão F3, P1c).
+bool RequireMediaPath(const cJSON* object, const char* key, std::string& out) {
+    const char* value = RequireString(object, key);
+    if (value == nullptr) {
+        return false;
+    }
+    static const std::string kMediaPrefix = "/api/media/";
+    std::string path = value;
+    // Prefixo EXATO: "http://.../api/media/x" e "//host/api/media/x" (URL
+    // relativa a protocolo) não começam com a barra + rota, e um caminho sem
+    // barra inicial seria resolvido a partir da base, mas não é o que o
+    // contrato promete. Nome de arquivo obrigatório depois do prefixo.
+    if (path.size() <= kMediaPrefix.size() ||
+        path.compare(0, kMediaPrefix.size(), kMediaPrefix) != 0) {
+        return false;
+    }
+    out = std::move(path);
+    return true;
+}
+
 bool RequireInt(const cJSON* object, const char* key, int& out) {
     const cJSON* item = cJSON_GetObjectItem(object, key);
     // cJSON_IsBool é falso para números, mas true/false chegam como número em
@@ -125,7 +153,21 @@ bool RequireInt(const cJSON* object, const char* key, int& out) {
     if (!cJSON_IsNumber(item)) {
         return false;
     }
-    out = item->valueint;
+    // ESTRITO também no valor (revisão F3, P2c): `valueint` do cJSON é o
+    // double truncado e saturado, então 1.5 viraria 1 e 1e12 viraria INT_MAX —
+    // um contador que o servidor nunca mandou. Exigir a igualdade exata com o
+    // double é o que garante "inteiro de verdade, dentro da faixa de int".
+    const double value = item->valuedouble;
+    // A faixa é conferida ANTES do cast: converter um double fora da faixa de
+    // int é comportamento indefinido, e o teste de host roda com UBSan.
+    if (!(value >= static_cast<double>(INT_MIN)) || !(value <= static_cast<double>(INT_MAX))) {
+        return false;
+    }
+    const int narrowed = static_cast<int>(value);
+    if (static_cast<double>(narrowed) != value) {
+        return false;
+    }
+    out = narrowed;
     return true;
 }
 
@@ -216,8 +258,8 @@ bool ParseTurnResponseObject(const cJSON* root, PvTurnResponse& out) {
         !RequireExactString(root, "image_format", "jpg")) {
         return false;
     }
-    if (!RequireNonEmptyString(root, "audio_url", out.audio_url) ||
-        !RequireNonEmptyString(root, "image_url", out.image_url)) {
+    if (!RequireMediaPath(root, "audio_url", out.audio_url) ||
+        !RequireMediaPath(root, "image_url", out.image_url)) {
         return false;
     }
     // Eco da idempotência. A comparação com o id ENVIADO fica no chamador,

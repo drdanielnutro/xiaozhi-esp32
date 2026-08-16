@@ -79,8 +79,11 @@ inline constexpr const char* kRouteFailsafeSubtitle =
     "Em breve: a tela do adulto com senha para destravar a tarefa.";
 
 // Tela de câmera (F2). O botão de entrada vive na tela de preparação e é
-// provisório: os fluxos reais de foto chegam na F3/F7.
+// provisório: o fluxo real de foto da preparação chega na F7.
 inline constexpr const char* kCameraButton = "Ver a câmera";
+// Entrada da câmera na tela de TUTORIA (F3): é por aqui que o turno por foto
+// fica alcançável, porque só a tutoria tem sessão ativa para receber o turno.
+inline constexpr const char* kTutoringCameraButton = "Tirar foto da tarefa";
 inline constexpr const char* kCameraTitle = "Câmera";
 inline constexpr const char* kCameraWarmup = "Preparando a câmera...";
 inline constexpr const char* kCameraBackButton = "Voltar";
@@ -110,10 +113,14 @@ inline constexpr const char* kTurnNotReady = "Ainda não dá para enviar. Espere
 inline constexpr const char* kTurnErrServer = "O professor não conseguiu responder. Tente de novo.";
 // Erro SEM resposta (rede/timeout).
 inline constexpr const char* kTurnErrNetwork = "Não consegui falar com o professor. Tente de novo.";
-// A resposta chegou (o turno JÁ foi aplicado), mas a mídia não veio inteira:
-// o texto não convida a reenviar a mesma foto.
-inline constexpr const char* kTurnErrMedia =
-    "Não consegui mostrar a resposta. Vamos para a próxima.";
+// A resposta chegou (o turno JÁ foi aplicado), mas a mídia não veio inteira.
+// NEUTRO de propósito (revisão F3, P1b): quem sabe se a tarefa mudou é a
+// re-hidratação, e nenhum texto de erro pode anunciar avanço por conta própria.
+inline constexpr const char* kTurnErrMedia = "Não consegui mostrar a resposta.";
+// Espera do sub-estado de recuperação (§9.7): o servidor respondeu com erro e
+// a tela fica bloqueada até a re-consulta terminar. Neutro e curto de
+// propósito — a mensagem de verdade só sai quando se sabe qual tela vale.
+inline constexpr const char* kTurnRecovering = "Só um instante...";
 // A voz falhou; §9.7 manda avisar e seguir, nunca travar o fluxo.
 inline constexpr const char* kTurnErrVoice = "Não consegui tocar a voz do professor.";
 

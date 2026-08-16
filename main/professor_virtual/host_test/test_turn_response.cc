@@ -206,6 +206,40 @@ void TestMediaFields() {
     ExpectReject(MakeTurn({}, {"image_format"}), "image_format ausente");
 }
 
+// A URL da mídia decide PARA ONDE o token do dispositivo vai: o download o
+// manda no cabeçalho. Por isso o parser só aceita caminho relativo sob a rota
+// fixa "/api/media/" — qualquer outra forma tiraria a credencial da origem que
+// o adulto configurou (revisão F3, P1c).
+void TestMediaUrlOrigin() {
+    std::printf("origem da mídia travada em /api/media/\n");
+    const char* kOutside[] = {
+        "\"http://mau.exemplo.com/api/media/x.wav\"",   // absoluta http
+        "\"https://mau.exemplo.com/api/media/x.wav\"",  // absoluta https
+        "\"HTTP://MAU.EXEMPLO.COM/api/media/x.wav\"",   // absoluta em maiúsculas
+        "\"//mau.exemplo.com/api/media/x.wav\"",        // relativa a protocolo
+        "\"/outro/caminho.wav\"",                       // fora da rota de mídia
+        "\"/api/media\"",                               // prefixo incompleto
+        "\"/api/media/\"",                              // sem nome de arquivo
+        "\"api/media/x.wav\"",                          // sem barra inicial
+        "\"/API/MEDIA/x.wav\"",                         // rota com outra caixa
+        "\" /api/media/x.wav\"",                        // espaço antes da barra
+    };
+    for (const char* value : kOutside) {
+        ExpectReject(MakeTurn({{"audio_url", value}}), "audio_url fora de /api/media/");
+        ExpectReject(MakeTurn({{"image_url", value}}), "image_url fora de /api/media/");
+    }
+
+    // O caminho do contrato continua aceito, e chega intacto ao chamador.
+    PvTurnResponse out;
+    const std::string audio = "/api/media/turn_0123456789abcdef0123456789abcdef_audio.wav";
+    const std::string image = "/api/media/turn_0123456789abcdef0123456789abcdef_image.jpg";
+    std::string json =
+        MakeTurn({{"audio_url", "\"" + audio + "\""}, {"image_url", "\"" + image + "\""}});
+    Check(ParseTurnResponse(json.c_str(), out), "caminho do contrato aceito");
+    CheckEq(out.audio_url, audio, "audio_url preservada");
+    CheckEq(out.image_url, image, "image_url preservada");
+}
+
 void TestRequestId() {
     std::printf("eco do request_id\n");
     ExpectReject(MakeTurn({}, {"request_id"}), "request_id ausente");
@@ -225,6 +259,22 @@ void TestScalars() {
                  "adult_intervention_required string");
     ExpectReject(MakeTurn({{"adult_intervention_required", "1"}}),
                  "adult_intervention_required numérico");
+
+    // Número INTEIRO de verdade (revisão F3, P2c): o valueint do cJSON é o
+    // double truncado e saturado, então sem a comparação exata 1.5 viraria 1 e
+    // 1e12 viraria INT_MAX — contadores que o servidor nunca mandou.
+    ExpectReject(MakeTurn({{"wrong_answer_count", "1.5"}}), "wrong_answer_count fracionário");
+    ExpectReject(MakeTurn({{"wrong_answer_count", "-0.5"}}),
+                 "wrong_answer_count fracionário negativo");
+    ExpectReject(MakeTurn({{"wrong_answer_count", "1e12"}}), "wrong_answer_count acima de int");
+    ExpectReject(MakeTurn({{"wrong_answer_count", "-1e12"}}), "wrong_answer_count abaixo de int");
+
+    PvTurnResponse whole;
+    Check(ParseTurnResponse(MakeTurn({{"wrong_answer_count", "3.0"}}).c_str(), whole),
+          "aceita 3.0 (inteiro escrito com ponto)");
+    CheckEqInt(whole.wrong_answer_count, 3, "3.0 vira 3");
+    Check(ParseTurnResponse(MakeTurn({{"wrong_answer_count", "0"}}).c_str(), whole), "aceita zero");
+    CheckEqInt(whole.wrong_answer_count, 0, "zero preservado");
 
     PvTurnResponse out;
     std::string json = MakeTurn({{"adult_intervention_required", "true"},
@@ -288,6 +338,7 @@ int main() {
     TestSessionStatus();
     TestBase64MustBeEmpty();
     TestMediaFields();
+    TestMediaUrlOrigin();
     TestRequestId();
     TestScalars();
     TestPosition();

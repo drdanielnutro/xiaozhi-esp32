@@ -402,6 +402,17 @@ void PvApp::HandleEvent(const PvEvent& event) {
 
         case PvEventType::VoiceDone:
         case PvEventType::VoiceFailed:
+            // EVENTO OBSOLETO (revisão F3, P1e): o PvAudio derruba `busy_`
+            // ANTES de avisar, então um evento que chega com o áudio ocupado é
+            // de uma voz ANTERIOR — a de um turno abandonado, cujo aviso ficou
+            // atrasado na fila enquanto outra resposta já começava. Fechar o
+            // terminal do turno NOVO com o fim do turno VELHO tiraria a tela da
+            // resposta no meio da explicação. O fim verdadeiro chega por outro
+            // evento ou pela reconciliação, que só fecha com !busy().
+            if (audio_.busy()) {
+                ESP_LOGW(TAG, "Evento de voz obsoleto ignorado: o PvAudio ainda está tocando");
+                break;
+            }
             if (event.type == PvEventType::VoiceFailed) {
                 // §9.7: falha de voz NUNCA trava o fluxo. Avisa e segue pelo
                 // MESMO caminho do fim de áudio. O aviso só faz sentido com a
@@ -704,13 +715,18 @@ void PvApp::ShowCameraScreen() {
         // O adulto está no meio da configuração; não roubar a tela.
         return;
     }
-    // GUARDA DE ROTA (revisão F2, P1): o botão que pede a câmera só existe na
-    // tela de Preparação. Um pedido que ficou na fila e é processado DEPOIS de
-    // uma re-hidratação trocar a rota abriria a câmera por cima de Failsafe ou
-    // de Tutoria — e o failsafe existe justamente para tirar a criança do
-    // dispositivo. A rota corrente é a autoridade, não a origem do pedido.
-    if (!route_screens_.IsLoaded() || route_screens_.route() != PvRoute::Preparation) {
-        ESP_LOGW(TAG, "Pedido de câmera recusado: rota corrente é %s (só Preparação abre a câmera)",
+    // GUARDA DE ROTA (revisão F2, P1): só Preparação (preview provisório da F2)
+    // e Tutoria (turno por foto da F3) têm botão de câmera, e a rota CORRENTE é
+    // a autoridade — não a tela de onde o toque saiu. Um pedido que ficou na
+    // fila e é processado DEPOIS de uma re-hidratação trocar a rota abriria a
+    // câmera por cima de Failsafe (que existe justamente para tirar a criança
+    // do dispositivo) ou de Celebration, e por isso essas duas continuam
+    // bloqueadas explicitamente.
+    const bool route_allows_camera =
+        route_screens_.IsLoaded() && (route_screens_.route() == PvRoute::Preparation ||
+                                      route_screens_.route() == PvRoute::Tutoring);
+    if (!route_allows_camera) {
+        ESP_LOGW(TAG, "Pedido de câmera recusado: rota corrente é %s",
                  route_screens_.IsLoaded() ? PvRouteName(route_screens_.route()) : "(nenhuma)");
         return;
     }
@@ -777,17 +793,20 @@ void PvApp::ReturnFromCameraScreen() {
 //
 //   401/503 (needs_credentials) -> tela de configuração. Nunca resposta
 //       pedagógica, nunca aviso na tela da criança.
-//   erro COM resposta do servidor (409, 502, 4xx, 5xx) -> re-hidratação
-//       disparada ANTES de decidir a interface; aviso curto; volta à REVISÃO
-//       (a foto continua lá). O espelho é marcado como velho, então só depois
-//       da re-hidratação um turno novo é aceito — que é exatamente o que o
-//       contrato exige depois de um 409.
-//   erro SEM resposta (rede/timeout) -> aviso; volta à revisão; espelho
-//       marcado como velho e re-hidratação tentada (a reconexão também
-//       re-hidrata sozinha).
+//   erro COM resposta do servidor (409, 502, 4xx, 5xx) -> fase
+//       ErrorRecovering: a tela fica BLOQUEADA num rótulo neutro e NADA é
+//       decidido até a tentativa de re-hidratação terminar (§9.7). Só então a
+//       rota nova vence (no failsafe, o overlay É o aviso) ou a tela é
+//       destravada na REVISÃO, com o aviso curto. O espelho é marcado como
+//       velho, então só depois da re-hidratação um turno novo é aceito — que é
+//       exatamente o que o contrato exige depois de um 409.
+//   erro SEM resposta (rede/timeout) -> aviso IMEDIATO; volta à revisão;
+//       espelho marcado como velho e re-hidratação tentada (a reconexão também
+//       re-hidrata sozinha). Sem resposta não há estado novo a esperar.
 //   falha de download/decode DEPOIS do 200 -> o turno FOI aplicado no
-//       servidor: aviso, re-hidratação e volta ao PREVIEW. Voltar à revisão
-//       convidaria a reenviar uma foto que já virou turno.
+//       servidor, logo também é "com resposta": mesmo ErrorRecovering, com
+//       destino PREVIEW. Voltar à revisão convidaria a reenviar uma foto que
+//       já virou turno.
 //   voz que não toca -> §9.7: avisa e segue pelo mesmo caminho do fim de
 //       áudio; nunca trava o fluxo.
 // ---------------------------------------------------------------------------
@@ -812,11 +831,20 @@ void PvApp::HandleSendRequested() {
     // Pré-condições do turno. Nenhuma delas é "quase": sem espelho fresco não
     // se sabe para qual tarefa a foto é, e sem sessão ativa o backend
     // recusaria. Melhor recusar aqui, sem gastar 120 s e sem queimar um UUID.
+    //
+    // `hydrate_in_flight` entra na lista (revisão F3, P1d): com uma hidratação
+    // em voo o espelho está sendo TROCADO, e um espelho em troca não é base
+    // para turno — a foto poderia sair marcada para a tarefa antiga.
+    // `audio_.busy()` também (P1e): a voz de um turno anterior, abandonada pela
+    // UI, precisa terminar antes que outra resposta toque por cima dela.
     if (!network_connected_ || !PvSettings::IsConfigured() || !hydrated_ ||
-        !CanSendTurn(session_state_)) {
-        ESP_LOGW(TAG, "Envio recusado: rede=%d configurado=%d hidratado=%d sessão utilizável=%d",
+        !CanSendTurn(session_state_) || worker_.hydrate_in_flight() || audio_.busy()) {
+        ESP_LOGW(TAG,
+                 "Envio recusado: rede=%d configurado=%d hidratado=%d sessão utilizável=%d "
+                 "hidratação em voo=%d voz tocando=%d",
                  (int)network_connected_, (int)PvSettings::IsConfigured(), (int)hydrated_,
-                 (int)CanSendTurn(session_state_));
+                 (int)CanSendTurn(session_state_), (int)worker_.hydrate_in_flight(),
+                 (int)audio_.busy());
         camera_screen_.ShowNotice(PvStrings::kTurnNotReady);
         return;
     }
@@ -878,8 +906,10 @@ bool PvApp::HandleTurnDone() {
         if (turn_phase_ == PvTurnPhase::Sending) {
             // A tela pode ter continuado no ar (queda de rede com rota
             // carregada mantém a tela da criança): destravá-la é obrigatório.
+            // Sem `answered`: a geração já mudou, então não há re-hidratação
+            // desta geração para esperar.
             FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/false,
-                                /*to_preview=*/false);
+                                /*to_preview=*/false, /*answered=*/false);
         } else {
             pending_request_id_.clear();
         }
@@ -921,12 +951,15 @@ bool PvApp::HandleTurnDone() {
             // pode ter deixado o turno aplicado sem ninguém saber.
             const bool answered = result.backend.http_status != 0;
             FinishTurnWithError(answered ? PvStrings::kTurnErrServer : PvStrings::kTurnErrNetwork,
-                                /*rehydrate=*/true, /*to_preview=*/false);
+                                /*rehydrate=*/true, /*to_preview=*/false, answered);
             return true;
         }
         // Etapa de mídia: o 200 já chegou, logo o turno FOI aplicado. Voltar à
         // revisão convidaria a criança a reenviar uma foto que já virou turno.
-        FinishTurnWithError(PvStrings::kTurnErrMedia, /*rehydrate=*/true, /*to_preview=*/true);
+        // E, como o servidor respondeu, a interface só pode ser decidida depois
+        // da re-consulta: `answered` é verdadeiro aqui.
+        FinishTurnWithError(PvStrings::kTurnErrMedia, /*rehydrate=*/true, /*to_preview=*/true,
+                            /*answered=*/true);
         return true;
     }
 
@@ -981,7 +1014,8 @@ bool PvApp::HandleTurnDone() {
     return true;
 }
 
-void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_preview) {
+void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_preview,
+                                bool answered) {
     // DESCARTE DO ID PENDENTE (contrato v1.1, regra do 409): o turno lógico
     // morre aqui. Um envio futuro gera outro UUID; retransmitir o mesmo não
     // existe na F3.
@@ -989,7 +1023,6 @@ void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_pre
         ESP_LOGW(TAG, "Turno abandonado; request_id %s descartado", pending_request_id_.c_str());
         pending_request_id_.clear();
     }
-    turn_phase_ = PvTurnPhase::Idle;
     voice_terminal_ = false;
     hydration_terminal_ = false;
     response_route_valid_ = false;
@@ -1000,6 +1033,31 @@ void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_pre
         // que impede um turno novo antes da re-consulta — a regra do 409. Se a
         // hidratação falhar, o tick de health tenta de novo a cada 10 s.
         hydrated_ = false;
+    }
+
+    if (answered) {
+        // ERRO COM RESPOSTA (revisão F3, P1a): nada é decidido agora. Mostrar o
+        // aviso e devolver os botões aqui deixaria a criança de volta na
+        // revisão meio segundo antes de o failsafe assumir a tela — e o §9.7 é
+        // explícito: com resposta do servidor, re-consultar ANTES de mostrar
+        // qualquer coisa. A tela continua bloqueada (SetSending segue ligado)
+        // com um rótulo neutro; a mensagem e o destino ficam guardados.
+        turn_phase_ = PvTurnPhase::ErrorRecovering;
+        pending_error_message_ = message;
+        pending_error_to_preview_ = to_preview;
+        if (camera_screen_.IsActive()) {
+            camera_screen_.ShowNotice(PvStrings::kTurnRecovering);
+        }
+        // `rehydrate` é sempre true neste caminho (quem responde muda estado).
+        // Se o pedido não chegar a sair (rede caída, tela de configuração
+        // aberta), a ReconcileTurnState fecha a fase no próximo laço: ninguém
+        // fica preso no "Só um instante...".
+        StartHydration();
+        return;
+    }
+
+    turn_phase_ = PvTurnPhase::Idle;
+    if (rehydrate) {
         StartHydration();
     }
 
@@ -1015,6 +1073,39 @@ void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_pre
     // aviso é a última palavra na tela. Ele é curto, em pt-BR, e não carrega
     // status HTTP nem nada vindo do corpo da resposta.
     camera_screen_.ShowNotice(message);
+}
+
+void PvApp::FinishErrorRecovery(bool route_valid, PvRoute route) {
+    if (turn_phase_ != PvTurnPhase::ErrorRecovering) {
+        return;
+    }
+    // Lidos ANTES de qualquer coisa: LeaveCameraScreen() zera o fluxo do turno.
+    const char* message = pending_error_message_;
+    const bool to_preview = pending_error_to_preview_;
+    turn_phase_ = PvTurnPhase::Idle;
+    pending_error_message_ = nullptr;
+    pending_error_to_preview_ = false;
+
+    if (route_valid && route != PvRoute::Tutoring) {
+        // A ROTA VENCE o aviso (§9.7): no failsafe o overlay É o aviso, e um
+        // texto genérico por cima só competiria com o que a tela já diz. Vale
+        // para Preparation e Celebration pela mesma razão — a tela nova já
+        // conta o que aconteceu. Tutoria NÃO tira a criança da câmera na F3.
+        ESP_LOGI(TAG, "Erro do turno: rota %s assume a tela", PvRouteName(route));
+        LeaveCameraScreen();
+        route_screens_.Show(route, session_state_, lesson_);
+        return;
+    }
+
+    if (!camera_screen_.IsActive()) {
+        return;
+    }
+    camera_screen_.SetSending(false);
+    if (to_preview) {
+        camera_screen_.ExitReview();
+        camera_.StartPreview();
+    }
+    camera_screen_.ShowNotice(message != nullptr ? message : PvStrings::kTurnErrServer);
 }
 
 void PvApp::CloseVoiceTerminal() {
@@ -1076,6 +1167,11 @@ void PvApp::ResetTurnFlow() {
     voice_terminal_ = false;
     hydration_terminal_ = false;
     response_route_valid_ = false;
+    // Sair da tela também ABANDONA o aviso guardado do ErrorRecovering: quem
+    // decide o que a criança vê agora é a tela nova, não um erro do turno que
+    // ela já deixou para trás.
+    pending_error_message_ = nullptr;
+    pending_error_to_preview_ = false;
 }
 
 void PvApp::ReconcileTurnState() {
@@ -1095,8 +1191,21 @@ void PvApp::ReconcileTurnState() {
             // se perdeu antes de virar resultado. Destrava sem inventar
             // resposta nenhuma.
             ESP_LOGW(TAG, "Reconciliação: turno sem resultado; destravando a tela");
+            // Sem resultado não houve resposta do servidor: aviso imediato.
             FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/true,
-                                /*to_preview=*/false);
+                                /*to_preview=*/false, /*answered=*/false);
+        }
+    }
+
+    if (turn_phase_ == PvTurnPhase::ErrorRecovering && !worker_.hydrate_in_flight()) {
+        // Rede de segurança do sub-estado novo (revisão F3, P1a): a tentativa
+        // de re-hidratação acabou (aviso perdido na fila) ou nem chegou a sair
+        // (rede caída, pedido não enfileirado). Sem isto a tela ficaria presa
+        // no "Só um instante..." com todos os botões desabilitados.
+        HandleHydrationDone();
+        if (turn_phase_ == PvTurnPhase::ErrorRecovering) {
+            ESP_LOGW(TAG, "Reconciliação: re-hidratação do erro sem resultado; decidindo sem rota");
+            FinishErrorRecovery(/*route_valid=*/false, PvRoute::Preparation);
         }
     }
 
@@ -1258,8 +1367,10 @@ void PvApp::HandleHydrationDone() {
                  static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_));
         // O terminal (b) fecha como FALHA: sem hidratação válida não há
         // autorização para inferir avanço nenhum — mas a tela também não pode
-        // ficar presa esperando um resultado que nunca virá (F3-D5).
+        // ficar presa esperando um resultado que nunca virá (F3-D5). O mesmo
+        // vale para o ErrorRecovering: sem espelho novo, rota nenhuma vence.
         CloseHydrationTerminal();
+        FinishErrorRecovery(/*route_valid=*/false, PvRoute::Preparation);
         return;
     }
 
@@ -1290,6 +1401,34 @@ void PvApp::HandleHydrationDone() {
             return;
         }
 
+        if (turn_phase_ == PvTurnPhase::Sending) {
+            // Hidratação que terminou com o POST do turno EM VOO (revisão F3,
+            // P1d). Trocar a tela agora mataria o consumidor de uma chamada de
+            // até 120 s: o resultado chegaria fora da fase de envio e seria
+            // descartado, e a criança perderia o turno que já foi cobrado do
+            // servidor. Só o ESPELHO é atualizado; a rota fica para o
+            // fechamento do fluxo — a re-hidratação pós-turno existe
+            // exatamente para decidi-la.
+            ESP_LOGI(TAG, "Hidratação concluída com turno em voo; só o espelho foi atualizado");
+            if (!Application::GetInstance().SetDeviceState(kDeviceStateIdle)) {
+                ESP_LOGE(TAG, "Transição para 'idle' recusada pela máquina de estados");
+            }
+            StartHealthTimer();
+            return;
+        }
+
+        if (turn_phase_ == PvTurnPhase::ErrorRecovering) {
+            // É ESTA hidratação que o sub-estado de erro estava esperando
+            // (§9.7): com o espelho novo em mãos, a interface pode enfim ser
+            // decidida — rota nova, se houver, ou o aviso guardado.
+            if (!Application::GetInstance().SetDeviceState(kDeviceStateIdle)) {
+                ESP_LOGE(TAG, "Transição para 'idle' recusada pela máquina de estados");
+            }
+            StartHealthTimer();
+            FinishErrorRecovery(/*route_valid=*/true, route);
+            return;
+        }
+
         // SetBackendHealthy já marcou o indicador; uma tela de rota criada
         // agora nasce com o estado correto. Uma rota nova por cima da tela de
         // câmera é saída de tela como qualquer outra: o preview precisa parar.
@@ -1309,6 +1448,9 @@ void PvApp::HandleHydrationDone() {
     // terminou", não "o estado novo chegou". Sem espelho novo, nenhuma rota é
     // trocada — a tela volta ao preview quando a voz acabar.
     CloseHydrationTerminal();
+    // Mesma regra para o sub-estado de erro: a tentativa acabou, então o aviso
+    // guardado sai agora, na tela em que a criança já estava.
+    FinishErrorRecovery(/*route_valid=*/false, PvRoute::Preparation);
 
     // 401/503 interrompem o fluxo e vão para a tela de configuração — nunca
     // para uma tela pedagógica com dado inventado.

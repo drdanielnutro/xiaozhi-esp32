@@ -117,6 +117,30 @@ verdes; testes host passam; decisões registradas no decision-log.
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
   2026-08-16); conexão só na T8.
+- Revisão independente, rodada 1 (2026-08-16, Codex effort high via
+  `codex exec` — o MCP ficou com token da conta antiga após troca de
+  conta do proprietário; fallback técnico previsto): 1 P0, 6 P1, 4 P2.
+  CORRIGIDOS: P0 (turno inalcançável — botão de câmera agora também na
+  rota Tutoring e guarda de rota aceita Preparation|Tutoring; Failsafe/
+  Celebration seguem bloqueadas); P1a (erro COM resposta agora entra em
+  `ErrorRecovering`: tela bloqueada em rótulo neutro até a TENTATIVA de
+  re-hidratação terminar; rota ≠ Tutoring vence o aviso — no failsafe o
+  overlay É o aviso); P1b (mensagem de mídia neutra, sem anunciar
+  avanço); P1c (audio_url/image_url exigem prefixo `/api/media/` — token
+  jamais sai da origem configurada); P1d (envio recusado com hidratação
+  em voo; hidratação OK durante Sending/ErrorRecovering só atualiza o
+  espelho, nunca rouba a tela de um POST em voo); P1e (evento de voz com
+  `audio_.busy()` é atrasado e é ignorado; envio recusado com voz de
+  turno anterior ainda tocando); P2a (pv_wav exige consumo exato do
+  RIFF — TrailingGarbage); P2b (Content-Type ausente rejeita); P2c
+  (RequireInt rejeita fracionário/fora de faixa); P2d (PlayPcm rejeita
+  taxa que zeraria o frame). Testes host: 155+249+114, 0 falhas; builds
+  PV e 7b verdes.
+  ADIADO (registro): a parte do P1f que exige fakes de FreeRTOS/HTTP e
+  um harness de concorrência (PlayPcm/PvAudio/PvWorker/fluxo do PvApp)
+  fica para a F8 — Robustez, fase da matriz de falhas; o harness host
+  atual é de módulos puros e a infraestrutura nova não cabe no MVP da
+  F3 sem ampliá-lo. A parte testável AGORA (P1c/P2a/P2c) foi coberta.
 - T7 (2026-08-16): regressão e medição no Mac (IDF 6.0.2) — build
   `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` VERDE; build
   `esp32-p4-wifi6-touch-lcd-7b` original VERDE (PlayPcm não regrediu o

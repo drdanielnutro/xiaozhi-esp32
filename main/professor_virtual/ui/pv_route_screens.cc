@@ -97,15 +97,23 @@ PvRouteScreens::Entry& PvRouteScreens::EnsureEntry(PvRoute route) {
     lv_label_set_text(detail, "");
     lv_obj_add_flag(detail, LV_OBJ_FLAG_HIDDEN);
 
-    if (route == PvRoute::Preparation) {
-        // ENTRADA PROVISÓRIA DA F2 para o preview da câmera, e só nesta rota.
-        // Não é a jornada real: fotografar as páginas da lição (F7) e a foto
-        // do exercício na tutoria (F3) chegam depois e substituem este botão.
+    if (route == PvRoute::Preparation || route == PvRoute::Tutoring) {
+        // Duas entradas para a MESMA tela de câmera, com o mesmo handler:
+        //  - Preparação: ENTRADA PROVISÓRIA DA F2 para o preview; o fluxo real
+        //    de fotografar as páginas da lição chega na F7 e a substitui;
+        //  - Tutoria: a entrada do TURNO POR FOTO (F3). Ela precisa existir
+        //    aqui porque o envio exige sessão ATIVA, e sessão ativa é
+        //    exatamente o que roteia para a tutoria (§9.1) — sem este botão o
+        //    turno seria inalcançável (revisão F3, P0).
+        // Quem decide se a câmera realmente abre continua sendo o PvApp, pela
+        // rota corrente; este botão só sinaliza.
         auto* camera_button = lv_button_create(screen);
         lv_obj_set_style_bg_color(camera_button, lv_color_hex(PvUi::kColorAccent), 0);
         lv_obj_add_event_cb(camera_button, OnCameraClicked, LV_EVENT_CLICKED, nullptr);
         auto* camera_label = lv_label_create(camera_button);
-        lv_label_set_text(camera_label, PvStrings::kCameraButton);
+        lv_label_set_text(camera_label, route == PvRoute::Tutoring
+                                            ? PvStrings::kTutoringCameraButton
+                                            : PvStrings::kCameraButton);
         lv_obj_center(camera_label);
     }
 

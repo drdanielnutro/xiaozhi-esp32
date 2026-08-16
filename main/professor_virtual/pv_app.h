@@ -38,14 +38,20 @@ enum class PvPhase : uint8_t {
 //
 //   Idle -> Sending -> ShowingResponse -> Idle
 //
-// e o caminho de erro Sending -> Idle, sempre com a re-hidratação disparada
-// antes de decidir a interface quando o servidor chegou a responder. Fora de
-// Idle NENHUM comando da câmera é aceito (botões desabilitados na tela E
-// early-return aqui, para os toques que já estavam na fila).
+// e o caminho de erro Sending -> ErrorRecovering -> Idle (com resposta do
+// servidor) ou Sending -> Idle (sem resposta). Fora de Idle NENHUM comando da
+// câmera é aceito (botões desabilitados na tela E early-return aqui, para os
+// toques que já estavam na fila).
 enum class PvTurnPhase : uint8_t {
     Idle,
     Sending,
     ShowingResponse,
+    // Erro COM resposta do servidor (§9.7): a tela continua BLOQUEADA, num
+    // rótulo neutro, enquanto a re-hidratação corre. Existe porque decidir a
+    // interface antes dela mostraria à criança um aviso que a re-consulta pode
+    // contradizer meio segundo depois — inclusive com o failsafe ligado, caso
+    // em que o overlay É o aviso (revisão F3, P1a).
+    ErrorRecovering,
 };
 
 // Aplicativo Professor Virtual: substitui o assistente XiaoZhi quando
@@ -168,7 +174,15 @@ private:
     // quando o contrato manda. `to_preview` distingue o turno que NÃO foi
     // aplicado (volta à revisão, com a foto na tela) do que FOI aplicado e só
     // não pôde ser mostrado (volta ao preview, para não convidar a reenviar).
-    void FinishTurnWithError(const char* message, bool rehydrate, bool to_preview);
+    // `answered` = o servidor CHEGOU a responder (http_status != 0, inclusive
+    // a falha de mídia depois do 200): nesse caso nada é decidido agora — a
+    // fase vai para ErrorRecovering e a interface só é escolhida quando a
+    // TENTATIVA de re-hidratação terminar (§9.7).
+    void FinishTurnWithError(const char* message, bool rehydrate, bool to_preview, bool answered);
+    // Fecha o ErrorRecovering: a tentativa de re-hidratação acabou (com ou sem
+    // espelho novo) e agora a interface pode ser decidida. `route_valid` false
+    // significa "sem espelho novo", e aí rota nenhuma pode vencer.
+    void FinishErrorRecovery(bool route_valid, PvRoute route);
     // Terminais independentes da saída de ShowingResponse (decisão F3-D5): a
     // voz e a tentativa de re-hidratação. Cada um fecha uma vez; a tela só
     // muda quando os DOIS estiverem fechados.
@@ -250,6 +264,11 @@ private:
     // pedagógica (F3-D5). Só vale quando `response_route_valid_`.
     PvRoute response_route_ = PvRoute::Preparation;
     bool response_route_valid_ = false;
+    // Aviso e destino guardados enquanto a fase é ErrorRecovering. Apontam
+    // sempre para literais de PvStrings (armazenamento estático), nunca para
+    // texto vindo da rede: nenhum trecho do corpo da resposta vira tela.
+    const char* pending_error_message_ = nullptr;
+    bool pending_error_to_preview_ = false;
 
     // Geração de conectividade: incrementada a cada fronteira (desconexão,
     // entrada em config mode Wi-Fi). Pedidos ao worker carregam a geração

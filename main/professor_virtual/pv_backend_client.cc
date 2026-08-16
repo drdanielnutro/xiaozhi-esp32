@@ -607,12 +607,15 @@ PvBackendResult DownloadMedia(const std::string& url_or_path, const char* expect
 
     // Cabeçalho REAL da resposta: o wrapper Http expõe GetResponseHeader() e
     // GetStatusCode() já esperou os cabeçalhos, então a tabela está preenchida.
-    // Cabeçalho ausente (string vazia) não reprova sozinho — a verificação dos
-    // bytes mágicos, mais abaixo, é a barreira que não depende do servidor.
+    // O Content-Type é OBRIGATÓRIO (revisão F3, P2b): o contrato promete a rota
+    // de mídia declarando o tipo, e "ausente" é indistinguível de uma resposta
+    // intermediária (proxy, portal cativo) que devolveu outra coisa com 200.
+    // Os bytes mágicos, mais abaixo, continuam como SEGUNDA barreira — esta
+    // rejeita antes de baixar megabytes.
     std::string content_type = http->GetResponseHeader("Content-Type");
-    if (!content_type.empty() && !ContentTypeMatches(content_type, expected_mime)) {
+    if (content_type.empty() || !ContentTypeMatches(content_type, expected_mime)) {
         http->Close();
-        ESP_LOGE(TAG, "mídia: Content-Type inesperado (esperado %s)", expected_mime);
+        ESP_LOGE(TAG, "mídia: Content-Type ausente ou inesperado (esperado %s)", expected_mime);
         result.status = PvBackendStatus::ParseError;
         return result;
     }

@@ -74,6 +74,8 @@ const char* PvWavErrorText(PvWavError error) {
             return "chunk data com tamanho ímpar";
         case PvWavError::DataOutOfBounds:
             return "chunk data estoura o arquivo";
+        case PvWavError::TrailingGarbage:
+            return "os chunks não terminam no fim do arquivo";
     }
     return "erro desconhecido";
 }
@@ -172,6 +174,16 @@ bool PvWavParse(const uint8_t* bytes, size_t len, PvWavInfo& info, PvWavError& e
         }
         // O laço sempre avança pelo menos kChunkHeaderSize, então não há como
         // ficar preso mesmo com uma sequência de chunks vazios.
+    }
+
+    // O RIFF tem de ser consumido EXATAMENTE (revisão F3, P2a): `offset` só
+    // pode parar no fim físico do arquivo. Menos que isso significa 1 a 7 bytes
+    // de lixo que não formam nem um cabeçalho de chunk; `len + 1` significa
+    // último chunk ímpar SEM o byte de padding — o arquivo acabou no meio da
+    // estrutura. O ChunkSize do RIFF não pega nenhum dos dois, porque ele mede
+    // o total e não a soma dos chunks.
+    if (offset != len) {
+        return Fail(PvWavError::TrailingGarbage, error);
     }
 
     if (!have_fmt) {

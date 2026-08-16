@@ -118,8 +118,9 @@ PvBackendResult PostTurnPhoto(const std::string& session_id, const std::string& 
 // GET de um arquivo de mídia do turno (audio_url/image_url, relativos).
 // `expected_mime`/`expected_ext` formam um par fechado: use
 // kAudioMime/kAudioExt ou kImageMime/kImageExt. A extensão do CAMINHO é
-// verificada ANTES de abrir a conexão e o tipo do conteúdo é verificado depois,
-// para que um redirecionamento ou um 200 de página de erro não vire "áudio".
+// verificada ANTES de abrir a conexão; depois, o Content-Type da resposta é
+// EXIGIDO (ausente também reprova) e os bytes mágicos são conferidos, para que
+// um redirecionamento ou um 200 de página de erro não vire "áudio".
 // `out` é substituído; só tem conteúdo quando o resultado é Ok.
 PvBackendResult DownloadMedia(const std::string& url_or_path, const char* expected_mime,
                               const char* expected_ext, std::vector<uint8_t>& out);

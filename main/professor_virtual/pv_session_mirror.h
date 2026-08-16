@@ -165,7 +165,9 @@ struct PvTurnResponse {
     std::string current_tarefa;    // idem
     int wrong_answer_count = 0;
     bool adult_intervention_required = false;
-    // Relativas à base do backend; resolvidas por PvBackendClient::ResolveUrl.
+    // Caminhos RELATIVOS à base do backend, sempre sob "/api/media/";
+    // resolvidos por PvBackendClient::ResolveUrl. Nunca absolutos: o parser
+    // rejeita a resposta inteira se forem (ver ParseTurnResponse).
     std::string audio_url;
     std::string image_url;
     std::string request_id;  // eco do id enviado; a COMPARAÇÃO é do chamador
@@ -179,12 +181,16 @@ struct PvTurnResponse {
 // decorativo: veredicto e posição movem a máquina de estados, as URLs são a
 // única fonte da mídia e o eco do request_id é a prova de idempotência.
 // Exigências: veredicto e session_status nas listas fechadas; audio_url e
-// image_url strings não vazias; audio_format == "wav"; image_format == "jpg";
+// image_url começando EXATAMENTE por "/api/media/" e com nome de arquivo
+// depois do prefixo — URL absoluta (http/https), relativa a protocolo
+// ("//host/...") ou fora dessa rota derruba a resposta, porque o download leva
+// o token do dispositivo no cabeçalho e ele só pode ir para a origem que o
+// adulto configurou; audio_format == "wav"; image_format == "jpg";
 // audio_base64 e image_base64 presentes e EXATAMENTE ""; request_id presente e
 // não vazio; current_item/current_tarefa, texto_explicacao presentes como
-// string (vazia é aceita); wrong_answer_count número; adult_intervention_
-// required booleano. Campos extras desconhecidos são tolerados (o contrato é
-// aditivo).
+// string (vazia é aceita); wrong_answer_count número INTEIRO dentro da faixa
+// de int (1.5 e 1e12 são rejeitados); adult_intervention_required booleano.
+// Campos extras desconhecidos são tolerados (o contrato é aditivo).
 bool ParseTurnResponse(const char* json, PvTurnResponse& out);
 
 // Nome estável do veredicto, só para log/diagnóstico.

@@ -736,6 +736,17 @@ bool AudioService::PlayPcm(std::vector<int16_t>&& pcm, int sample_rate) {
         return false;
     }
 
+    // A rate below 1000 / OPUS_FRAME_DURATION_MS makes the frame size round
+    // down to zero, and the enqueue loop below would never advance its offset:
+    // an infinite loop holding the audio queue. Rejected here, before anything
+    // is allocated, because such a rate is not playable anyway.
+    const size_t frame_samples = (size_t)sample_rate * OPUS_FRAME_DURATION_MS / 1000;
+    if (frame_samples == 0) {
+        ESP_LOGE(TAG, "PlayPcm: sample rate %d is too low for a %d ms frame", sample_rate,
+                 OPUS_FRAME_DURATION_MS);
+        return false;
+    }
+
     if (!codec_->output_enabled()) {
         esp_timer_stop(audio_power_timer_);
         esp_timer_start_periodic(audio_power_timer_, AUDIO_POWER_CHECK_INTERVAL_MS * 1000);
@@ -763,7 +774,6 @@ bool AudioService::PlayPcm(std::vector<int16_t>&& pcm, int sample_rate) {
         playback_drained_notified_ = false;
     }
 
-    const size_t frame_samples = (size_t)sample_rate * OPUS_FRAME_DURATION_MS / 1000;
     bool completed = true;
     for (size_t offset = 0; offset < pcm.size(); offset += frame_samples) {
         // The last frame may be partial; it is played, not dropped.

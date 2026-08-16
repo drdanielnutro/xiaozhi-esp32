@@ -61,6 +61,11 @@ enum class PvWavError : uint8_t {
     OddDataSize,
     // O chunk data declara mais bytes do que o arquivo tem.
     DataOutOfBounds,
+    // O passeio pelos chunks não terminou EXATAMENTE no fim do arquivo: sobrou
+    // lixo curto demais para ser um chunk (1 a 7 bytes) ou faltou o byte de
+    // padding do último chunk ímpar. Nos dois casos o arquivo não é o RIFF que
+    // ele diz ser, e o ChunkSize sozinho não pega isso.
+    TrailingGarbage,
 };
 
 // Texto pt-BR curto para log. Nunca devolve nullptr.
