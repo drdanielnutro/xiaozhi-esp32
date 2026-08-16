@@ -68,7 +68,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       não canônicos; entrega do PCM a `PlayPcm`; sons OGG locais de
       feedback convertidos e embarcados · pronto quando: testes host verdes
       e build PV verde.
-- [ ] T4 — `pv_backend_client`: perfil comum de turno v1.1 (`request_id`
+- [x] T4 — `pv_backend_client`: perfil comum de turno v1.1 (`request_id`
       UUID v4 via esp_random; `PostTurnPhoto` multipart chunked com
       `session_id` + `image` + campos v1.1; timeout ≥120 s) + parse da
       resposta (eco de `request_id`, `audio_base64`/`image_base64` vazios,

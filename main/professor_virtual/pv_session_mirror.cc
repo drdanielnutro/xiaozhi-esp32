@@ -88,6 +88,146 @@ void ParseLessonItem(const cJSON* json, PvLessonItem& out) {
     }
 }
 
+// --- Leitores ESTRITOS (§7.5, decisão F3-D1) ---------------------------------
+// Separados dos tolerantes acima de propósito: aqui "ausente" e "tipo errado"
+// são erro de contrato, não default. Devolvem nullptr/false em vez de "".
+
+// String presente e realmente string (null/número/ausente => nullptr).
+const char* RequireString(const cJSON* object, const char* key) {
+    const cJSON* item = cJSON_GetObjectItem(object, key);
+    if (!cJSON_IsString(item) || item->valuestring == nullptr) {
+        return nullptr;
+    }
+    return item->valuestring;
+}
+
+// String presente, não vazia (audio_url/image_url/request_id).
+bool RequireNonEmptyString(const cJSON* object, const char* key, std::string& out) {
+    const char* value = RequireString(object, key);
+    if (value == nullptr || value[0] == '\0') {
+        return false;
+    }
+    out = value;
+    return true;
+}
+
+// String presente com valor EXATO (audio_format/image_format e os base64
+// vazios do perfil media=url).
+bool RequireExactString(const cJSON* object, const char* key, const char* expected) {
+    const char* value = RequireString(object, key);
+    return value != nullptr && std::string(value) == expected;
+}
+
+bool RequireInt(const cJSON* object, const char* key, int& out) {
+    const cJSON* item = cJSON_GetObjectItem(object, key);
+    // cJSON_IsBool é falso para números, mas true/false chegam como número em
+    // algumas serializações — por isso o teste explícito de tipo.
+    if (!cJSON_IsNumber(item)) {
+        return false;
+    }
+    out = item->valueint;
+    return true;
+}
+
+bool RequireBool(const cJSON* object, const char* key, bool& out) {
+    const cJSON* item = cJSON_GetObjectItem(object, key);
+    if (!cJSON_IsBool(item)) {
+        return false;
+    }
+    out = cJSON_IsTrue(item) != 0;
+    return true;
+}
+
+// Lista fechada do veredicto: nada de "parecido com".
+bool ParseVerdict(const char* text, PvVerdict& out) {
+    std::string value = text;
+    if (value == "correct") {
+        out = PvVerdict::Correct;
+        return true;
+    }
+    if (value == "wrong") {
+        out = PvVerdict::Wrong;
+        return true;
+    }
+    if (value == "teach") {
+        out = PvVerdict::Teach;
+        return true;
+    }
+    if (value == "unidentifiable") {
+        out = PvVerdict::Unidentifiable;
+        return true;
+    }
+    return false;
+}
+
+// Corpo do parser estrito, já com a raiz garantidamente objeto. Fica separado
+// para que o cJSON_Delete aconteça em um lugar só, mesmo com saídas cedo.
+bool ParseTurnResponseObject(const cJSON* root, PvTurnResponse& out) {
+    const char* veredicto = RequireString(root, "veredicto");
+    if (veredicto == nullptr || !ParseVerdict(veredicto, out.veredicto)) {
+        return false;
+    }
+
+    // texto_explicacao é exibição/fala: exigimos a chave (é o miolo da
+    // resposta), mas aceitamos vazia — o contrato não garante conteúdo.
+    const char* texto = RequireString(root, "texto_explicacao");
+    if (texto == nullptr) {
+        return false;
+    }
+    out.texto_explicacao = texto;
+
+    // Lista fechada do §7.5: só estes dois estados têm rota.
+    const char* session_status = RequireString(root, "session_status");
+    if (session_status == nullptr) {
+        return false;
+    }
+    out.session_status = session_status;
+    if (out.session_status != "active" && out.session_status != "completed") {
+        return false;
+    }
+
+    // Posição APÓS o turno: a detecção de avanço do §9.4 compara estes dois
+    // com a posição capturada antes do envio. Exigimos as chaves; o valor pode
+    // ser vazio (sessão sem próxima tarefa), e vazio != posição anterior, que
+    // é justamente o que a comparação precisa enxergar.
+    const char* current_item = RequireString(root, "current_item");
+    const char* current_tarefa = RequireString(root, "current_tarefa");
+    if (current_item == nullptr || current_tarefa == nullptr) {
+        return false;
+    }
+    out.current_item = current_item;
+    out.current_tarefa = current_tarefa;
+
+    if (!RequireInt(root, "wrong_answer_count", out.wrong_answer_count)) {
+        return false;
+    }
+    if (!RequireBool(root, "adult_intervention_required", out.adult_intervention_required)) {
+        return false;
+    }
+
+    // Perfil media=url: os base64 continuam no payload por compatibilidade,
+    // mas TÊM de vir vazios. Um base64 preenchido significa que o backend
+    // ignorou media=url e mandaria megabytes pela RAM do dispositivo.
+    if (!RequireExactString(root, "audio_base64", "") ||
+        !RequireExactString(root, "image_base64", "")) {
+        return false;
+    }
+    if (!RequireExactString(root, "audio_format", "wav") ||
+        !RequireExactString(root, "image_format", "jpg")) {
+        return false;
+    }
+    if (!RequireNonEmptyString(root, "audio_url", out.audio_url) ||
+        !RequireNonEmptyString(root, "image_url", out.image_url)) {
+        return false;
+    }
+    // Eco da idempotência. A comparação com o id ENVIADO fica no chamador,
+    // que é quem o conhece; aqui só garantimos que o campo existe.
+    if (!RequireNonEmptyString(root, "request_id", out.request_id)) {
+        return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 int PvItemProgress::IndexOfTarefa(const std::string& tarefa_id) const {
@@ -348,6 +488,44 @@ bool ParseLesson(const char* json, PvLesson& out) {
 
     cJSON_Delete(root);
     return true;
+}
+
+void PvTurnResponse::Clear() { *this = PvTurnResponse(); }
+
+bool ParseTurnResponse(const char* json, PvTurnResponse& out) {
+    out.Clear();
+    if (json == nullptr) {
+        return false;
+    }
+    cJSON* root = cJSON_Parse(json);
+    if (root == nullptr) {
+        return false;
+    }
+    // Acumula em um objeto local: `out` só recebe a resposta quando ela passa
+    // INTEIRA, para que uma falha no último campo não deixe metade aplicada.
+    PvTurnResponse parsed;
+    bool ok = cJSON_IsObject(root) && ParseTurnResponseObject(root, parsed);
+    cJSON_Delete(root);
+    if (!ok) {
+        out.Clear();
+        return false;
+    }
+    out = std::move(parsed);
+    return true;
+}
+
+const char* PvVerdictName(PvVerdict verdict) {
+    switch (verdict) {
+        case PvVerdict::Correct:
+            return "correct";
+        case PvVerdict::Wrong:
+            return "wrong";
+        case PvVerdict::Teach:
+            return "teach";
+        case PvVerdict::Unidentifiable:
+            return "unidentifiable";
+    }
+    return "unknown";
 }
 
 // "Utilizável" é lista FECHADA: só os dois estados que têm rota própria no

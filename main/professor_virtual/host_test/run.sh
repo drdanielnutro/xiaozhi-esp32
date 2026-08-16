@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Compila e roda os testes de host do Professor Virtual (sem ESP-IDF):
 #   - test_session_mirror: parsers do contrato (§7.2/§7.3) — precisa de cJSON;
+#   - test_turn_response: parser ESTRITO da resposta do turno (§7.5, perfil
+#     v1.1) — binário próprio para separar o regime estrito do tolerante;
 #   - test_pv_wav: parser RIFF/WAVE da voz do turno — binário SEPARADO, sem
 #     cJSON, porque o pv_wav é módulo puro e não deve ganhar dependência
 #     nenhuma nem no teste.
@@ -51,10 +53,18 @@ fi
     "${OUT_DIR}/cJSON.o"
 
 /usr/bin/clang++ -std=c++17 -Wall -Wextra -Werror -g ${SAN} ${SYSROOT} ${CXX_STDLIB_INC} \
+    -I "${CJSON_DIR}" -I "${PV_DIR}" \
+    -o "${OUT_DIR}/test_turn_response" \
+    "${HERE}/test_turn_response.cc" \
+    "${PV_DIR}/pv_session_mirror.cc" \
+    "${OUT_DIR}/cJSON.o"
+
+/usr/bin/clang++ -std=c++17 -Wall -Wextra -Werror -g ${SAN} ${SYSROOT} ${CXX_STDLIB_INC} \
     -I "${PV_DIR}" \
     -o "${OUT_DIR}/test_pv_wav" \
     "${HERE}/test_pv_wav.cc" \
     "${PV_DIR}/pv_wav.cc"
 
 "${OUT_DIR}/test_session_mirror"
+"${OUT_DIR}/test_turn_response"
 "${OUT_DIR}/test_pv_wav"

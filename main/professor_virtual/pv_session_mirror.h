@@ -142,6 +142,54 @@ struct PvLesson {
 bool ParseState(const char* json, PvSessionState& out);
 bool ParseLesson(const char* json, PvLesson& out);
 
+// Veredicto pedagógico do turno (§7.5). Lista FECHADA: o backend só emite
+// estes quatro valores e cada um tem tratamento próprio na tela (som de
+// acerto, explicação, pedido de nova foto). Um valor desconhecido não pode
+// virar "algo parecido" — vira rejeição da resposta inteira.
+enum class PvVerdict {
+    Correct,
+    Wrong,
+    Teach,
+    Unidentifiable,
+};
+
+// Espelho da resposta 200 de POST /api/turn no perfil v1.1 (§7.5 + "Campos
+// novos na resposta"). Só é preenchido quando ParseTurnResponse devolve true.
+struct PvTurnResponse {
+    // Default conservador: um objeto ainda não preenchido não pode parecer
+    // "acertou". "unidentifiable" é o veredicto que pede nova foto.
+    PvVerdict veredicto = PvVerdict::Unidentifiable;
+    std::string texto_explicacao;  // fala do tutor; pode ser vazia
+    std::string session_status;    // "active" | "completed" (lista fechada)
+    std::string current_item;      // posição APÓS o turno (§9.4)
+    std::string current_tarefa;    // idem
+    int wrong_answer_count = 0;
+    bool adult_intervention_required = false;
+    // Relativas à base do backend; resolvidas por PvBackendClient::ResolveUrl.
+    std::string audio_url;
+    std::string image_url;
+    std::string request_id;  // eco do id enviado; a COMPARAÇÃO é do chamador
+
+    void Clear();
+};
+
+// Parser ESTRITO da resposta do turno (decisão F3-D1). Ao contrário dos
+// parsers tolerantes da hidratação, aqui QUALQUER desvio do contrato v1.1
+// devolve false e deixa `out` limpo — nenhum campo desta resposta é
+// decorativo: veredicto e posição movem a máquina de estados, as URLs são a
+// única fonte da mídia e o eco do request_id é a prova de idempotência.
+// Exigências: veredicto e session_status nas listas fechadas; audio_url e
+// image_url strings não vazias; audio_format == "wav"; image_format == "jpg";
+// audio_base64 e image_base64 presentes e EXATAMENTE ""; request_id presente e
+// não vazio; current_item/current_tarefa, texto_explicacao presentes como
+// string (vazia é aceita); wrong_answer_count número; adult_intervention_
+// required booleano. Campos extras desconhecidos são tolerados (o contrato é
+// aditivo).
+bool ParseTurnResponse(const char* json, PvTurnResponse& out);
+
+// Nome estável do veredicto, só para log/diagnóstico.
+const char* PvVerdictName(PvVerdict verdict);
+
 // Destinos de boot do §9.1.
 enum class PvRoute {
     Preparation,
