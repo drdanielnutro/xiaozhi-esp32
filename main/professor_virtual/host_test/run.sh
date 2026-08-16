@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Compila e roda o teste de host do pv_session_mirror (sem ESP-IDF).
+# Compila e roda os testes de host do Professor Virtual (sem ESP-IDF):
+#   - test_session_mirror: parsers do contrato (§7.2/§7.3) — precisa de cJSON;
+#   - test_pv_wav: parser RIFF/WAVE da voz do turno — binário SEPARADO, sem
+#     cJSON, porque o pv_wav é módulo puro e não deve ganhar dependência
+#     nenhuma nem no teste.
 # Uso: bash main/professor_virtual/host_test/run.sh
 set -euo pipefail
 
@@ -46,4 +50,11 @@ fi
     "${PV_DIR}/pv_route_text.cc" \
     "${OUT_DIR}/cJSON.o"
 
+/usr/bin/clang++ -std=c++17 -Wall -Wextra -Werror -g ${SAN} ${SYSROOT} ${CXX_STDLIB_INC} \
+    -I "${PV_DIR}" \
+    -o "${OUT_DIR}/test_pv_wav" \
+    "${HERE}/test_pv_wav.cc" \
+    "${PV_DIR}/pv_wav.cc"
+
 "${OUT_DIR}/test_session_mirror"
+"${OUT_DIR}/test_pv_wav"

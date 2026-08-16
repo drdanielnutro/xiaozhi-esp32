@@ -61,7 +61,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       (PCM s16le mono 16 kHz → fila de playback; sem bloquear tasks de
       áudio; sem tocar o caminho Opus existente) · pronto quando: build PV
       verde e regressão 7b original verde.
-- [ ] T3 — `pv_audio.cc/.h`: parser RIFF/WAVE por chunks (parte pura,
+- [x] T3 — `pv_audio.cc/.h`: parser RIFF/WAVE por chunks (parte pura,
       host-testável: valida RIFF/WAVE, percorre chunks, exige PCM s16le
       mono 16 kHz e arquivo finito; rejeita layout inválido) + testes host
       cobrindo casos válidos, truncados, placeholder de streaming e offsets
