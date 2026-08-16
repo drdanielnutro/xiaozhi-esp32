@@ -30,6 +30,14 @@ constexpr uint32_t kStackSize = 8192;
 // task passa a vida bloqueada em I/O de rede.
 constexpr UBaseType_t kPriority = 2;
 
+// Medição do pico de RAM do turno (F3/T7): um marco por etapa, para o log da
+// validação física dizer ONDE a memória aperta — não só quanto sobrou no fim.
+void LogTurnRam(const char* marco) {
+    ESP_LOGI("PvWorker", "RAM turno [%s]: interna livre %u KB, PSRAM livre %u KB", marco,
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -256,6 +264,7 @@ void PvWorker::RunTurn(uint32_t generation) {
     TurnResult result;
     result.generation = generation;
 
+    LogTurnRam("antes do POST, foto viva");
     result.stage = TurnStage::Post;
     result.backend = PvBackendClient::PostTurnPhoto(session_id, request_id, jpeg.data(),
                                                     jpeg.size(), result.response);
@@ -311,6 +320,7 @@ void PvWorker::RunTurn(uint32_t generation) {
     }
     if (result.backend.ok()) {
         result.stage = TurnStage::Complete;
+        LogTurnRam("fim do job, WAV+RGB vivos");
         ESP_LOGI(TAG, "Turno completo: %u bytes de voz, imagem %ux%u (%u bytes de RGB565)",
                  (unsigned)result.wav.size(), (unsigned)result.rgb_width,
                  (unsigned)result.rgb_height, (unsigned)result.rgb_len);

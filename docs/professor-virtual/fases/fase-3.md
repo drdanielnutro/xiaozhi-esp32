@@ -93,7 +93,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       erros com toast/telas conforme §9.7 (401/503 → configuração) ·
       pronto quando: build PV verde e caminho de cada erro rastreável no
       código.
-- [ ] T7 — Regressão e medição: build
+- [x] T7 — Regressão e medição: build
       `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` + build
       `esp32-p4-wifi6-touch-lcd-7b` original + testes host
       (`python3 -m unittest discover -s scripts/tests` e host_test do PV) +
@@ -117,6 +117,16 @@ verdes; testes host passam; decisões registradas no decision-log.
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
   2026-08-16); conexão só na T8.
+- T7 (2026-08-16): regressão e medição no Mac (IDF 6.0.2) — build
+  `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` VERDE; build
+  `esp32-p4-wifi6-touch-lcd-7b` original VERDE (PlayPcm não regrediu o
+  assistente); `python3 -m unittest discover -s scripts/tests` OK;
+  host_test do PV: 155 + 170 + 95 verificações, 0 falhas (ASan/UBSan).
+  Binário PV: 3.658.848 bytes (~3,49 MiB) no slot OTA de 4 MiB
+  (partitions/v2/32m.csv) — folga ~520 KiB. Instrumentação de RAM do
+  turno pronta: marcos "antes do POST", "fim do job (WAV+RGB vivos)"
+  (pv_worker) e "WAV+PCM vivos" (pv_audio), com heap interna e PSRAM
+  livres em KB; os NÚMEROS saem na T8, na placa.
 - T1 (2026-08-16): decisões F3-D1..D7 ratificadas pelo Codex (thread
   01a00abb) e registradas no decision-log. Pontos que moldam as tasks:
   parse do turno ESTRITO no `pv_session_mirror`; `PlayPcm` com rate

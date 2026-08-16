@@ -1,5 +1,6 @@
 #include "pv_audio.h"
 
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 
 #include <string_view>
@@ -262,6 +263,11 @@ void PvAudio::RunTurnAudio(Feedback feedback) {
         finish(Event::VoiceFailed);
         return;
     }
+    // Medição do pico de RAM do turno (F3/T7): este é o instante em que WAV e
+    // PCM coexistem — o RGB da resposta já está na tela nesse momento.
+    ESP_LOGI(TAG, "RAM turno [WAV+PCM vivos]: interna livre %u KB, PSRAM livre %u KB",
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
     std::vector<uint8_t>().swap(wav);
 
     // O semáforo é zerado ANTES de enfileirar: um aviso de dreno anterior não
