@@ -123,9 +123,11 @@ verdes; testes host passam; decisões registradas no decision-log.
   re-hidratação→volta ao preview; anotar os marcos "RAM turno" do log
   serial (antes do POST / fim do job / WAV+PCM vivos); se possível,
   induzir 1 erro (backend desligado no meio) para ver o caminho de erro.
-- Decisões pendentes do proprietário: autorizar (ou não) uma 3ª rodada
-  de verificação do Codex sobre as duas correções da rodada 2 (o teto de
-  2 rodadas foi atingido).
+- Rodada 3 (autorizada pelo proprietário em 2026-08-16) CONCLUÍDA: P0 da
+  rodada 2 verificado como correto; o P1 residual apontado (HydrationDone
+  perdido em Idle bloquearia envios para sempre) foi corrigido com a
+  drenagem genérica de hidratação na reconciliação. Sem pendências de
+  revisão.
 - Estado do worktree: limpo; MCP codex-council com token da conta antiga
   (usar `codex exec` CLI ou reiniciar a sessão para reautenticar).
 
@@ -134,6 +136,16 @@ verdes; testes host passam; decisões registradas no decision-log.
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
   2026-08-16); conexão só na T8.
+- Revisão independente, rodada 3 (2026-08-16, autorizada explicitamente
+  pelo proprietário; escopo restrito às correções da rodada 2): destino
+  da foto pelo http_status VERIFICADO como correto e completo;
+  `hydration_pending()` correto na concorrência, mas com P1 residual —
+  um HydrationDone perdido com o turno em Idle deixaria
+  `hydration_ready_` armado para sempre e a guarda recusaria todos os
+  envios. CORRIGIDO: a reconciliação agora drena QUALQUER resultado de
+  hidratação pronto (HandleHydrationDone genérico, no-op sem resultado),
+  em qualquer fase, fazendo o que o evento perdido teria feito. Builds e
+  testes host verdes após a correção.
 - Revisão independente, rodada 2 (2026-08-16, Codex effort high, sessão
   nova): das correções da rodada 1, 8 CONFIRMADAS e 2 incompletas que
   compunham 1 P0 e 1 P1 novos; o adiamento do harness de fakes (P1f) foi

@@ -1216,13 +1216,20 @@ void PvApp::ReconcileTurnState() {
         }
     }
 
-    if (turn_phase_ == PvTurnPhase::ErrorRecovering && !worker_.hydrate_in_flight()) {
-        // Rede de segurança do sub-estado novo (revisão F3, P1a): a tentativa
-        // de re-hidratação acabou (aviso perdido na fila) ou nem chegou a sair
-        // (rede caída, pedido não enfileirado). Sem isto a tela ficaria presa
-        // no "Só um instante..." com todos os botões desabilitados.
+    if (!worker_.hydrate_in_flight()) {
+        // Drenagem GENÉRICA de hidratação, em QUALQUER fase (revisão F3
+        // rodada 3, P1): um HydrationDone perdido com o turno em Idle deixaria
+        // `hydration_ready_` armado para sempre — e a guarda
+        // `hydration_pending()` passaria a recusar TODOS os envios, sem que
+        // nenhum tick voltasse a consumir o resultado. HandleHydrationDone é
+        // no-op quando não há nada a retirar, e fora de turno faz exatamente o
+        // que o evento perdido teria feito (aplicar espelho e rota).
         HandleHydrationDone();
         if (turn_phase_ == PvTurnPhase::ErrorRecovering) {
+            // Rede de segurança do sub-estado (revisão F3, P1a): a tentativa
+            // de re-hidratação acabou sem fechar o terminal (ou nem chegou a
+            // sair — rede caída, pedido não enfileirado). Sem isto a tela
+            // ficaria presa no "Só um instante..." com tudo desabilitado.
             ESP_LOGW(TAG, "Reconciliação: re-hidratação do erro sem resultado; decidindo sem rota");
             FinishErrorRecovery(/*route_valid=*/false, PvRoute::Preparation);
         }
