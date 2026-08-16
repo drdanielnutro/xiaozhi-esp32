@@ -82,7 +82,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       entrada e saída por slots sob mutex com posse movida; um turno em
       voo por vez) · pronto quando: build PV verde e semântica de erro
       documentada para a T6.
-- [ ] T6 — PvApp + UI: fluxo completo na tela (revisão → "Enviar" →
+- [x] T6 — PvApp + UI: fluxo completo na tela (revisão → "Enviar" →
       processando → resposta: imagem do tutor + voz + som de feedback →
       re-hidratação → volta ao preview/rota); comandos bloqueados fora de
       `idle` (mini-máquina da F3); regra de erro do contrato: após

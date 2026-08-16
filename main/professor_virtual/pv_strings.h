@@ -96,6 +96,27 @@ inline constexpr const char* kCameraDecodeFailed = "Não consegui mostrar a foto
 inline constexpr const char* kCameraRetakeButton = "Nova foto";
 inline constexpr const char* kCameraZoomActual = "100%";
 inline constexpr const char* kCameraZoomFit = "Ajustar";
+// Turno por foto (F3). Todos os textos de erro seguem a mesma regra: linguagem
+// de criança, nenhum jargão técnico, NENHUM código HTTP e nada vindo do corpo
+// da resposta do servidor — o que o backend diz não é texto de tela.
+inline constexpr const char* kCameraSendButton = "Enviar";
+inline constexpr const char* kCameraSending = "Enviando...";
+inline constexpr const char* kCameraResponding = "Professor respondendo...";
+// Pré-condições do envio não atendidas (sem sessão ativa, sem espelho fresco,
+// sem servidor configurado) ou envio ainda em andamento.
+inline constexpr const char* kTurnNotReady = "Ainda não dá para enviar. Espere um pouquinho.";
+// Erro COM resposta do servidor (409/502/4xx/5xx): a foto continua na tela e
+// um envio futuro é um turno NOVO.
+inline constexpr const char* kTurnErrServer = "O professor não conseguiu responder. Tente de novo.";
+// Erro SEM resposta (rede/timeout).
+inline constexpr const char* kTurnErrNetwork = "Não consegui falar com o professor. Tente de novo.";
+// A resposta chegou (o turno JÁ foi aplicado), mas a mídia não veio inteira:
+// o texto não convida a reenviar a mesma foto.
+inline constexpr const char* kTurnErrMedia =
+    "Não consegui mostrar a resposta. Vamos para a próxima.";
+// A voz falhou; §9.7 manda avisar e seguir, nunca travar o fluxo.
+inline constexpr const char* kTurnErrVoice = "Não consegui tocar a voz do professor.";
+
 // PROVISÓRIO DA F2: o botão de exportação some junto com o pv_photo_dump.
 inline constexpr const char* kCameraExportButton = "Exportar (diagnóstico)";
 inline constexpr const char* kCameraExporting = "Exportando...";

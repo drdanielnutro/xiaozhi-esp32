@@ -10,8 +10,8 @@
 #include "pv_camera.h"
 #include "ui/pv_ui_theme.h"
 
-// Tela de câmera do Professor Virtual: preview (F2/T3) e revisão da foto
-// capturada (F2/T4).
+// Tela de câmera do Professor Virtual: preview (F2/T3), revisão da foto
+// capturada (F2/T4) e resposta do professor (F3/T6).
 //
 // DONO ÚNICO de tudo que o LVGL referencia nesta tela:
 //  - modo preview: a lv_image_dsc_t do preview e o empréstimo do frame
@@ -22,7 +22,11 @@
 //    heap_caps_free) e o RGB565 já decodificado PELA TASK DA CÂMERA
 //    (`decoded_`, idem). O PvApp TRANSFERE a posse dos DOIS em EnterReview() e
 //    não guarda cópia: um único dono elimina a classe de bug em que a tela
-//    desenha um buffer que outro dono já liberou.
+//    desenha um buffer que outro dono já liberou;
+//  - modo resposta: o RGB565 da imagem do tutor, decodificado PELA TASK DO
+//    PvWorker e transferido em EnterResponse() (`response_`, heap_caps_free).
+//    Buffer e descrição próprios, separados dos da revisão pela mesma razão:
+//    cada um tem um produtor diferente e misturá-los apagaria a fronteira.
 //
 // EXCEÇÃO ÚNICA à posse do JPEG: o dump de diagnóstico (PROVISÓRIO DA F2)
 // trabalha por EMPRÉSTIMO, sem cópia. Ao soltar a foto, a tela oferece a posse
@@ -35,13 +39,17 @@
 // PvApp::LeaveCameraScreen -> Hide).
 //
 // Ciclo de vida (quem manda é o PvApp, na task dele):
-//   Show()        -> tela carregada em modo preview, imagem vazia, aviso
-//                    "Preparando a câmera..."; o PvApp liga o preview depois;
-//   UpdateFrame() -> um swap de frame por aviso (ver o .cc); no-op em revisão;
-//   EnterReview() -> preview sai de cena e a FOTO decodificada entra no lugar;
-//   ExitReview()  -> foto e decodificado liberados, volta ao modo preview;
-//   Hide()        -> imagem esvaziada, empréstimo devolvido e foto liberada,
-//                    nessa ordem, sob o lock.
+//   Show()          -> tela carregada em modo preview, imagem vazia, aviso
+//                      "Preparando a câmera..."; o PvApp liga o preview depois;
+//   UpdateFrame()   -> um swap de frame por aviso (ver o .cc); no-op fora do
+//                      preview;
+//   EnterReview()   -> preview sai de cena e a FOTO decodificada entra;
+//   ExitReview()    -> foto e decodificado liberados, volta ao modo preview;
+//   SetSending()    -> ainda em revisão, com todos os comandos bloqueados;
+//   EnterResponse() -> a foto sai e a IMAGEM DO TUTOR entra no lugar;
+//   ExitResponse()  -> imagem do tutor liberada, volta ao modo preview;
+//   Hide()          -> imagem esvaziada, empréstimo devolvido e os buffers de
+//                      foto e de resposta liberados, nessa ordem, sob o lock.
 //
 // A tela é criada sob demanda e mantida viva depois disso, como as telas de
 // rota: nenhum ponteiro de tela pode ser invalidado enquanto a tela de
@@ -56,9 +64,21 @@ public:
     enum class Action : uint8_t {
         Back,        // "Voltar": sai da tela
         Capture,     // "Tirar foto"
+        Send,        // "Enviar": manda a foto em revisão como turno (F3)
         Retake,      // "Nova foto": descarta a revisão e volta ao preview
         ZoomToggle,  // "100%" / "Ajustar"
         Export,      // "Exportar (diagnóstico)" — PROVISÓRIO DA F2
+    };
+
+    // Imagem do tutor pronta para desenhar (RGB565 LE), como o PvWorker a
+    // entrega. POSSE: EnterResponse() a toma em TODOS os caminhos, inclusive
+    // nos de falha — o chamador nunca precisa desfazer nada.
+    struct ResponseImage {
+        uint8_t* data = nullptr;  // liberado com heap_caps_free
+        size_t len = 0;
+        uint16_t width = 0;
+        uint16_t height = 0;
+        size_t stride = 0;  // bytes por linha (pode exceder width * 2)
     };
 
     // Roda NA TASK DO LVGL (toque): deve apenas sinalizar.
@@ -81,6 +101,8 @@ public:
     void Hide();
 
     bool IsActive() const { return active_; }
+    // Continua verdadeiro durante um envio: a foto SEGUE na tela enquanto o
+    // turno viaja. Quem bloqueia comando é a fase do turno, no PvApp.
     bool IsReviewing() const { return active_ && mode_ == Mode::Review; }
 
     // Estados "esperando uma conclusão que vem de outra task". O PvApp os lê na
@@ -114,6 +136,30 @@ public:
     // PvApp religa o preview depois.
     void ExitReview();
 
+    // Turno em voo: continua em revisão (a foto fica na tela), com o rótulo em
+    // "Enviando..." e TODOS os comandos bloqueados — inclusive Voltar
+    // (decisão F3-D5). `false` devolve os botões e o rótulo de medições.
+    void SetSending(bool sending);
+
+    // Troca a foto da criança pela IMAGEM DO TUTOR, TOMANDO A POSSE do buffer
+    // de `image` (inclusive nos caminhos de falha, em que ele é liberado aqui
+    // mesmo). A foto em revisão é liberada nesta troca: depois de um 200 o
+    // turno JÁ foi aplicado e reenviar a mesma foto não é caminho válido, então
+    // segurar 2,4 MB de RGB565 dela seria só pico de PSRAM.
+    //
+    // Todos os comandos seguem bloqueados: quem tira a tela da resposta é o
+    // PvApp, quando a voz E a re-hidratação terminam (F3-D5).
+    bool EnterResponse(const ResponseImage& image);
+
+    // Libera a imagem do tutor e volta ao modo preview. O PvApp religa o
+    // preview depois.
+    void ExitResponse();
+
+    // Aviso curto no rótulo de estado (erros do turno, §9.7). Não muda modo
+    // nem botões: é só texto, e nunca carrega jargão técnico, código HTTP ou
+    // qualquer trecho do corpo da resposta do servidor.
+    void ShowNotice(const char* text);
+
     // Alterna entre "cabe na tela" (contain) e 1:1 com scroll/pan.
     void ToggleZoom();
 
@@ -130,10 +176,11 @@ public:
     void SetConnected(bool connected);
 
 private:
-    enum class Mode : uint8_t { Preview, Review };
+    enum class Mode : uint8_t { Preview, Review, Response };
 
     static void OnBackClicked(lv_event_t* e);
     static void OnCaptureClicked(lv_event_t* e);
+    static void OnSendClicked(lv_event_t* e);
     static void OnRetakeClicked(lv_event_t* e);
     static void OnZoomClicked(lv_event_t* e);
     static void OnExportClicked(lv_event_t* e);
@@ -147,6 +194,11 @@ private:
     void ReleaseFrameLocked();
     // Libera o JPEG e o decodificado. Sempre DEPOIS do Detach.
     void ReleasePhotoLocked();
+    // Libera a imagem do tutor. Sempre DEPOIS do Detach.
+    void ReleaseResponseLocked();
+    // Zera o cache de geometria: obrigatório em toda troca de modo, porque a
+    // revisão e a resposta mexem no tamanho e no alinhamento do objeto.
+    void ResetGeometryLocked();
     void ApplyGeometryLocked(uint16_t width, uint16_t height);
     void ApplyZoomLocked();
     void UpdateActionBarLocked();
@@ -161,8 +213,10 @@ private:
     lv_obj_t* image_ = nullptr;
     lv_obj_t* hint_label_ = nullptr;
     lv_obj_t* action_bar_ = nullptr;
+    lv_obj_t* back_button_ = nullptr;
     lv_obj_t* capture_button_ = nullptr;
     lv_obj_t* capture_label_ = nullptr;
+    lv_obj_t* send_button_ = nullptr;
     lv_obj_t* retake_button_ = nullptr;
     lv_obj_t* zoom_button_ = nullptr;
     lv_obj_t* zoom_label_ = nullptr;
@@ -185,6 +239,17 @@ private:
     uint16_t decoded_height_ = 0;
     size_t decoded_stride_ = 0;
 
+    // Descrição e buffer da IMAGEM DO TUTOR. Terceiro par (preview, foto,
+    // resposta) porque são três produtores diferentes: a task da câmera, a
+    // task da câmera de novo e a task do worker. Um par por produtor é o que
+    // mantém a posse rastreável.
+    lv_image_dsc_t response_dsc_{};
+    uint8_t* response_ = nullptr;
+    size_t response_len_ = 0;
+    uint16_t response_width_ = 0;
+    uint16_t response_height_ = 0;
+    size_t response_stride_ = 0;
+
     // Geometria já aplicada ao objeto de imagem NO MODO PREVIEW; recalculada
     // quando o tamanho do frame muda, quando a ÁREA muda de tamanho, ou
     // quando a revisão mexeu no objeto (zerada em ExitReview).
@@ -200,6 +265,7 @@ private:
     Mode mode_ = Mode::Preview;
     bool capturing_ = false;
     bool exporting_ = false;
+    bool sending_ = false;
     bool zoom_actual_size_ = false;
     bool active_ = false;
     bool connected_ = false;

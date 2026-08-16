@@ -10,6 +10,7 @@
 #include <mutex>
 #include <string>
 
+#include "pv_audio.h"
 #include "pv_camera.h"
 #include "pv_session_mirror.h"
 #include "pv_worker.h"
@@ -29,6 +30,22 @@ enum class PvPhase : uint8_t {
     AwaitingBackendConfig,  // tela de configuração do backend aberta
     Online,                 // Wi-Fi conectado e backend provisionado
     Offline,                // rede caiu
+};
+
+// Fase do TURNO POR FOTO (§9.2, decisão F3-D6). Vive só na RAM do PvApp e é
+// separada da PvPhase de conectividade de propósito: uma diz "onde o
+// dispositivo está na rede", esta diz "o que a criança está esperando".
+//
+//   Idle -> Sending -> ShowingResponse -> Idle
+//
+// e o caminho de erro Sending -> Idle, sempre com a re-hidratação disparada
+// antes de decidir a interface quando o servidor chegou a responder. Fora de
+// Idle NENHUM comando da câmera é aceito (botões desabilitados na tela E
+// early-return aqui, para os toques que já estavam na fila).
+enum class PvTurnPhase : uint8_t {
+    Idle,
+    Sending,
+    ShowingResponse,
 };
 
 // Aplicativo Professor Virtual: substitui o assistente XiaoZhi quando
@@ -88,6 +105,14 @@ private:
         CameraZoomToggle,
         CameraExportRequested,  // PROVISÓRIO DA F2
         CameraExportDone,       // PROVISÓRIO DA F2
+        // Turno por foto (F3). CameraSendRequested vem do toque; TurnDone, do
+        // PvWorker; VoiceDone/VoiceFailed, da task do PvAudio. Todos raros e
+        // nenhum coalescido: a reconciliação periódica é quem cobre o caso de
+        // um deles não caber na fila.
+        CameraSendRequested,
+        TurnDone,
+        VoiceDone,
+        VoiceFailed,
     };
 
     // POD trafegado pela fila. `data` guarda o SSID (máx. 32 bytes + NUL) e
@@ -132,6 +157,35 @@ private:
     void ReconcileCameraState();
     void HandleRetakeRequested();
     void HandleExportRequested();  // PROVISÓRIO DA F2
+
+    // Turno por foto (F3/T6). Tudo aqui roda na task do PvApp: o HTTP fica no
+    // PvWorker, a voz no PvAudio, e nenhum dos dois toca LVGL.
+    void HandleSendRequested();
+    // false quando não havia resultado de turno a retirar — é o que a
+    // reconciliação usa para distinguir "aviso perdido" de "nada a fazer".
+    bool HandleTurnDone();
+    // Erro do turno: devolve a tela ao estado certo e dispara a re-hidratação
+    // quando o contrato manda. `to_preview` distingue o turno que NÃO foi
+    // aplicado (volta à revisão, com a foto na tela) do que FOI aplicado e só
+    // não pôde ser mostrado (volta ao preview, para não convidar a reenviar).
+    void FinishTurnWithError(const char* message, bool rehydrate, bool to_preview);
+    // Terminais independentes da saída de ShowingResponse (decisão F3-D5): a
+    // voz e a tentativa de re-hidratação. Cada um fecha uma vez; a tela só
+    // muda quando os DOIS estiverem fechados.
+    void CloseVoiceTerminal();
+    void CloseHydrationTerminal();
+    void FinishResponseIfComplete();
+    // Zera a fase do turno sem tocar a tela. Chamado por LeaveCameraScreen:
+    // sair da tela ABANDONA o fluxo do turno (o resultado que chegar depois é
+    // descartado por geração ou por fase), mas NÃO corta a voz que já está
+    // tocando — ela não referencia nada da tela.
+    void ResetTurnFlow();
+    // Rede de segurança do turno, no mesmo laço da ReconcileCameraState: um
+    // TurnDone/VoiceDone/HydrationDone que não coube na fila não pode deixar a
+    // tela presa em "Enviando..."/"Professor respondendo...".
+    void ReconcileTurnState();
+    // Roda NA TASK DO PvAudio: só posta na fila.
+    void OnAudioEventFromAudioTask(PvAudio::Event event);
     // Ponto ÚNICO de saída da tela de câmera: desliga o preview e faz a tela
     // devolver o empréstimo. Todo caminho que carrega outra tela passa por
     // aqui — inclusive os que não vêm do botão "Voltar".
@@ -162,6 +216,7 @@ private:
 
     PvWorker worker_;
     PvCamera camera_;
+    PvAudio audio_;
 
     // Coalescência do aviso de frame de preview: no máximo UM evento
     // CameraPreviewFrame pendente na fila. Setada na task da câmera ao postar,
@@ -180,6 +235,21 @@ private:
     PvPhase phase_ = PvPhase::Booting;
     bool network_connected_ = false;
     std::string network_name_;
+
+    // Mini-máquina do turno (F3-D6) e o que ela precisa lembrar.
+    PvTurnPhase turn_phase_ = PvTurnPhase::Idle;
+    // UUID v4 do turno EM VOO. Existe para deixar explícito no código o
+    // descarte exigido pelo contrato: qualquer erro o apaga, e um envio novo
+    // gera outro — retransmissão do MESMO id não existe na F3.
+    std::string pending_request_id_;
+    // Terminais da saída de ShowingResponse: (a) voz e (b) re-hidratação.
+    bool voice_terminal_ = false;
+    bool hydration_terminal_ = false;
+    // Rota decidida pela re-hidratação DURANTE a resposta. Guardada em vez de
+    // aplicada: trocar a tela no meio da voz do professor cortaria a resposta
+    // pedagógica (F3-D5). Só vale quando `response_route_valid_`.
+    PvRoute response_route_ = PvRoute::Preparation;
+    bool response_route_valid_ = false;
 
     // Geração de conectividade: incrementada a cada fronteira (desconexão,
     // entrada em config mode Wi-Fi). Pedidos ao worker carregam a geração

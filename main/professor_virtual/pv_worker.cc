@@ -1,9 +1,14 @@
 #include "pv_worker.h"
 
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <freertos/task.h>
 
 #include <utility>
+
+// Decodificador de JPEG do próprio firmware (mesmo helper usado pela câmera em
+// pv_camera.cc): a imagem do tutor chega em JPEG e a tela só desenha RGB565.
+#include "jpg/jpeg_to_image.h"
 
 #define TAG "PvWorker"
 
@@ -26,6 +31,55 @@ constexpr uint32_t kStackSize = 8192;
 constexpr UBaseType_t kPriority = 2;
 
 }  // namespace
+
+// ---------------------------------------------------------------------------
+// Posse do RGB decodificado do turno. Fora daqui NINGUÉM chama heap_caps_free
+// neste buffer: ou o TurnResult o libera (destrutor/FreeRgb), ou a posse passa
+// à tela por ForgetRgb() e é ela quem libera.
+// ---------------------------------------------------------------------------
+
+PvWorker::TurnResult::~TurnResult() { FreeRgb(); }
+
+PvWorker::TurnResult::TurnResult(TurnResult&& other) noexcept { *this = std::move(other); }
+
+PvWorker::TurnResult& PvWorker::TurnResult::operator=(TurnResult&& other) noexcept {
+    if (this == &other) {
+        return *this;
+    }
+    // O destino pode já ter um buffer (slot reaproveitado entre turnos):
+    // liberá-lo ANTES de receber o novo é o que impede o vazamento silencioso.
+    FreeRgb();
+    backend = other.backend;
+    stage = other.stage;
+    generation = other.generation;
+    response = std::move(other.response);
+    wav = std::move(other.wav);
+    rgb = other.rgb;
+    rgb_len = other.rgb_len;
+    rgb_width = other.rgb_width;
+    rgb_height = other.rgb_height;
+    rgb_stride = other.rgb_stride;
+    // A origem PERDE o ponteiro: sem isto, dois donos e uma liberação dupla.
+    other.ForgetRgb();
+    return *this;
+}
+
+void PvWorker::TurnResult::FreeRgb() {
+    if (rgb != nullptr) {
+        // Alocado pelo jpeg_to_image (jpeg_calloc_align, heap_caps_* por
+        // baixo): a liberação documentada é heap_caps_free.
+        heap_caps_free(rgb);
+    }
+    ForgetRgb();
+}
+
+void PvWorker::TurnResult::ForgetRgb() {
+    rgb = nullptr;
+    rgb_len = 0;
+    rgb_width = 0;
+    rgb_height = 0;
+    rgb_stride = 0;
+}
 
 bool PvWorker::Start(DoneHandler handler) {
     if (task_ != nullptr) {
@@ -101,7 +155,10 @@ bool PvWorker::RequestTurnPhoto(uint32_t generation, std::string session_id, std
         turn_request_id_ = std::move(request_id);
         turn_jpeg_ = std::move(jpeg);
         // Resultado antigo não retirado morre aqui: se sobrou um turn_ready_,
-        // ele é de um pedido que o PvApp abandonou (mudança de geração).
+        // ele é de um pedido que o PvApp abandonou (mudança de geração). A
+        // atribuição de um TurnResult vazio é o que LIBERA o RGB dele; um
+        // simples `turn_ready_ = false` deixaria megabytes pendurados.
+        turn_result_ = TurnResult{};
         turn_ready_ = false;
     }
     JobItem item{Job::Turn, generation};
@@ -212,14 +269,51 @@ void PvWorker::RunTurn(uint32_t generation) {
             PvBackendClient::DownloadMedia(result.response.audio_url, PvBackendClient::kAudioMime,
                                            PvBackendClient::kAudioExt, result.wav);
     }
+    std::vector<uint8_t> image;
     if (result.backend.ok()) {
         result.stage = TurnStage::ImageDownload;
         result.backend =
             PvBackendClient::DownloadMedia(result.response.image_url, PvBackendClient::kImageMime,
-                                           PvBackendClient::kImageExt, result.image);
+                                           PvBackendClient::kImageExt, image);
+    }
+    if (result.backend.ok()) {
+        // DECODIFICAÇÃO AQUI, NA TASK DO WORKER (mesma razão pela qual a
+        // câmera decodifica na task dela): são centenas de milissegundos de
+        // CPU e megabytes de saída. Nesta task o custo cai onde não atrapalha
+        // ninguém — a principal continua consumindo eventos e o LVGL continua
+        // desenhando. O HTTP do turno já acabou, então nada espera por isto.
+        result.stage = TurnStage::ImageDecode;
+        size_t rgb_len = 0;
+        size_t rgb_width = 0;
+        size_t rgb_height = 0;
+        size_t rgb_stride = 0;
+        const esp_err_t decode_err = jpeg_to_image(image.data(), image.size(), &result.rgb,
+                                                   &rgb_len, &rgb_width, &rgb_height, &rgb_stride);
+        // O JPEG bruto já cumpriu o papel: a tela só desenha RGB, e soltá-lo
+        // aqui evita que os dois formatos coexistam no pico do turno.
+        std::vector<uint8_t>().swap(image);
+        if (decode_err != ESP_OK || result.rgb == nullptr || rgb_width == 0 || rgb_height == 0 ||
+            rgb_stride == 0) {
+            ESP_LOGE(TAG, "Falha ao decodificar a imagem do tutor (err %d)", (int)decode_err);
+            result.FreeRgb();
+            // O corpo chegou e foi aceito pelo MIME, mas não é uma imagem
+            // exibível: para o fluxo vale o mesmo que mídia inválida. O
+            // http_status do download é preservado e NADA disto vira retry —
+            // o turno já foi aplicado no servidor.
+            result.backend =
+                PvBackendResult{PvBackendStatus::ParseError, result.backend.http_status};
+        } else {
+            result.rgb_len = rgb_len;
+            result.rgb_width = static_cast<uint16_t>(rgb_width);
+            result.rgb_height = static_cast<uint16_t>(rgb_height);
+            result.rgb_stride = rgb_stride;
+        }
     }
     if (result.backend.ok()) {
         result.stage = TurnStage::Complete;
+        ESP_LOGI(TAG, "Turno completo: %u bytes de voz, imagem %ux%u (%u bytes de RGB565)",
+                 (unsigned)result.wav.size(), (unsigned)result.rgb_width,
+                 (unsigned)result.rgb_height, (unsigned)result.rgb_len);
     } else {
         ESP_LOGW(TAG, "Turno parou na etapa %d: %s (HTTP %d)", static_cast<int>(result.stage),
                  PvBackendClient::StatusName(result.backend.status), result.backend.http_status);

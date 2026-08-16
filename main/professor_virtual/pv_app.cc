@@ -10,6 +10,7 @@
 #include <cstring>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "application.h"
 #include "board.h"
@@ -29,6 +30,31 @@ constexpr TickType_t kEventWaitTicks = pdMS_TO_TICKS(1000);
 // Monitoramento de conectividade do §9.7. O mesmo tick também é o ritmo de
 // nova tentativa da hidratação que falhou: nada de retry em rajada.
 constexpr uint64_t kHealthPeriodUs = 10ULL * 1000 * 1000;
+
+// Som local disparado pelo veredicto ao chegar a resposta (§9.3). `teach` e
+// `unidentifiable` não têm som nenhum: eles não afirmam acerto nem erro, e um
+// som ali daria à criança um veredicto que o professor não deu.
+PvAudio::Feedback FeedbackForVerdict(PvVerdict verdict) {
+    switch (verdict) {
+        case PvVerdict::Correct:
+            return PvAudio::Feedback::Correct;
+        case PvVerdict::Wrong:
+            return PvAudio::Feedback::Wrong;
+        case PvVerdict::Teach:
+        case PvVerdict::Unidentifiable:
+            break;
+    }
+    return PvAudio::Feedback::None;
+}
+
+// Sessão pronta para receber um turno: o espelho precisa ser de uma sessão de
+// verdade e ainda ativa. "completed"/"closed"/"expired" não recebem turno —
+// mandar um seria pedir ao backend que recusasse (409/4xx) por algo que o
+// cliente já sabia.
+bool CanSendTurn(const PvSessionState& state) {
+    return state.kind == PvStateKind::Session && state.session_status == "active" &&
+           !state.session_id.empty();
+}
 }  // namespace
 
 void PvApp::Initialize() {
@@ -74,13 +100,31 @@ void PvApp::Initialize() {
         PostEvent(PvEventType::CameraExportDone, std::string(), PvConfigReason::Manual);
     });
 
+    // Reprodução da resposta do turno (F3): som de feedback + voz do tutor, em
+    // task própria. Placa sem codec degrada para no-op — o fluxo do turno
+    // continua, só que sem voz (o terminal (a) fecha na hora). O handler roda
+    // NA TASK DO PvAudio: só sinaliza.
+    if (!audio_.Start([this](PvAudio::Event event) { OnAudioEventFromAudioTask(event); })) {
+        ESP_LOGW(TAG, "Áudio indisponível; a resposta do professor sai sem voz nesta placa");
+    }
+
     // Task de rede do PV: executa as chamadas bloqueantes do PvBackendClient e
     // devolve só um aviso pela fila; o resultado é retirado aqui na task
     // principal, com Take*(). O handler roda NA TASK DO WORKER.
     worker_.Start([this](PvWorker::Job job) {
-        PostEvent(
-            job == PvWorker::Job::Hydrate ? PvEventType::HydrationDone : PvEventType::HealthDone,
-            std::string(), PvConfigReason::Manual);
+        PvEventType type = PvEventType::HealthDone;
+        switch (job) {
+            case PvWorker::Job::Hydrate:
+                type = PvEventType::HydrationDone;
+                break;
+            case PvWorker::Job::HealthCheck:
+                type = PvEventType::HealthDone;
+                break;
+            case PvWorker::Job::Turn:
+                type = PvEventType::TurnDone;
+                break;
+        }
+        PostEvent(type, std::string(), PvConfigReason::Manual);
     });
 
     // Timer de health: o callback roda na task do esp_timer e NUNCA faz HTTP —
@@ -146,6 +190,7 @@ void PvApp::Run() {
         // (revisão F2 rodada 2, P1). Os eventos continuam sendo o caminho
         // rápido; PostEvent é best-effort. Ver ReconcileCameraState().
         ReconcileCameraState();
+        ReconcileTurnState();
     }
 }
 
@@ -293,6 +338,16 @@ void PvApp::HandleEvent(const PvEvent& event) {
             break;
 
         case PvEventType::CameraScreenClosed:
+            // Comandos da criança ficam bloqueados fora de `idle` (§9.2). O
+            // botão já está desabilitado; esta guarda cobre o toque que ficou
+            // na fila antes do bloqueio. Ela NÃO vale para as saídas do
+            // sistema (gesto de configuração, rota nova por re-hidratação),
+            // que chamam ReturnFromCameraScreen/LeaveCameraScreen direto.
+            if (turn_phase_ != PvTurnPhase::Idle) {
+                ESP_LOGI(TAG, "Voltar ignorado: turno em andamento (fase %d)",
+                         static_cast<int>(turn_phase_));
+                break;
+            }
             ReturnFromCameraScreen();
             break;
 
@@ -321,6 +376,10 @@ void PvApp::HandleEvent(const PvEvent& event) {
             break;
 
         case PvEventType::CameraZoomToggle:
+            if (turn_phase_ != PvTurnPhase::Idle) {
+                ESP_LOGI(TAG, "Zoom ignorado: turno em andamento");
+                break;
+            }
             camera_screen_.ToggleZoom();
             break;
 
@@ -331,6 +390,28 @@ void PvApp::HandleEvent(const PvEvent& event) {
         case PvEventType::CameraExportDone:
             // PROVISÓRIO DA F2: reabilita o botão de exportação.
             camera_screen_.ShowExportDone();
+            break;
+
+        case PvEventType::CameraSendRequested:
+            HandleSendRequested();
+            break;
+
+        case PvEventType::TurnDone:
+            HandleTurnDone();
+            break;
+
+        case PvEventType::VoiceDone:
+        case PvEventType::VoiceFailed:
+            if (event.type == PvEventType::VoiceFailed) {
+                // §9.7: falha de voz NUNCA trava o fluxo. Avisa e segue pelo
+                // MESMO caminho do fim de áudio. O aviso só faz sentido com a
+                // resposta na tela; fora dela seria texto órfão.
+                ESP_LOGW(TAG, "A voz do professor falhou; seguindo pelo fim de áudio");
+                if (turn_phase_ == PvTurnPhase::ShowingResponse) {
+                    camera_screen_.ShowNotice(PvStrings::kTurnErrVoice);
+                }
+            }
+            CloseVoiceTerminal();
             break;
     }
 }
@@ -451,6 +532,9 @@ void PvApp::OnCameraActionFromLvglTask(PvCameraScreen::Action action) {
         case PvCameraScreen::Action::Capture:
             PostEvent(PvEventType::CameraCaptureRequested, std::string(), PvConfigReason::Manual);
             break;
+        case PvCameraScreen::Action::Send:
+            PostEvent(PvEventType::CameraSendRequested, std::string(), PvConfigReason::Manual);
+            break;
         case PvCameraScreen::Action::Retake:
             PostEvent(PvEventType::CameraRetakeRequested, std::string(), PvConfigReason::Manual);
             break;
@@ -464,6 +548,12 @@ void PvApp::OnCameraActionFromLvglTask(PvCameraScreen::Action action) {
 }
 
 void PvApp::HandleCaptureRequested() {
+    // Comandos bloqueados fora de `idle` (§9.2): o toque pode ter entrado na
+    // fila antes de os botões serem desabilitados.
+    if (turn_phase_ != PvTurnPhase::Idle) {
+        ESP_LOGI(TAG, "Captura ignorada: turno em andamento");
+        return;
+    }
     // A tela de câmera precisa estar no ar: um toque que sobrou na fila depois
     // de a tela sair não pode disparar uma codificação de meio segundo.
     if (!camera_screen_.IsActive() || camera_screen_.IsReviewing()) {
@@ -570,6 +660,10 @@ void PvApp::ReconcileCameraState() {
 }
 
 void PvApp::HandleRetakeRequested() {
+    if (turn_phase_ != PvTurnPhase::Idle) {
+        ESP_LOGI(TAG, "Nova foto ignorada: turno em andamento");
+        return;
+    }
     if (!camera_screen_.IsReviewing()) {
         return;
     }
@@ -583,6 +677,10 @@ void PvApp::HandleRetakeRequested() {
 void PvApp::HandleExportRequested() {
     // PROVISÓRIO DA F2 (decisão F2-LegibilityValidation): dump serial do JPEG
     // só por acionamento explícito, nunca automático.
+    if (turn_phase_ != PvTurnPhase::Idle) {
+        ESP_LOGI(TAG, "Exportação ignorada: turno em andamento");
+        return;
+    }
     if (!camera_screen_.IsReviewing()) {
         return;
     }
@@ -629,8 +727,19 @@ void PvApp::ShowCameraScreen() {
 
 void PvApp::LeaveCameraScreen() {
     if (!camera_screen_.IsActive()) {
+        // Mesmo sem tela no ar a fase precisa voltar a Idle: um caminho de
+        // saída que corra com a tela já fechada não pode deixar o PV
+        // bloqueando comandos para sempre.
+        ResetTurnFlow();
         return;
     }
+    // Sair da tela ABANDONA o turno em curso (gesto de configuração, rota nova
+    // por re-hidratação, tela de status). O que estiver em voo continua e é
+    // descartado ao chegar — por geração, quando houve fronteira de rede, ou
+    // por fase, quando não houve. A VOZ que já estiver tocando não é cortada:
+    // ela não referencia nada desta tela, e cortá-la no meio de uma explicação
+    // seria pior que deixá-la terminar.
+    ResetTurnFlow();
     // Ordem obrigatória: parar de produzir, depois soltar o empréstimo,
     // esvaziar a imagem e LIBERAR a foto em revisão (a tela faz as três coisas
     // sob um único lock). Avisos de frame que já estejam na fila viram no-op,
@@ -652,6 +761,363 @@ void PvApp::ReturnFromCameraScreen() {
     // status: nunca deixar a criança numa tela morta.
     if (!route_screens_.Reload()) {
         status_screen_.Load();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Turno por foto (F3/T6): revisão -> "Enviar" -> resposta -> preview ou rota.
+//
+// Divisão de trabalho: esta task decide e desenha; o PvWorker faz o HTTP e a
+// decodificação do JPEG do tutor; o PvAudio toca o feedback e a voz. Nenhum
+// dos dois toca LVGL, e nada aqui bloqueia.
+//
+// Mapa dos caminhos de erro (§9.7 + decisões F3-D4/D5/D6), todos SEM retry
+// automático e todos apagando `pending_request_id_` — um envio futuro é sempre
+// um TURNO NOVO, com UUID NOVO:
+//
+//   401/503 (needs_credentials) -> tela de configuração. Nunca resposta
+//       pedagógica, nunca aviso na tela da criança.
+//   erro COM resposta do servidor (409, 502, 4xx, 5xx) -> re-hidratação
+//       disparada ANTES de decidir a interface; aviso curto; volta à REVISÃO
+//       (a foto continua lá). O espelho é marcado como velho, então só depois
+//       da re-hidratação um turno novo é aceito — que é exatamente o que o
+//       contrato exige depois de um 409.
+//   erro SEM resposta (rede/timeout) -> aviso; volta à revisão; espelho
+//       marcado como velho e re-hidratação tentada (a reconexão também
+//       re-hidrata sozinha).
+//   falha de download/decode DEPOIS do 200 -> o turno FOI aplicado no
+//       servidor: aviso, re-hidratação e volta ao PREVIEW. Voltar à revisão
+//       convidaria a reenviar uma foto que já virou turno.
+//   voz que não toca -> §9.7: avisa e segue pelo mesmo caminho do fim de
+//       áudio; nunca trava o fluxo.
+// ---------------------------------------------------------------------------
+
+void PvApp::OnAudioEventFromAudioTask(PvAudio::Event event) {
+    // Roda na task do PvAudio: só sinaliza. Se este aviso não couber na fila,
+    // a ReconcileTurnState() recupera o fluxo pelo estado do PvAudio.
+    PostEvent(
+        event == PvAudio::Event::VoiceDone ? PvEventType::VoiceDone : PvEventType::VoiceFailed,
+        std::string(), PvConfigReason::Manual);
+}
+
+void PvApp::HandleSendRequested() {
+    if (turn_phase_ != PvTurnPhase::Idle) {
+        ESP_LOGI(TAG, "Envio ignorado: já há um turno em andamento");
+        return;
+    }
+    if (!camera_screen_.IsReviewing()) {
+        return;
+    }
+
+    // Pré-condições do turno. Nenhuma delas é "quase": sem espelho fresco não
+    // se sabe para qual tarefa a foto é, e sem sessão ativa o backend
+    // recusaria. Melhor recusar aqui, sem gastar 120 s e sem queimar um UUID.
+    if (!network_connected_ || !PvSettings::IsConfigured() || !hydrated_ ||
+        !CanSendTurn(session_state_)) {
+        ESP_LOGW(TAG, "Envio recusado: rede=%d configurado=%d hidratado=%d sessão utilizável=%d",
+                 (int)network_connected_, (int)PvSettings::IsConfigured(), (int)hydrated_,
+                 (int)CanSendTurn(session_state_));
+        camera_screen_.ShowNotice(PvStrings::kTurnNotReady);
+        return;
+    }
+
+    const PvCameraJpeg* photo = camera_screen_.photo();
+    if (photo == nullptr || photo->data == nullptr || photo->len == 0) {
+        camera_screen_.ShowNotice(PvStrings::kTurnNotReady);
+        return;
+    }
+
+    // CÓPIA proposital: a tela continua dona do JPEG dela (a criança ainda o
+    // está vendo, e o dump de diagnóstico pode estar lendo o mesmo buffer),
+    // enquanto o worker precisa de um buffer que sobreviva por até 120 s. São
+    // algumas centenas de KB e, com CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL, a
+    // cópia nasce em PSRAM.
+    std::vector<uint8_t> jpeg(photo->data, photo->data + photo->len);
+
+    std::string request_id = PvBackendClient::NewRequestId();
+    if (!worker_.RequestTurnPhoto(net_generation_, session_state_.session_id, request_id,
+                                  std::move(jpeg))) {
+        // Um turno por vez, por contrato (cliente único/serial). Acontece
+        // quando um turno anterior foi abandonado pela UI e ainda está em voo:
+        // o UUID recém-gerado é simplesmente descartado, sem nunca ter ido à
+        // rede.
+        ESP_LOGW(TAG, "Envio recusado pelo worker: turno anterior ainda em voo");
+        camera_screen_.ShowNotice(PvStrings::kTurnNotReady);
+        return;
+    }
+
+    pending_request_id_ = std::move(request_id);
+    turn_phase_ = PvTurnPhase::Sending;
+    voice_terminal_ = false;
+    hydration_terminal_ = false;
+    response_route_valid_ = false;
+    // Feedback imediato: rótulo "Enviando..." e TODOS os botões bloqueados.
+    camera_screen_.SetSending(true);
+    // O request_id é do CLIENTE e não é segredo (o token, esse, nunca aparece):
+    // registrá-lo é o que permite rastrear no log qual turno lógico virou 409.
+    ESP_LOGI(TAG, "Turno enviado: request_id %s, %u bytes de foto", pending_request_id_.c_str(),
+             (unsigned)photo->len);
+}
+
+bool PvApp::HandleTurnDone() {
+    PvWorker::TurnResult result;
+    if (!worker_.TakeTurn(result)) {
+        // Aviso duplicado de um turno já consumido (ou, na reconciliação,
+        // sinal de que não havia nada em voo).
+        return false;
+    }
+    // Daqui para baixo, o RGB decodificado é liberado pelo destrutor de
+    // `result` em TODOS os caminhos que não o entregarem à tela.
+
+    if (result.generation != net_generation_ || !network_connected_) {
+        // Resultado de uma geração anterior: a rede caiu ou o adulto abriu a
+        // configuração com o HTTP em voo. Não decide rota, não toca a máquina
+        // de estados e não vira resposta pedagógica.
+        ESP_LOGW(TAG, "Turno obsoleto descartado (geração %u != %u)",
+                 static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_));
+        if (turn_phase_ == PvTurnPhase::Sending) {
+            // A tela pode ter continuado no ar (queda de rede com rota
+            // carregada mantém a tela da criança): destravá-la é obrigatório.
+            FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/false,
+                                /*to_preview=*/false);
+        } else {
+            pending_request_id_.clear();
+        }
+        return true;
+    }
+
+    if (turn_phase_ != PvTurnPhase::Sending) {
+        // A tela saiu no meio do turno (gesto de configuração, rota nova por
+        // re-hidratação). O turno pode ter sido aplicado no servidor, e é a
+        // hidratação — não este resultado — que vai contar isso.
+        ESP_LOGW(TAG, "Turno concluído fora da fase de envio; descartado");
+        pending_request_id_.clear();
+        return true;
+    }
+
+    // 401/503 interrompem o fluxo e vão para a configuração, nunca para uma
+    // resposta pedagógica.
+    if (result.backend.needs_credentials()) {
+        ESP_LOGW(TAG, "Turno recusado por credencial: %s",
+                 PvBackendClient::StatusName(result.backend.status));
+        pending_request_id_.clear();
+        turn_phase_ = PvTurnPhase::Idle;
+        // ShowConfigScreen sai da tela de câmera (e, com ela, do fluxo do
+        // turno) antes de abrir a configuração.
+        ShowConfigScreen(result.backend.status == PvBackendStatus::Unauthorized
+                             ? PvConfigReason::Unauthorized
+                             : PvConfigReason::Unavailable);
+        return true;
+    }
+
+    if (result.stage != PvWorker::TurnStage::Complete) {
+        ESP_LOGW(TAG, "Turno falhou na etapa %d: %s (HTTP %d)", static_cast<int>(result.stage),
+                 PvBackendClient::StatusName(result.backend.status), result.backend.http_status);
+        if (result.stage == PvWorker::TurnStage::Post) {
+            // O POST não completou. Com resposta do servidor (409/502/4xx/5xx)
+            // o estado PODE ter mudado, então re-hidrata antes de decidir a
+            // interface; sem resposta, a re-hidratação vem da reconexão — mas
+            // marcamos o espelho como velho do mesmo jeito, porque um timeout
+            // pode ter deixado o turno aplicado sem ninguém saber.
+            const bool answered = result.backend.http_status != 0;
+            FinishTurnWithError(answered ? PvStrings::kTurnErrServer : PvStrings::kTurnErrNetwork,
+                                /*rehydrate=*/true, /*to_preview=*/false);
+            return true;
+        }
+        // Etapa de mídia: o 200 já chegou, logo o turno FOI aplicado. Voltar à
+        // revisão convidaria a criança a reenviar uma foto que já virou turno.
+        FinishTurnWithError(PvStrings::kTurnErrMedia, /*rehydrate=*/true, /*to_preview=*/true);
+        return true;
+    }
+
+    // ---- Caminho feliz ----
+    ESP_LOGI(TAG, "Resposta do turno: veredicto %s, sessão %s",
+             PvVerdictName(result.response.veredicto), result.response.session_status.c_str());
+
+    // O UUID cumpriu o papel: a resposta chegou e foi aceita (o eco do
+    // request_id já foi conferido pelo PvBackendClient). Um envio futuro é
+    // outro turno lógico, com outro id.
+    pending_request_id_.clear();
+
+    // A voz é a resposta (§9.3): o feedback local sai antes dela, dentro do
+    // PvAudio, e o WAV vai por movimento — a partir daqui o dono é a task de
+    // áudio.
+    const PvAudio::Feedback feedback = FeedbackForVerdict(result.response.veredicto);
+    const bool voice_accepted = audio_.PlayTurnAudio(std::move(result.wav), feedback);
+
+    // Posse do RGB565 transferida à tela, como no EnterReview: ForgetRgb()
+    // ANTES da chamada deixa explícito que `result` não libera mais nada.
+    PvCameraScreen::ResponseImage image;
+    image.data = result.rgb;
+    image.len = result.rgb_len;
+    image.width = result.rgb_width;
+    image.height = result.rgb_height;
+    image.stride = result.rgb_stride;
+    result.ForgetRgb();
+    if (!camera_screen_.EnterResponse(image)) {
+        // A tela recusou (buffer inválido ou tela fora do ar). O buffer já foi
+        // liberado lá dentro; o fluxo continua, porque a voz é a resposta.
+        ESP_LOGW(TAG, "Imagem do professor não pôde ser exibida");
+    }
+
+    turn_phase_ = PvTurnPhase::ShowingResponse;
+    // Terminal (a): sem voz aceita, ele já nasce fechado — PlayTurnAudio só
+    // recusa quando não há áudio na placa ou quando outra voz está tocando, e
+    // em nenhum dos casos virá evento algum.
+    voice_terminal_ = !voice_accepted;
+    hydration_terminal_ = false;
+    response_route_valid_ = false;
+    if (!voice_accepted) {
+        ESP_LOGW(TAG, "Voz recusada pelo PvAudio; terminal de voz já fechado");
+        camera_screen_.ShowNotice(PvStrings::kTurnErrVoice);
+    }
+
+    // Terminal (b): re-hidratação IMEDIATA (§9.4 — áudio e estado terminam em
+    // qualquer ordem, e a decisão só sai quando os dois terminarem).
+    StartHydration();
+    // Caso extremo: PvAudio indisponível E hidratação que nem saiu do lugar.
+    // Os dois terminais podem já estar fechados aqui.
+    FinishResponseIfComplete();
+    return true;
+}
+
+void PvApp::FinishTurnWithError(const char* message, bool rehydrate, bool to_preview) {
+    // DESCARTE DO ID PENDENTE (contrato v1.1, regra do 409): o turno lógico
+    // morre aqui. Um envio futuro gera outro UUID; retransmitir o mesmo não
+    // existe na F3.
+    if (!pending_request_id_.empty()) {
+        ESP_LOGW(TAG, "Turno abandonado; request_id %s descartado", pending_request_id_.c_str());
+        pending_request_id_.clear();
+    }
+    turn_phase_ = PvTurnPhase::Idle;
+    voice_terminal_ = false;
+    hydration_terminal_ = false;
+    response_route_valid_ = false;
+
+    if (rehydrate) {
+        // ANTES de decidir a interface (§9.7): o estado do servidor pode ter
+        // mudado (inclusive para failsafe). Marcar o espelho como velho é o
+        // que impede um turno novo antes da re-consulta — a regra do 409. Se a
+        // hidratação falhar, o tick de health tenta de novo a cada 10 s.
+        hydrated_ = false;
+        StartHydration();
+    }
+
+    if (!camera_screen_.IsActive()) {
+        return;
+    }
+    camera_screen_.SetSending(false);
+    if (to_preview) {
+        camera_screen_.ExitReview();
+        camera_.StartPreview();
+    }
+    // Depois de SetSending/ExitReview, que reescrevem o rótulo de estado: o
+    // aviso é a última palavra na tela. Ele é curto, em pt-BR, e não carrega
+    // status HTTP nem nada vindo do corpo da resposta.
+    camera_screen_.ShowNotice(message);
+}
+
+void PvApp::CloseVoiceTerminal() {
+    if (turn_phase_ != PvTurnPhase::ShowingResponse || voice_terminal_) {
+        // Evento atrasado de um turno que já terminou (ou já contabilizado
+        // pela reconciliação): fechar duas vezes não pode adiantar a saída.
+        return;
+    }
+    voice_terminal_ = true;
+    FinishResponseIfComplete();
+}
+
+void PvApp::CloseHydrationTerminal() {
+    if (turn_phase_ != PvTurnPhase::ShowingResponse || hydration_terminal_) {
+        return;
+    }
+    hydration_terminal_ = true;
+    FinishResponseIfComplete();
+}
+
+void PvApp::FinishResponseIfComplete() {
+    if (turn_phase_ != PvTurnPhase::ShowingResponse || !voice_terminal_ || !hydration_terminal_) {
+        return;
+    }
+    // Lidos ANTES de qualquer coisa: LeaveCameraScreen() zera o fluxo do turno,
+    // inclusive a rota guardada.
+    const bool route_wins = response_route_valid_ && response_route_ != PvRoute::Tutoring;
+    const PvRoute route = response_route_;
+
+    turn_phase_ = PvTurnPhase::Idle;
+    voice_terminal_ = false;
+    hydration_terminal_ = false;
+    response_route_valid_ = false;
+
+    if (route_wins) {
+        // A hidratação é a única autoridade sobre a rota (§9.1): failsafe,
+        // celebração e preparação vencem a tela de câmera. Tutoria NÃO tira a
+        // criança da câmera na F3 — a tela de tutoria de verdade é da F5, e
+        // mandá-la para um placeholder mataria o fluxo de fotos.
+        ESP_LOGI(TAG, "Fim da resposta: rota %s assume a tela", PvRouteName(route));
+        LeaveCameraScreen();
+        route_screens_.Show(route, session_state_, lesson_);
+        return;
+    }
+
+    ESP_LOGI(TAG, "Fim da resposta: de volta ao preview da câmera");
+    camera_screen_.ExitResponse();
+    camera_.StartPreview();
+}
+
+void PvApp::ResetTurnFlow() {
+    if (turn_phase_ != PvTurnPhase::Idle) {
+        ESP_LOGI(TAG, "Fluxo do turno abandonado na fase %d (request_id %s)",
+                 static_cast<int>(turn_phase_),
+                 pending_request_id_.empty() ? "-" : pending_request_id_.c_str());
+    }
+    turn_phase_ = PvTurnPhase::Idle;
+    pending_request_id_.clear();
+    voice_terminal_ = false;
+    hydration_terminal_ = false;
+    response_route_valid_ = false;
+}
+
+void PvApp::ReconcileTurnState() {
+    // Mesma razão da ReconcileCameraState: TurnDone, VoiceDone/VoiceFailed e
+    // HydrationDone são postados com PostEvent(), que é BEST-EFFORT. Perder um
+    // deles deixaria a tela presa em "Enviando..." ou em "Professor
+    // respondendo...", com todos os botões desabilitados — sem saída nenhuma
+    // para a criança. Todas as condições abaixo são de ESTADO, então rodar
+    // isto depois de um evento já tratado é apenas um no-op.
+    if (!worker_.turn_in_flight()) {
+        // Drena SEMPRE que houver resultado: dentro da fase ele é processado;
+        // fora dela, descartado (o que LIBERA o RGB). Um resultado esquecido
+        // no slot seria megabytes de PSRAM pendurados.
+        const bool took = HandleTurnDone();
+        if (!took && turn_phase_ == PvTurnPhase::Sending) {
+            // Nada em voo e nada a retirar, mas a tela ainda espera: o pedido
+            // se perdeu antes de virar resultado. Destrava sem inventar
+            // resposta nenhuma.
+            ESP_LOGW(TAG, "Reconciliação: turno sem resultado; destravando a tela");
+            FinishTurnWithError(PvStrings::kTurnErrNetwork, /*rehydrate=*/true,
+                                /*to_preview=*/false);
+        }
+    }
+
+    if (turn_phase_ != PvTurnPhase::ShowingResponse) {
+        return;
+    }
+    if (!voice_terminal_ && !audio_.busy()) {
+        // O PvAudio não está mais tocando: o áudio de fato parou, então o
+        // terminal (a) fecha como concluído. Conservador de propósito — o
+        // caminho de falha já teria fechado o terminal do mesmo jeito (§9.7).
+        ESP_LOGW(TAG, "Reconciliação: fim de voz perdido; terminal fechado");
+        CloseVoiceTerminal();
+    }
+    if (!hydration_terminal_ && !worker_.hydrate_in_flight()) {
+        // Pode ser um aviso perdido (há resultado a retirar) ou uma hidratação
+        // que nem chegou a sair (rede caída, pedido não enfileirado).
+        HandleHydrationDone();
+        if (!hydration_terminal_) {
+            ESP_LOGW(TAG, "Reconciliação: re-hidratação pós-turno sem resultado; terminal fechado");
+            CloseHydrationTerminal();
+        }
     }
 }
 
@@ -790,6 +1256,10 @@ void PvApp::HandleHydrationDone() {
         // fase, telas ou máquina de estados (revisão F1, P1).
         ESP_LOGW(TAG, "Hidratação obsoleta descartada (geração %u != %u)",
                  static_cast<unsigned>(result.generation), static_cast<unsigned>(net_generation_));
+        // O terminal (b) fecha como FALHA: sem hidratação válida não há
+        // autorização para inferir avanço nenhum — mas a tela também não pode
+        // ficar presa esperando um resultado que nunca virá (F3-D5).
+        CloseHydrationTerminal();
         return;
     }
 
@@ -803,7 +1273,23 @@ void PvApp::HandleHydrationDone() {
         SetBackendHealthy(true);
 
         PvRoute route = DecideRoute(session_state_, lesson_);
-        ESP_LOGI(TAG, "Hidratação concluída; rota de boot: %s", PvRouteName(route));
+        ESP_LOGI(TAG, "Hidratação concluída; rota: %s", PvRouteName(route));
+
+        if (turn_phase_ == PvTurnPhase::ShowingResponse) {
+            // Re-hidratação PÓS-TURNO: a tela pertence à resposta do professor
+            // até a voz terminar (F3-D5/§9.4). Trocar de tela agora cortaria a
+            // explicação no meio, então a rota é GUARDADA e aplicada no
+            // fechamento dos dois terminais.
+            response_route_ = route;
+            response_route_valid_ = true;
+            if (!Application::GetInstance().SetDeviceState(kDeviceStateIdle)) {
+                ESP_LOGE(TAG, "Transição para 'idle' recusada pela máquina de estados");
+            }
+            StartHealthTimer();
+            CloseHydrationTerminal();
+            return;
+        }
+
         // SetBackendHealthy já marcou o indicador; uma tela de rota criada
         // agora nasce com o estado correto. Uma rota nova por cima da tela de
         // câmera é saída de tela como qualquer outra: o preview precisa parar.
@@ -819,6 +1305,10 @@ void PvApp::HandleHydrationDone() {
 
     hydrated_ = false;
     SetBackendHealthy(false);
+    // Terminal (b) fecha mesmo com falha: ele é "a TENTATIVA de re-hidratação
+    // terminou", não "o estado novo chegou". Sem espelho novo, nenhuma rota é
+    // trocada — a tela volta ao preview quando a voz acabar.
+    CloseHydrationTerminal();
 
     // 401/503 interrompem o fluxo e vão para a tela de configuração — nunca
     // para uma tela pedagógica com dado inventado.

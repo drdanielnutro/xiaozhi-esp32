@@ -220,13 +220,20 @@ bool PvCameraScreen::EnsureScreenLocked() {
     lv_obj_set_style_pad_row(bar, kRowGap, 0);
     action_bar_ = bar;
 
-    CreateActionButton(bar, PvStrings::kCameraBackButton, OnBackClicked, this, nullptr);
+    back_button_ =
+        CreateActionButton(bar, PvStrings::kCameraBackButton, OnBackClicked, this, nullptr);
 
     // Captura no MEIO da barra (modo preview), em cor de destaque: é a ação
     // principal da tela.
     capture_button_ = CreateActionButton(bar, PvStrings::kCameraCaptureButton, OnCaptureClicked,
                                          this, &capture_label_);
     lv_obj_set_style_bg_color(capture_button_, lv_color_hex(PvUi::kColorAccent), 0);
+
+    // "Enviar" ocupa o mesmo lugar de "Tirar foto" quando a foto está na tela:
+    // é a ação principal da revisão, e por isso também nasce em destaque.
+    send_button_ =
+        CreateActionButton(bar, PvStrings::kCameraSendButton, OnSendClicked, this, nullptr);
+    lv_obj_set_style_bg_color(send_button_, lv_color_hex(PvUi::kColorAccent), 0);
 
     // Modo revisão: nascem escondidos e só aparecem com a foto na tela.
     retake_button_ =
@@ -281,14 +288,13 @@ bool PvCameraScreen::Show() {
     DetachImageLocked();
     ReleaseFrameLocked();
     ReleasePhotoLocked();
+    ReleaseResponseLocked();
     mode_ = Mode::Preview;
     capturing_ = false;
     exporting_ = false;
+    sending_ = false;
     zoom_actual_size_ = false;
-    applied_width_ = 0;
-    applied_height_ = 0;
-    applied_area_w_ = 0;
-    applied_area_h_ = 0;
+    ResetGeometryLocked();
     lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
     lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
@@ -307,26 +313,35 @@ void PvCameraScreen::Hide() {
     active_ = false;
     auto display = Board::GetInstance().GetDisplay();
     if (display == nullptr || screen_ == nullptr) {
-        // Sem tela criada não há nada emprestado nem decodificado; a foto,
-        // porém, pode ter sido tomada num caminho degradado.
+        // Sem tela criada não há nada emprestado nem decodificado; a foto e a
+        // imagem do tutor, porém, podem ter sido tomadas num caminho degradado.
         ReleasePhotoLocked();
+        ReleaseResponseLocked();
         mode_ = Mode::Preview;
         capturing_ = false;
         exporting_ = false;
+        sending_ = false;
         return;
     }
 
     DisplayLockGuard lock(display);
     // ORDEM OBRIGATÓRIA: primeiro o LVGL para de referenciar os buffers, só
-    // depois eles voltam a ser do escritor (preview) ou são liberados (foto).
-    // Ainda sob o lock, portanto sem nenhuma janela em que a task do LVGL
-    // desenhe memória já devolvida.
+    // depois eles voltam a ser do escritor (preview) ou são liberados (foto e
+    // imagem do tutor). Ainda sob o lock, portanto sem nenhuma janela em que a
+    // task do LVGL desenhe memória já devolvida.
+    //
+    // Este é também o ponto de saída no MEIO de um turno (gesto de
+    // configuração, rota nova por re-hidratação): a resposta que ainda estiver
+    // por vir é descartada pelo PvApp, e a voz que já estiver tocando segue
+    // até o fim — ela não referencia nada desta tela.
     DetachImageLocked();
     ReleaseFrameLocked();
     ReleasePhotoLocked();
+    ReleaseResponseLocked();
     mode_ = Mode::Preview;
     capturing_ = false;
     exporting_ = false;
+    sending_ = false;
     if (hint_label_ != nullptr) {
         lv_obj_remove_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
     }
@@ -453,8 +468,10 @@ bool PvCameraScreen::EnterReview(const PvCameraCaptureResult& result) {
     DetachImageLocked();
     ReleaseFrameLocked();
     // Revisão anterior que não tenha passado por ExitReview (não acontece hoje,
-    // mas liberar aqui é o que torna o dono único inquebrável).
+    // mas liberar aqui é o que torna o dono único inquebrável). Mesma razão
+    // para a imagem do tutor: uma captura nova nunca convive com a resposta.
     ReleasePhotoLocked();
+    ReleaseResponseLocked();
 
     photo_ = result.jpeg;
     // Só DEPOIS do ReleasePhotoLocked acima, que zera este mesmo buffer: as
@@ -480,6 +497,7 @@ bool PvCameraScreen::EnterReview(const PvCameraCaptureResult& result) {
     mode_ = Mode::Review;
     capturing_ = false;
     exporting_ = false;
+    sending_ = false;
     zoom_actual_size_ = false;
 
     lv_image_set_src(image_, &photo_dsc_);
@@ -508,14 +526,12 @@ void PvCameraScreen::ExitReview() {
 
     mode_ = Mode::Preview;
     capturing_ = false;
+    sending_ = false;
     zoom_actual_size_ = false;
     // A revisão mexeu no tamanho, no alinhamento interno e no scroll do
     // objeto: zerar a geometria aplicada obriga o próximo frame de preview a
     // recalcular tudo do zero.
-    applied_width_ = 0;
-    applied_height_ = 0;
-    applied_area_w_ = 0;
-    applied_area_h_ = 0;
+    ResetGeometryLocked();
     lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
     lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
@@ -525,6 +541,144 @@ void PvCameraScreen::ExitReview() {
     }
     SetStatusLocked(PvStrings::kCameraPreviewHint);
     UpdateActionBarLocked();
+}
+
+// ---------------------------------------------------------------------------
+// Turno por foto (F3/T6): envio e resposta do professor.
+// ---------------------------------------------------------------------------
+
+void PvCameraScreen::SetSending(bool sending) {
+    if (screen_ == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    sending_ = sending;
+    if (sending) {
+        SetStatusLocked(PvStrings::kCameraSending);
+    } else if (mode_ == Mode::Review) {
+        // Volta às medições da foto; um aviso de erro, quando houver, é
+        // escrito DEPOIS pelo PvApp (ShowNotice) e por isso não é perdido.
+        SetStatusLocked(info_text_);
+    }
+    UpdateActionBarLocked();
+}
+
+bool PvCameraScreen::EnterResponse(const ResponseImage& image) {
+    // POSSE: o buffer entra aqui e não sai. Todo `return false` abaixo o
+    // libera — a assimetria "o chamador desfaz" é justamente o que produziria
+    // vazamento no caminho de erro.
+    if (image.data == nullptr || image.len == 0 || image.width == 0 || image.height == 0 ||
+        image.stride == 0) {
+        if (image.data != nullptr) {
+            heap_caps_free(image.data);
+        }
+        return false;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (!active_ || screen_ == nullptr || image_ == nullptr || display == nullptr) {
+        heap_caps_free(image.data);
+        return false;
+    }
+
+    // A decodificação já veio pronta da task do worker; aqui só há troca de
+    // tela, barata o bastante para caber inteira sob o lock do display.
+    DisplayLockGuard lock(display);
+
+    DetachImageLocked();
+    ReleaseFrameLocked();
+    // A foto da criança sai de cena AGORA: o turno já foi aplicado no servidor
+    // e não existe caminho de volta para a revisão desta foto. Segurá-la
+    // custaria megabytes de PSRAM exatamente no pico do turno.
+    ReleasePhotoLocked();
+    // Resposta anterior que não tenha passado por ExitResponse (não acontece
+    // hoje, mas liberar aqui é o que torna o dono único inquebrável).
+    ReleaseResponseLocked();
+
+    response_ = image.data;
+    response_len_ = image.len;
+    response_width_ = image.width;
+    response_height_ = image.height;
+    response_stride_ = image.stride;
+
+    response_dsc_.header.magic = LV_IMAGE_HEADER_MAGIC;
+    response_dsc_.header.cf = LV_COLOR_FORMAT_RGB565;
+    response_dsc_.header.flags = 0;
+    response_dsc_.header.w = response_width_;
+    response_dsc_.header.h = response_height_;
+    response_dsc_.header.stride = static_cast<uint32_t>(response_stride_);
+    response_dsc_.data = response_;
+    response_dsc_.data_size = static_cast<uint32_t>(response_len_);
+
+    mode_ = Mode::Response;
+    capturing_ = false;
+    exporting_ = false;
+    sending_ = false;
+    // Sem zoom na resposta (decisão F3-D5: nenhum comando é aceito aqui), então
+    // a imagem sempre cabe na área, com a mesma escala inteira do preview.
+    zoom_actual_size_ = false;
+    ResetGeometryLocked();
+    lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
+    lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
+
+    lv_image_set_src(image_, &response_dsc_);
+    lv_obj_remove_flag(image_, LV_OBJ_FLAG_HIDDEN);
+    ApplyGeometryLocked(response_width_, response_height_);
+    lv_obj_invalidate(image_);
+    if (hint_label_ != nullptr) {
+        lv_obj_add_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
+    }
+    // O veredicto NÃO vira texto: a resposta pedagógica é a voz do professor
+    // (§9.3). O rótulo fica neutro só para a tela não parecer travada.
+    SetStatusLocked(PvStrings::kCameraResponding);
+    UpdateActionBarLocked();
+    return true;
+}
+
+void PvCameraScreen::ExitResponse() {
+    auto display = Board::GetInstance().GetDisplay();
+    if (screen_ == nullptr || display == nullptr) {
+        ReleaseResponseLocked();
+        mode_ = Mode::Preview;
+        capturing_ = false;
+        sending_ = false;
+        zoom_actual_size_ = false;
+        return;
+    }
+    DisplayLockGuard lock(display);
+    DetachImageLocked();
+    ReleaseResponseLocked();
+
+    mode_ = Mode::Preview;
+    capturing_ = false;
+    sending_ = false;
+    zoom_actual_size_ = false;
+    ResetGeometryLocked();
+    lv_obj_remove_flag(preview_area_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_scroll_to(preview_area_, 0, 0, LV_ANIM_OFF);
+    lv_image_set_inner_align(image_, LV_IMAGE_ALIGN_CONTAIN);
+    lv_obj_center(image_);
+    if (hint_label_ != nullptr) {
+        lv_obj_remove_flag(hint_label_, LV_OBJ_FLAG_HIDDEN);
+    }
+    SetStatusLocked(PvStrings::kCameraPreviewHint);
+    UpdateActionBarLocked();
+}
+
+void PvCameraScreen::ShowNotice(const char* text) {
+    if (screen_ == nullptr || text == nullptr) {
+        return;
+    }
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    DisplayLockGuard lock(display);
+    SetStatusLocked(text);
 }
 
 void PvCameraScreen::ToggleZoom() {
@@ -607,6 +761,8 @@ void PvCameraScreen::DetachImageLocked() {
     image_dsc_.data_size = 0;
     photo_dsc_.data = nullptr;
     photo_dsc_.data_size = 0;
+    response_dsc_.data = nullptr;
+    response_dsc_.data_size = 0;
 }
 
 void PvCameraScreen::ReleaseFrameLocked() {
@@ -642,6 +798,27 @@ void PvCameraScreen::ReleasePhotoLocked() {
     }
     photo_ = PvCameraJpeg{};
     info_text_[0] = '\0';
+}
+
+void PvCameraScreen::ReleaseResponseLocked() {
+    if (response_ != nullptr) {
+        // Mesma origem do decodificado da revisão (jpeg_to_image, no worker):
+        // heap_caps_free. Este buffer NUNCA é emprestado a ninguém fora da
+        // tela — o worker abriu mão dele em ForgetRgb().
+        heap_caps_free(response_);
+        response_ = nullptr;
+    }
+    response_len_ = 0;
+    response_width_ = 0;
+    response_height_ = 0;
+    response_stride_ = 0;
+}
+
+void PvCameraScreen::ResetGeometryLocked() {
+    applied_width_ = 0;
+    applied_height_ = 0;
+    applied_area_w_ = 0;
+    applied_area_h_ = 0;
 }
 
 void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
@@ -685,7 +862,9 @@ void PvCameraScreen::ApplyGeometryLocked(uint16_t width, uint16_t height) {
     applied_height_ = height;
     applied_area_w_ = area_w;
     applied_area_h_ = area_h;
-    ESP_LOGI(TAG, "Preview %ux%u em %" LV_PRId32 "x%" LV_PRId32 " (escala %" LV_PRId32 "/256)",
+    // Serve ao preview E à imagem do tutor: as duas cabem na área pela mesma
+    // escala inteira, e o cache (frame + área) distingue uma da outra.
+    ESP_LOGI(TAG, "Imagem %ux%u em %" LV_PRId32 "x%" LV_PRId32 " (escala %" LV_PRId32 "/256)",
              (unsigned)width, (unsigned)height, area_w, area_h, scale);
 }
 
@@ -757,18 +936,34 @@ void PvCameraScreen::ApplyZoomLocked() {
 
 void PvCameraScreen::UpdateActionBarLocked() {
     const bool review = mode_ == Mode::Review;
+    const bool response = mode_ == Mode::Response;
+    // A resposta ocupa o lugar da foto: a mesma coluna de botões continua
+    // visível (nenhum salto de layout ao trocar de modo), só que inteira
+    // desabilitada.
+    const bool with_image = review || response;
+    // Decisão F3-D5: com um turno em voo NENHUM comando é aceito — nem Voltar,
+    // nem Exportar, nem Zoom. A tela volta a aceitar toques quando o PvApp sai
+    // da fase do turno (erro -> revisão, fim da resposta -> preview).
+    const bool commands = review && !sending_;
 
-    SetHidden(capture_button_, review);
-    SetEnabled(capture_button_, !capturing_);
+    SetHidden(capture_button_, with_image);
+    SetEnabled(capture_button_, !capturing_ && !sending_);
 
-    SetHidden(retake_button_, !review);
-    SetHidden(zoom_button_, !review);
-    SetHidden(export_button_, !review);
-    SetEnabled(export_button_, !exporting_);
+    SetHidden(send_button_, !with_image);
+    SetEnabled(send_button_, commands);
+
+    SetHidden(retake_button_, !with_image);
+    SetHidden(zoom_button_, !with_image);
+    SetHidden(export_button_, !with_image);
+    SetEnabled(export_button_, commands && !exporting_);
+    SetEnabled(zoom_button_, commands);
     // "Nova foto" durante uma exportação é seguro: soltar a foto entrega a
     // POSSE do JPEG ao dump em andamento (PvPhotoDump::TryHandOff), então o
     // buffer que ele está lendo continua vivo até o dump acabar.
-    SetEnabled(retake_button_, true);
+    SetEnabled(retake_button_, commands);
+    // "Voltar" só some do caminho da criança durante o turno; no preview e na
+    // revisão parada ele continua sendo a saída normal da tela.
+    SetEnabled(back_button_, !sending_ && !response);
 
     if (zoom_label_ != nullptr) {
         lv_label_set_text(zoom_label_, zoom_actual_size_ ? PvStrings::kCameraZoomFit
@@ -795,6 +990,7 @@ void PvCameraScreen::Dispatch(lv_event_t* e, Action action) {
 
 void PvCameraScreen::OnBackClicked(lv_event_t* e) { Dispatch(e, Action::Back); }
 void PvCameraScreen::OnCaptureClicked(lv_event_t* e) { Dispatch(e, Action::Capture); }
+void PvCameraScreen::OnSendClicked(lv_event_t* e) { Dispatch(e, Action::Send); }
 void PvCameraScreen::OnRetakeClicked(lv_event_t* e) { Dispatch(e, Action::Retake); }
 void PvCameraScreen::OnZoomClicked(lv_event_t* e) { Dispatch(e, Action::ZoomToggle); }
 void PvCameraScreen::OnExportClicked(lv_event_t* e) { Dispatch(e, Action::Export); }

@@ -60,12 +60,13 @@ public:
 
     // Em que etapa o turno parou. O contrato distingue "o POST falhou" (o
     // turno pode ou não ter sido aplicado — vale a regra de idempotência) de
-    // "o POST passou e um download falhou" (o turno FOI aplicado e a resposta
-    // existe; só a mídia não chegou).
+    // "o POST passou e uma etapa de mídia falhou" (o turno FOI aplicado e a
+    // resposta existe; só a mídia não chegou ou não pôde ser exibida).
     enum class TurnStage : uint8_t {
         Post,
         AudioDownload,
         ImageDownload,
+        ImageDecode,
         Complete,
     };
 
@@ -75,15 +76,43 @@ public:
     // regra de idempotência do contrato é aplicada). A re-hidratação pós-turno
     // NÃO faz parte do job: o PvApp dispara o Hydrate existente ao reagir.
     //
-    // POSSE: `wav` e `image` saem por movimento em TakeTurn(); só têm conteúdo
-    // quando stage == Complete.
+    // POSSE (só há conteúdo quando stage == Complete):
+    //  - `wav` sai por movimento em TakeTurn(), como qualquer vetor;
+    //  - `rgb` é um buffer CRU do decodificador de JPEG (heap_caps_free). Ele é
+    //    a razão de esta struct ser MOVE-ONLY e ter destrutor: quem consome o
+    //    resultado precisa liberá-lo em TODOS os caminhos — inclusive no
+    //    descarte por geração obsoleta —, e um `return` esquecido vazaria
+    //    megabytes de PSRAM. Com o destrutor, esquecer é impossível; a única
+    //    saída sem liberação é ForgetRgb(), usada quando a posse passa
+    //    explicitamente para a tela.
     struct TurnResult {
         PvBackendResult backend;  // etapa que interrompeu (ou Ok)
         TurnStage stage = TurnStage::Post;
         uint32_t generation = 0;
         PvTurnResponse response;
         std::vector<uint8_t> wav;
-        std::vector<uint8_t> image;
+
+        // Imagem do tutor JÁ DECODIFICADA em RGB565 little endian, pronta para
+        // a lv_image_dsc_t da tela. O JPEG bruto não sobrevive ao job: a tela
+        // só desenha RGB e manter os dois vivos dobraria o pico de PSRAM.
+        uint8_t* rgb = nullptr;
+        size_t rgb_len = 0;
+        uint16_t rgb_width = 0;
+        uint16_t rgb_height = 0;
+        size_t rgb_stride = 0;  // bytes por linha (pode exceder width * 2)
+
+        TurnResult() = default;
+        ~TurnResult();
+        TurnResult(TurnResult&& other) noexcept;
+        TurnResult& operator=(TurnResult&& other) noexcept;
+        TurnResult(const TurnResult&) = delete;
+        TurnResult& operator=(const TurnResult&) = delete;
+
+        // Libera o RGB e zera as medidas. Idempotente.
+        void FreeRgb();
+        // Abre mão do RGB SEM liberar: só para quem acabou de transferir a
+        // posse do buffer a outro dono (a tela de câmera).
+        void ForgetRgb();
     };
 
     // Chamado NA TASK DO WORKER quando um job termina. A implementação deve
