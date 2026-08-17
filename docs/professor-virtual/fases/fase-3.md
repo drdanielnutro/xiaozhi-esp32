@@ -99,7 +99,7 @@ verdes; testes host passam; decisões registradas no decision-log.
       (`python3 -m unittest discover -s scripts/tests` e host_test do PV) +
       instrumentação de RAM no pico do turno · pronto quando: tudo verde e
       instrumentação pronta (número final sai na T8).
-- [ ] T8 — Validação física com o backend real (flash pelo dono): ciclo
+- [x] T8 — Validação física com o backend real (flash pelo dono): ciclo
       tarefa→foto→resposta com voz+imagem; RAM medida no pico · pronto
       quando: confirmado pelo proprietário.
 
@@ -110,39 +110,32 @@ verdes; testes host passam; decisões registradas no decision-log.
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T8 — validação física, JÁ MAJORITARIAMENTE FEITA em
-  2026-08-16. O CICLO CENTRAL FOI VALIDADO pelo proprietário: tarefa na
-  tela (Tutoria) → foto → Enviar → som de feedback + VOZ do tutor no
-  alto-falante + IMAGEM da API na tela → saída ao fim do áudio (dois
-  terminais) → volta ao preview. RAM no pico (log serial): antes do POST
-  100 KB internos/12,0 MB PSRAM livres; fim do job (WAV+RGB vivos) 97 KB/
-  10,0 MB; WAV+PCM vivos 97 KB/13,9 MB. Turno completo em ~19,5 s
-  (foto 167 KB; voz 423 KB; imagem 1280x698).
-- Último passo concluído: bug do "Voltar" da tela de câmera DIAGNOSTICADO
-  e CORRIGIDO em código, aguardando reteste físico: o selo de conexão
-  (canto sup. direito, com ext_click_area de 40 px para o gesto de 3 s)
-  cobria o botão Voltar desde que a barra de ações foi para a lateral
-  direita (F2/etapa 3) e engolia os toques; o selo agora fica à esquerda
-  da barra SÓ nesta tela (pv_camera_screen.cc, após CreateConnectionBadge).
-- Próximo passo exato (amanhã): (1) gravar o binário novo com
-  `bash scripts/pv/flash_app.sh` (o build/xiaozhi.bin e o zip já saem com
-  a correção; NVS preservada); (2) retestar o "Voltar" no preview e na
-  revisão (e conferir que o gesto de 3 s continua funcionando no selo e
-  no rodapé da versão); (3) opcional recomendado: 1 erro induzido
-  (desligar o backend durante um envio) para ver o caminho de erro na
-  tela; (4) proprietário confirma → marcar T8, fechar checklist, tabela
-  "Status das fases" no commit final. Backend: subir com
-  `cd licao_casa/backend && ./venv/bin/uvicorn main:app --host 0.0.0.0
-  --port 8001` (o .env fica na RAIZ do licao_casa; sessão de teste ativa
-  criada em 2026-08-16 via POST /api/prepare com data/images/page_1.jpg).
-- Rodada 3 (autorizada) CONCLUÍDA; sem pendências de revisão. Incidente
-  de boot resolvido (gate do AFE, commit 6f94c9b) — ver Notas.
-- Estado do worktree: apenas a correção do Voltar pendente de commit (se
-  esta sessão não a commitou, o diff está em
-  ui/pv_camera_screen.cc); MCP codex-council com token da conta antiga
-  (usar `codex exec` CLI ou reiniciar a sessão para reautenticar).
+(vazio)
 
 ## Notas da fase
+
+- T8 CONCLUÍDA (2026-08-17, confirmação do proprietário) — matriz validada
+  na placa com o backend real: ciclo feliz em múltiplos turnos (correct,
+  teach e celebração; voz WAV no alto-falante + imagem da API + som de
+  feedback; saída pelos dois terminais); RAM no pico registrada (97–100 KB
+  internos / 10,0–13,9 MB PSRAM livres; turno ~19,5 s); "Voltar" validado
+  após a correção do selo (5475415); enunciado avança após o turno
+  (correção bbea6b0, validada com avanço real no servidor); falha de mídia
+  PÓS-200 exercitada 2× (uvicorn em término gracioso responde antes de
+  cair → ErrorRecovering → volta ao preview sem convidar reenvio; turno
+  aplicado preservado no servidor); queda SEM resposta (SIGKILL no meio do
+  POST) → timeout de 120 s EXATO do §8.1, request_id descartado, foto
+  preservada na revisão, aviso correto; reconexão + re-hidratação
+  automáticas; reenvio pós-recuperação com sucesso e avanço.
+  OBSERVAÇÕES REGISTRADAS (não bloqueiam a F3):
+  - F5: destino pós-resposta é o preview (MVP F3); a tela de tutoria real
+    com imagem persistente, "Ouvir de novo" (§9.5), transição de avanço e
+    UX de espera (§9.3) entram na F5. Também para a F5: a re-hidratação de
+    reconexão derruba a tela de câmera e descarta a revisão mesmo quando a
+    rota não mudou (regra herdada da F1; segura, porém abrupta).
+  - F8: o selo de conexão congela durante um turno em voo (o health de
+    10 s fica atrás do POST na task única do worker) — reavaliar na fase
+    de robustez.
 
 - Estado Git no início da fase: `01fa57e` (worktree limpo), 2026-08-16.
 - Placa desconectada durante T1–T7 (combinado com o proprietário em
