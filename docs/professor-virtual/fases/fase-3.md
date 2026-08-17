@@ -110,25 +110,36 @@ verdes; testes host passam; decisões registradas no decision-log.
 > conteúdo por "(vazio)" no commit que concluir a task retomada. O hook de
 > SessionStart injeta esta seção integralmente na próxima sessão.
 
-- Task em andamento: T8 — validação física com o backend real (ação do
-  proprietário; placa ficou desconectada por combinado durante T1–T7).
-- Último passo concluído: rodada 2 da revisão independente verificada,
-  P0/P1 remanescentes corrigidos (cf2c5f6), builds PV e 7b verdes, host
-  tests 155+249+114.
-- Próximo passo exato: (1) proprietário conecta a placa e o backend na
-  LAN (192.168.15.9:8001); (2) flash da variante
-  `esp32-p4-wifi6-touch-lcd-7b-professor-virtual` (zip em releases/);
-  (3) roteiro da T8: boot→hidrata→Tutoria mostra a tarefa→"Tirar foto da
-  tarefa"→revisão→"Enviar"→resposta com imagem+voz+som de feedback→
-  re-hidratação→volta ao preview; anotar os marcos "RAM turno" do log
-  serial (antes do POST / fim do job / WAV+PCM vivos); se possível,
-  induzir 1 erro (backend desligado no meio) para ver o caminho de erro.
-- Rodada 3 (autorizada pelo proprietário em 2026-08-16) CONCLUÍDA: P0 da
-  rodada 2 verificado como correto; o P1 residual apontado (HydrationDone
-  perdido em Idle bloquearia envios para sempre) foi corrigido com a
-  drenagem genérica de hidratação na reconciliação. Sem pendências de
-  revisão.
-- Estado do worktree: limpo; MCP codex-council com token da conta antiga
+- Task em andamento: T8 — validação física, JÁ MAJORITARIAMENTE FEITA em
+  2026-08-16. O CICLO CENTRAL FOI VALIDADO pelo proprietário: tarefa na
+  tela (Tutoria) → foto → Enviar → som de feedback + VOZ do tutor no
+  alto-falante + IMAGEM da API na tela → saída ao fim do áudio (dois
+  terminais) → volta ao preview. RAM no pico (log serial): antes do POST
+  100 KB internos/12,0 MB PSRAM livres; fim do job (WAV+RGB vivos) 97 KB/
+  10,0 MB; WAV+PCM vivos 97 KB/13,9 MB. Turno completo em ~19,5 s
+  (foto 167 KB; voz 423 KB; imagem 1280x698).
+- Último passo concluído: bug do "Voltar" da tela de câmera DIAGNOSTICADO
+  e CORRIGIDO em código, aguardando reteste físico: o selo de conexão
+  (canto sup. direito, com ext_click_area de 40 px para o gesto de 3 s)
+  cobria o botão Voltar desde que a barra de ações foi para a lateral
+  direita (F2/etapa 3) e engolia os toques; o selo agora fica à esquerda
+  da barra SÓ nesta tela (pv_camera_screen.cc, após CreateConnectionBadge).
+- Próximo passo exato (amanhã): (1) gravar o binário novo com
+  `bash scripts/pv/flash_app.sh` (o build/xiaozhi.bin e o zip já saem com
+  a correção; NVS preservada); (2) retestar o "Voltar" no preview e na
+  revisão (e conferir que o gesto de 3 s continua funcionando no selo e
+  no rodapé da versão); (3) opcional recomendado: 1 erro induzido
+  (desligar o backend durante um envio) para ver o caminho de erro na
+  tela; (4) proprietário confirma → marcar T8, fechar checklist, tabela
+  "Status das fases" no commit final. Backend: subir com
+  `cd licao_casa/backend && ./venv/bin/uvicorn main:app --host 0.0.0.0
+  --port 8001` (o .env fica na RAIZ do licao_casa; sessão de teste ativa
+  criada em 2026-08-16 via POST /api/prepare com data/images/page_1.jpg).
+- Rodada 3 (autorizada) CONCLUÍDA; sem pendências de revisão. Incidente
+  de boot resolvido (gate do AFE, commit 6f94c9b) — ver Notas.
+- Estado do worktree: apenas a correção do Voltar pendente de commit (se
+  esta sessão não a commitou, o diff está em
+  ui/pv_camera_screen.cc); MCP codex-council com token da conta antiga
   (usar `codex exec` CLI ou reiniciar a sessão para reautenticar).
 
 ## Notas da fase

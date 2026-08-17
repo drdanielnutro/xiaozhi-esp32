@@ -262,6 +262,16 @@ bool PvCameraScreen::EnsureScreenLocked() {
 
     badge_ = PvUi::CreateConnectionBadge(screen);
     PvUi::SetConnectionBadge(badge_, connected_);
+    // NESTA tela o canto superior direito pertence ao "Voltar" (a barra de
+    // ações é a coluna da direita desde a F2/etapa 3), e o selo de conexão
+    // tem área de clique estendida em 40 px por causa do gesto de
+    // configuração: no lugar padrão ele ENGOLIA todo toque no botão (bug
+    // achado na validação física da F3/T8). Aqui ele fica à ESQUERDA da
+    // barra, sobre a área de preview — visível no mesmo canto, longe dos
+    // botões; o gesto de 3 s continua nele e no rodapé da versão.
+    if (badge_.container != nullptr) {
+        lv_obj_align(badge_.container, LV_ALIGN_TOP_RIGHT, -(kActionBarWidth + 24), 16);
+    }
 
     screen_ = screen;
     UpdateActionBarLocked();
