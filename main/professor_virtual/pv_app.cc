@@ -775,7 +775,15 @@ void PvApp::ReturnFromCameraScreen() {
     // A tela de câmera é sobreposta à rota corrente. Sem rota carregada (só
     // acontece se o botão for alcançado por um caminho futuro), volta ao
     // status: nunca deixar a criança numa tela morta.
-    if (!route_screens_.Reload()) {
+    //
+    // Show(), não Reload(): o Reload preservaria o TEXTO da última montagem,
+    // e o espelho pode ter avançado com a re-hidratação pós-turno — na
+    // validação da T8 a tela voltou mostrando a questão 1 com o servidor já
+    // na questão 2. Show() remonta o enunciado a partir do espelho CORRENTE
+    // (e é idempotente: só troca o texto do rótulo e recarrega a tela).
+    if (route_screens_.IsLoaded()) {
+        route_screens_.Show(route_screens_.route(), session_state_, lesson_);
+    } else {
         status_screen_.Load();
     }
 }
